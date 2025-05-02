@@ -53,9 +53,35 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           }
 
           const html = await response.text();
-          const count = (html.match(/value="购买"/g) || []).length;
+          let count = (html.match(/value="购买"/g) || []).length;
+          let all_pages=1
+          for (let i=1;i<5;i++)
+          {
+              const query_str = `href\\s*=\\s*["']\\?page=${i}["']`;
+              let re = new RegExp(query_str, 'g');
+              let has_next_page = (html.match(re) || []).length;
+              if (has_next_page>0)
+              {
+                  let  new_url=siteUrl+"?page="+i;
+                  let  response2 = await fetch(new_url, {
+                       headers: {
+                       Cookie: cookies.map(c => `${c.name}=${c.value}`).join('; '),
+                       'User-Agent': navigator.userAgent
+                      }
+                  });
+                  let html2 = await response2.text();
+                  let count2 = (html2.match(/value="购买"/g) || []).length;
+                  count= count+count2;
+                  all_pages=all_pages+1;
+              }else
+              {
+                  break;
+              }
+
+          
+          }
           results.push({ siteName, count, url: siteUrl });
-          sendLog(`${siteName}: 发现 ${count} 个可购买勋章`);
+          sendLog(`${siteName}: 共${all_pages}页，发现 ${count} 个可购买勋章`);
         } catch (error) {
           sendLog(`扫描失败：${siteName} (${error.message})`, true);
         }
