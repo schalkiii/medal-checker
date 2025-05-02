@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    /* 基础样式 */
+    body {
+      width: 900px;
+      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: #f5f7fa;
+      line-height: 1.6;
+    }
+
+    /* 主容器布局 */
+    .main-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 25px;
+    }
+
+    /* 配置区块样式 */
+    .config-section {
+      background: white;
+      padding: 25px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    /* 操作按钮组 */
+    .action-buttons {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 12px;
+      margin: 20px 0;
+    }
+
+    /* 按钮通用样式 */
+    button {
+      padding: 10px 15px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+
+    /* 按钮颜色定义 */
+    #scanBtn { background: #4CAF50; color: white; }
+    #openAllBtn { background: #17a2b8; color: white; }
+    #saveBtn { background: #2196F3; color: white; }
+    #importBtn { background: #FF9800; color: white; }
+    #exportBtn { background: #9C27B0; color: white; }
+
+    /* 文本输入区 */
+    textarea {
+      width: 100%;
+      height: 200px;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 13px;
+      margin: 15px 0;
+      resize: vertical;
+    }
+
+    /* 输出容器样式 */
+    .output-container {
+      background: white;
+      padding: 25px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    /* 日志区域 */
+    #scanLog {
+      height: 300px;
+      overflow-y: auto;
+      border: 1px solid #eee;
+      border-radius: 6px;
+      padding: 15px;
+      background: #fafafa;
+    }
+
+    .log-entry {
+      padding: 8px 12px;
+      margin: 6px 0;
+      background: white;
+      border-radius: 4px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      font-size: 13px;
+    }
+
+    .timestamp {
+      color: #666;
+      margin-right: 10px;
+      font-size: 12px;
+    }
+
+    /* 结果展示区 */
+    #resultBox {
+      margin-top: 25px;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    #resultList {
+      max-height: 300px;
+      overflow-y: auto;
+      padding: 15px;
+    }
+
+    .result-item {
+      padding: 12px;
+      margin: 8px 0;
+      background: #f8f9fa;
+      border-left: 3px solid #4CAF50;
+      border-radius: 4px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+    }
+
+    .result-url {
+      color: #666;
+      font-size: 12px;
+      margin-top: 4px;
+    }
+
+    /* 统计信息 */
+    #resultStats {
+      background: rgba(76, 175, 80, 0.08);
+      padding: 12px;
+      border-top: 1px solid #eee;
+      font-size: 14px;
+    }
+
+    /* 配置说明 */
+    .config-notice {
+      background: #fff3e0;
+      padding: 18px;
+      border-radius: 6px;
+      margin: 15px 0;
+      border-left: 4px solid #FF9800;
+    }
+
+    .config-notice h4 {
+      color: #EF6C00;
+      margin: 0 0 12px 0;
+      font-size: 14px;
+    }
+
+    .config-notice ul {
+      margin: 0;
+      padding-left: 20px;
+    }
+
+    .config-notice li {
+      margin-bottom: 10px;
+      font-size: 13px;
+      color: #666;
+      line-height: 1.6;
+    }
+
+    pre {
+      background: rgba(0,0,0,0.03);
+      padding: 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      white-space: pre-wrap;
+      margin: 8px 0;
+    }
+	/* 清除按钮悬停效果 */
+#clearResultsBtn:hover {
+  background: #c82333 !important;
+  transform: scale(0.98);
+}
+
+/* 空状态提示 */
+.empty-result {
+  text-align: center;
+  color: #6c757d;
+  padding: 20px;
+  font-size: 14px;
+}
+
+  </style>
+</head>
+<body>
+  <h2 style="margin:0 0 25px 0; color: #2c3e50;">PT 勋章扫描器控制台</h2>
+  
+  <div class="main-container">
+    <!-- 左侧配置区 -->
+    <div class="config-section">
+      <div class="config-notice">
+        <h4>📋 配置导入说明</h4>
+        <ul>
+          <li>支持标准JSON格式，导入时站点地址自动补全medal.php：
+            <pre>{
+  "sites": [
+    { "name": "站点A", "url": "https://sitea.com/" },
+    { "name": "站点B", "url": "https://siteb.com/" }
+  ]
+}</pre>
+          </li>
+          <li>兼容PTPP备份文件：
+            <div style="margin-top:8px; color:#EF6C00;">
+              PTPP → 参数备份与恢复 → 备份ZIP下载并解压 → 选择 options.json导入
+            </div>
+          </li>
+        </ul>
+      </div>
+
+      <input type="file" id="fileInput" hidden accept=".json">
+
+      <div class="action-buttons">
+        <button id="importBtn">⬆️ 导入配置</button>
+        <button id="exportBtn">⬇️ 导出配置</button>
+        <button id="saveBtn">💾 保存配置</button>
+      </div>
+
+      <textarea id="sites" placeholder="每行一个站点配置，格式：
+站点名称|完整URL
+示例：
+春天PT|https://springpt.net/medal.php
+秋天PT|https://autumnpt.org/medal.php"></textarea>
+    </div>
+
+    <!-- 右侧操作区 -->
+    <div class="output-container">
+      <div class="action-buttons">
+        <button id="scanBtn">🔍 开始扫描</button>
+        <button id="openAllBtn">🌐 一键打开</button>
+      </div>
+
+      <h3 style="margin:15px 0 10px; color: #444;">实时日志</h3>
+      <div id="scanLog"></div>
+
+      <h3 style="margin:25px 0 10px; color: #444; display: flex; justify-content: space-between; align-items: center;">
+  <span>扫描结果</span>
+  <button id="clearResultsBtn" style="background: #dc3545; padding: 5px 10px; font-size: 12px;">
+    🗑️ 清除结果
+  </button>
+</h3>
+      <div id="resultBox">
+        <div id="resultList"></div>
+        <div id="resultStats"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>

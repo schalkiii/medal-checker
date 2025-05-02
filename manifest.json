@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "PT勋章扫描器",
+  "version": "1.0",
+  "permissions": ["cookies", "storage", "activeTab"],
+     "host_permissions": [
+    "<all_urls>"
+  ],
+  "action": {
+    "default_icon": {
+      "48": "icon.png"
+    }
+  },
+  "options_ui": {
+    "page": "options/options.html",
+    "open_in_tab": true
+  },
+  "icons": {
+    "48": "icon.png"
+  },
+  "background": {
+    "service_worker": "background.js"
+  }
+}
