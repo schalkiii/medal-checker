@@ -65,7 +65,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           }
 
           const html = await response.text();
-          let count = (html.match(/value="购买"/g) || []).length;
+          let count = (html.match(/value="购买(\/[^"]*)?"/g) || []).length;
           let all_pages = 1;
 
           // 分页请求处理
@@ -86,7 +86,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 }, 10000);
 
                 const html2 = await response2.text();
-                const count2 = (html2.match(/value="购买"/g) || []).length;
+                const count2 = (html2.match(/value="购买(\/[^"]*)?"/g) || []).length;
                 count += count2;
                 all_pages++;
               } catch (error) {
