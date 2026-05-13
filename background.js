@@ -20,79 +20,65 @@ const fetchWithTimeout = (url, options = {}, timeout = 10000) => {
 
 const extractMedalsFromHtml = (html) => {
   const medals = [];
+  const purchaseRegex = /<input[^>]*value="购买[^"]*"[^>]*>/gi;
+  let match;
+  const positions = [];
 
-  if (typeof DOMParser !== 'undefined') {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
+  while ((match = purchaseRegex.exec(html)) !== null) {
+    positions.push(match.index);
+  }
 
-    const purchaseInputs = doc.querySelectorAll('input[value^="购买"]');
+  for (const pos of positions) {
+    const before = html.slice(Math.max(0, pos - 2000), pos);
+    const after = html.slice(pos, pos + 2000);
 
-    purchaseInputs.forEach(input => {
-      const container = input.closest('tr') || input.closest('td') || input.closest('div') || input.parentElement;
-      if (!container) {
-        medals.push({ name: '未知勋章', price: '', duration: '' });
-        return;
-      }
-
-      const text = container.textContent.replace(/\s+/g, ' ').trim();
-      extractMedalInfo(text, container, medals);
-    });
-  } else {
-    const purchaseRegex = /<input[^>]*value="购买[^"]*"[^>]*>/gi;
-    let match;
-    const positions = [];
-
-    while ((match = purchaseRegex.exec(html)) !== null) {
-      positions.push(match.index);
-    }
-
-    for (const pos of positions) {
-      const before = html.slice(Math.max(0, pos - 2000), pos);
-      const after = html.slice(pos, pos + 2000);
-
-      const containerStarts = [];
-      const trIdx = before.lastIndexOf('<tr');
+    const containerStarts = [];
+    const trIdx = before.lastIndexOf('<tr');
+    if (trIdx !== -1) containerStarts.push(trIdx);
+    if (trIdx === -1) {
       const tdIdx = before.lastIndexOf('<td');
-      const divIdx = before.lastIndexOf('<div');
-      if (trIdx !== -1) containerStarts.push(trIdx);
       if (tdIdx !== -1) containerStarts.push(tdIdx);
-      if (divIdx !== -1) containerStarts.push(divIdx);
-
-      let containerHtml;
-      if (containerStarts.length > 0) {
-        const start = Math.max(...containerStarts);
-        containerHtml = html.slice(start, pos + 2000);
-      } else {
-        containerHtml = before + after;
-      }
-
-      const text = containerHtml
-        .replace(/<script[\s\S]*?<\/script>/gi, '')
-        .replace(/<style[\s\S]*?<\/style>/gi, '')
-        .replace(/<[^>]+>/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-
-      extractMedalInfo(text, null, medals);
     }
+    if (containerStarts.length === 0) {
+      const divIdx = before.lastIndexOf('<div');
+      if (divIdx !== -1) containerStarts.push(divIdx);
+    }
+
+    let containerHtml;
+    if (containerStarts.length > 0) {
+      const start = Math.max(...containerStarts);
+      containerHtml = html.slice(start, pos + 2000);
+    } else {
+      containerHtml = before + after;
+    }
+
+    const altMatch = containerHtml.match(/alt\s*=\s*["']([^"']+)["']/i);
+    const altText = altMatch ? altMatch[1].trim() : '';
+
+    const text = containerHtml
+      .replace(/<script[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[\s\S]*?<\/style>/gi, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    extractMedalInfo(text, medals, altText);
   }
 
   return medals;
 };
 
-const extractMedalInfo = (text, container, medals) => {
+const extractMedalInfo = (text, medals, altText = '') => {
   const namePatterns = [
     /(?:勋章名称|名称|勋章|徽章)[：:]\s*(.+?)(?:\s|$)/,
-    /alt\s*=\s*["'](.+?)["']/i,
   ];
   let name = '';
   for (const p of namePatterns) {
     const m = text.match(p);
     if (m) { name = m[1].trim(); break; }
   }
-  if (!name && container) {
-    const img = container.querySelector('img[alt]');
-    if (img) name = img.alt.trim();
+  if (!name && altText) {
+    name = altText;
   }
   if (!name) {
     const lines = text.split(/[，。,.\n]/).filter(l => l.trim().length > 0 && l.trim().length < 30);
