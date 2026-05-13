@@ -415,7 +415,67 @@ background.js ──依赖──► AbortController (超时控制)
 
 ---
 
-## 9. 安全与限制
+## 9. 质量检查流水线
+
+项目内置了一套自动化质量检查流水线，支持静态分析、代码规范检查和文件监控自迭代。
+
+### 9.1 检查项目
+
+| 序号 | 检查项 | 说明 |
+|------|--------|------|
+| 1 | 文件完整性 | 验证 manifest.json、background.js、icon.png、options/ 等必要文件存在 |
+| 2 | manifest.json 校验 | 验证 manifest_version、权限声明、service_worker、options_ui 路径正确性 |
+| 3 | JS 语法检查 | 使用 `new Function()` 解析 JS 文件，检查是否存在语法错误 |
+| 4 | HTML 结构检查 | 验证 DOCTYPE、标签闭合、`<div>` 嵌套匹配、脚本引用存在性 |
+| 5 | ESLint 代码规范 | 基于 ESLint flat config 的代码风格和质量检查 |
+| 6 | 跨文件引用检查 | 验证消息协议（action/type）前后端匹配、DOM 元素 ID 一致性 |
+
+### 9.2 流水线架构
+
+```
+check.sh (Shell入口)
+  ├── check  → scripts/check.js    (6项静态检查 + ESLint)
+  ├── fix    → scripts/lint-fix.js  (ESLint --fix → check)
+  └── watch  → scripts/watch.js     (文件监控 → 自动 fix)
+```
+
+### 9.3 使用命令
+
+| 命令 | 功能 |
+|------|------|
+| `npm test` | 运行完整检查（等价 `npm run check`） |
+| `npm run check` | 运行 6 项静态检查 |
+| `npm run lint` | 仅运行 ESLint 检查 |
+| `npm run lint:fix` | ESLint 自动修复 + 完整检查 |
+| `npm run watch` | 启动文件监控模式（修改文件自动触发 lint:fix） |
+| `bash check.sh check` | Shell 入口，运行完整检查 |
+| `bash check.sh fix` | Shell 入口，自动修复 + 检查 |
+| `bash check.sh watch` | Shell 入口，文件监控自迭代 |
+
+### 9.4 自迭代流程 (watch 模式)
+
+```
+文件变更 → 500ms 防抖 → ESLint --fix → 6项检查 → 输出结果
+                                    ↓ 失败
+                              等待下次变更
+```
+
+监控文件列表：`background.js`、`options/options.js`、`options/options.html`、`manifest.json`
+
+### 9.5 新增文件
+
+| 文件 | 用途 |
+|------|------|
+| `package.json` | npm 项目配置，定义 scripts |
+| `eslint.config.mjs` | ESLint flat config（Manifest V3 浏览器环境） |
+| `scripts/check.js` | 核心检查脚本（6 项检查） |
+| `scripts/lint-fix.js` | ESLint 自动修复 + 调用 check |
+| `scripts/watch.js` | 文件监控 + 自动触发 lint:fix |
+| `check.sh` | Shell 入口脚本 |
+
+---
+
+## 10. 安全与限制
 
 | 方面 | 说明 |
 |------|------|

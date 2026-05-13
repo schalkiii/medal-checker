@@ -18,16 +18,6 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentResults = null;
   let previousResults = null;
 
-  elements.clearResultsBtn.addEventListener('click', () => {
-    if (confirm('确定要清除所有扫描结果和历史记录吗？')) {
-      chrome.storage.local.remove(['scanResults', 'scanHistory'], () => {
-        elements.resultList.innerHTML = '<div class="empty-result">🔄 暂无扫描结果</div>';
-        elements.resultStats.innerHTML = '';
-        addLog('已清除所有扫描结果和历史记录');
-      });
-    }
-  });
-
   const verifyElements = () => {
     Object.entries(elements).forEach(([name, element]) => {
       if (!element) {
@@ -50,6 +40,16 @@ document.addEventListener('DOMContentLoaded', () => {
       elements.logElement.appendChild(logEntry);
       elements.logElement.scrollTop = elements.logElement.scrollHeight;
     }
+
+    elements.clearResultsBtn.addEventListener('click', () => {
+      if (confirm('确定要清除所有扫描结果和历史记录吗？')) {
+        chrome.storage.local.remove(['scanResults', 'scanHistory'], () => {
+          elements.resultList.innerHTML = '<div class="empty-result">🔄 暂无扫描结果</div>';
+          elements.resultStats.innerHTML = '';
+          addLog('已清除所有扫描结果和历史记录');
+        });
+      }
+    });
 
     function getMedalFingerprint(siteName, medal) {
       return `${siteName}::${medal.name}`;
@@ -327,7 +327,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = e => resolve(e.target.result);
-        reader.onerror = e => reject(new Error('文件读取失败'));
+        reader.onerror = _e => reject(new Error('文件读取失败'));
         reader.readAsText(file);
       });
     }

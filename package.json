@@ -1,0 +1,34 @@
+{
+  "name": "pt-medal-scanner",
+  "version": "1.0.0",
+  "description": "PT勋章扫描器 — Chrome浏览器扩展，批量检测PT站点可购买勋章",
+  "main": "background.js",
+  "scripts": {
+    "check": "node scripts/check.js",
+    "lint": "eslint background.js options/options.js",
+    "lint:fix": "node scripts/lint-fix.js",
+    "watch": "node scripts/watch.js",
+    "test": "npm run check"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/schalkiii/medal-checker.git"
+  },
+  "keywords": [
+    "chrome-extension",
+    "pt",
+    "medal",
+    "private-tracker"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/schalkiii/medal-checker/issues"
+  },
+  "homepage": "https://github.com/schalkiii/medal-checker#readme",
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.3.0"
+  }
+}

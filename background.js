@@ -26,7 +26,7 @@ const extractMedalsFromHtml = (html) => {
   const medals = [];
 
   purchaseInputs.forEach(input => {
-    let container = input.closest('tr') || input.closest('td') || input.closest('div');
+    const container = input.closest('tr') || input.closest('td') || input.closest('div');
     if (!container) return;
 
     const text = container.textContent.replace(/\s+/g, ' ').trim();
@@ -80,7 +80,7 @@ chrome.action.onClicked.addListener(() => {
   chrome.runtime.openOptionsPage();
 });
 
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((request, _sender, _sendResponse) => {
   if (request.action === 'startScan') {
     chrome.storage.local.get(['sites'], async ({ sites }) => {
       const results = [];
@@ -93,7 +93,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return;
       }
 
-      for (const [index, site] of sites.entries()) {
+      for (const site of sites) {
         const [siteName, siteUrl] = site.split('|');
         try {
           const domain = getCookieDomain(siteUrl);
@@ -126,12 +126,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
           for (let i = 1; i < 15; i++) {
             const query_str = `href\\s*=\\s*["']\\?page=${i}["']`;
-            let re = new RegExp(query_str, 'g');
-            let has_next_page = (html.match(re) || []).length;
+            const re = new RegExp(query_str, 'g');
+            const has_next_page = (html.match(re) || []).length;
 
             if (has_next_page > 0) {
               try {
-                const new_url = siteUrl + "?page=" + i;
+                const new_url = siteUrl + '?page=' + i;
                 const response2 = await fetchWithTimeout(new_url, {
                   headers: {
                     Cookie: cookies.map(c => `${c.name}=${c.value}`).join('; '),
