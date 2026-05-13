@@ -109,7 +109,7 @@ test('所有关键元素存在', () => {
   loadOptions(chromeMock);
 
   const ids = ['sites', 'scanLog', 'importBtn', 'exportBtn', 'saveBtn',
-    'scanBtn', 'openAllBtn', 'resultList', 'resultStats', 'clearResultsBtn', 'diffToggleBtn'];
+    'scanBtn', 'openAllBtn', 'resultList', 'resultStats', 'clearResultsBtn', 'diffToggleBtn', 'debugExportBtn'];
   ids.forEach(id => {
     const el = document.getElementById(id);
     assert(el !== null, `元素 #${id} 应存在`);

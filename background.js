@@ -126,6 +126,8 @@ chrome.runtime.onMessage.addListener((request, _sender, _sendResponse) => {
         return;
       }
 
+      const allPageHtmls = [];
+
       for (const site of sites) {
         const [siteName, siteUrl] = site.split('|');
         try {
@@ -154,6 +156,8 @@ chrome.runtime.onMessage.addListener((request, _sender, _sendResponse) => {
           }
 
           const html = await response.text();
+          const pageHtmls = [{ url: siteUrl, html }];
+          allPageHtmls.push(...pageHtmls);
           let medals = extractMedalsFromHtml(html);
           let all_pages = 1;
 
@@ -173,6 +177,8 @@ chrome.runtime.onMessage.addListener((request, _sender, _sendResponse) => {
                 }, 10000);
 
                 const html2 = await response2.text();
+                pageHtmls.push({ url: new_url, html: html2 });
+                allPageHtmls.push({ url: new_url, html: html2 });
                 const pageMedals = extractMedalsFromHtml(html2);
                 medals = medals.concat(pageMedals);
                 all_pages++;
@@ -210,6 +216,9 @@ chrome.runtime.onMessage.addListener((request, _sender, _sendResponse) => {
       const scanEntry = { timestamp, dateStr, results };
 
       await chrome.storage.local.set({ scanResults: results });
+
+      const debugData = { timestamp: Date.now(), dateStr, pages: allPageHtmls };
+      chrome.storage.local.set({ debugData });
 
       chrome.storage.local.get(['scanHistory'], ({ scanHistory }) => {
         const history = scanHistory || [];

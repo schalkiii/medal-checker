@@ -8,7 +8,8 @@
     "lint": "eslint background.js options/options.js",
     "lint:fix": "node scripts/lint-fix.js",
     "watch": "node scripts/watch.js",
-    "test": "npm run check"
+    "test": "npm run check",
+    "analyze": "node scripts/analyze-html.js"
   },
   "repository": {
     "type": "git",

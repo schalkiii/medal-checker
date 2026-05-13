@@ -11,7 +11,8 @@ document.addEventListener('DOMContentLoaded', () => {
     resultList: document.getElementById('resultList'),
     resultStats: document.getElementById('resultStats'),
     clearResultsBtn: document.getElementById('clearResultsBtn'),
-    diffToggleBtn: document.getElementById('diffToggleBtn')
+    diffToggleBtn: document.getElementById('diffToggleBtn'),
+    debugExportBtn: document.getElementById('debugExportBtn')
   };
 
   let diffMode = false;
@@ -308,6 +309,39 @@ document.addEventListener('DOMContentLoaded', () => {
         addLog('差异模式已关闭');
         if (currentResults) updateResultDisplay(currentResults);
       }
+    });
+
+    elements.debugExportBtn.addEventListener('click', () => {
+      chrome.storage.local.get(['debugData'], ({ debugData }) => {
+        if (!debugData || !debugData.pages || debugData.pages.length === 0) {
+          addLog('❌ 没有可导出的调试数据，请先执行一次扫描', true);
+          return;
+        }
+
+        const exportObj = {
+          exportVersion: 1,
+          timestamp: debugData.timestamp,
+          dateStr: debugData.dateStr,
+          pages: debugData.pages.map(p => ({
+            url: p.url,
+            html: p.html
+          }))
+        };
+
+        const blob = new Blob(
+          [JSON.stringify(exportObj, null, 2)],
+          { type: 'application/json' }
+        );
+
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `PT_Debug_${debugData.dateStr}.json`;
+        a.click();
+
+        URL.revokeObjectURL(url);
+        addLog(`📦 调试包已导出（${debugData.pages.length} 个页面，${blob.size} 字节）`);
+      });
     });
 
     chrome.runtime.onMessage.addListener((message) => {
