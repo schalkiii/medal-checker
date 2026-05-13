@@ -23,7 +23,10 @@ export default [
         confirm: 'readonly',
         alert: 'readonly',
         HTMLInputElement: 'readonly',
-        HTMLAnchorElement: 'readonly'
+        HTMLAnchorElement: 'readonly',
+        module: 'readonly',
+        exports: 'readonly',
+        require: 'readonly'
       }
     },
     rules: {

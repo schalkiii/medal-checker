@@ -19,64 +19,108 @@ const fetchWithTimeout = (url, options = {}, timeout = 10000) => {
 };
 
 const extractMedalsFromHtml = (html) => {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(html, 'text/html');
-
-  const purchaseInputs = doc.querySelectorAll('input[value^="购买"]');
   const medals = [];
 
-  purchaseInputs.forEach(input => {
-    let container = input.closest('tr') || input.closest('td') || input.closest('div') || input.parentElement;
-    if (!container) {
-      medals.push({ name: '未知勋章', price: '', duration: '' });
-      return;
+  if (typeof DOMParser !== 'undefined') {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+
+    const purchaseInputs = doc.querySelectorAll('input[value^="购买"]');
+
+    purchaseInputs.forEach(input => {
+      const container = input.closest('tr') || input.closest('td') || input.closest('div') || input.parentElement;
+      if (!container) {
+        medals.push({ name: '未知勋章', price: '', duration: '' });
+        return;
+      }
+
+      const text = container.textContent.replace(/\s+/g, ' ').trim();
+      extractMedalInfo(text, container, medals);
+    });
+  } else {
+    const purchaseRegex = /<input[^>]*value="购买[^"]*"[^>]*>/gi;
+    let match;
+    const positions = [];
+
+    while ((match = purchaseRegex.exec(html)) !== null) {
+      positions.push(match.index);
     }
 
-    const text = container.textContent.replace(/\s+/g, ' ').trim();
+    for (const pos of positions) {
+      const before = html.slice(Math.max(0, pos - 2000), pos);
+      const after = html.slice(pos, pos + 2000);
 
-    const namePatterns = [
-      /(?:勋章名称|名称|勋章|徽章)[：:]\s*(.+?)(?:\s|$)/,
-      /alt\s*=\s*["'](.+?)["']/i,
-    ];
-    let name = '';
-    for (const p of namePatterns) {
-      const m = text.match(p);
-      if (m) { name = m[1].trim(); break; }
-    }
-    if (!name) {
-      const img = container.querySelector('img[alt]');
-      if (img) name = img.alt.trim();
-    }
-    if (!name) {
-      const lines = text.split(/[，。,.\n]/).filter(l => l.trim().length > 0 && l.trim().length < 30);
-      name = lines[0] ? lines[0].trim() : '未知勋章';
-    }
+      const containerStarts = [];
+      const trIdx = before.lastIndexOf('<tr');
+      const tdIdx = before.lastIndexOf('<td');
+      const divIdx = before.lastIndexOf('<div');
+      if (trIdx !== -1) containerStarts.push(trIdx);
+      if (tdIdx !== -1) containerStarts.push(tdIdx);
+      if (divIdx !== -1) containerStarts.push(divIdx);
 
-    const pricePatterns = [
-      /(?:价格|售价|所需|需要|消耗|花费)[：:]\s*([\d,]+)/,
-      /([\d,]+)\s*(?:积分|魔力|金币|银币|铜币| bonus|points?)/i,
-    ];
-    let price = '';
-    for (const p of pricePatterns) {
-      const m = text.match(p);
-      if (m) { price = m[1].trim(); break; }
-    }
+      let containerHtml;
+      if (containerStarts.length > 0) {
+        const start = Math.max(...containerStarts);
+        containerHtml = html.slice(start, pos + 2000);
+      } else {
+        containerHtml = before + after;
+      }
 
-    const durationPatterns = [
-      /(?:有效期|时效|期限|持续时间|时长)[：:]\s*(.+?)(?:\s|$)/,
-      /(永久|长期|无期限|不限时)/,
-      /(\d+\s*(?:天|日|周|月|年|小时|day|week|month|year|hour))/i,
-    ];
-    let duration = '';
-    for (const p of durationPatterns) {
-      const m = text.match(p);
-      if (m) { duration = m[1].trim(); break; }
-    }
+      const text = containerHtml
+        .replace(/<script[\s\S]*?<\/script>/gi, '')
+        .replace(/<style[\s\S]*?<\/style>/gi, '')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
 
-    medals.push({ name, price, duration });
-  });
+      extractMedalInfo(text, null, medals);
+    }
+  }
 
   return medals;
+};
+
+const extractMedalInfo = (text, container, medals) => {
+  const namePatterns = [
+    /(?:勋章名称|名称|勋章|徽章)[：:]\s*(.+?)(?:\s|$)/,
+    /alt\s*=\s*["'](.+?)["']/i,
+  ];
+  let name = '';
+  for (const p of namePatterns) {
+    const m = text.match(p);
+    if (m) { name = m[1].trim(); break; }
+  }
+  if (!name && container) {
+    const img = container.querySelector('img[alt]');
+    if (img) name = img.alt.trim();
+  }
+  if (!name) {
+    const lines = text.split(/[，。,.\n]/).filter(l => l.trim().length > 0 && l.trim().length < 30);
+    name = lines[0] ? lines[0].trim() : '未知勋章';
+  }
+
+  const pricePatterns = [
+    /(?:价格|售价|所需|需要|消耗|花费)[：:]\s*([\d,]+)/,
+    /([\d,]+)\s*(?:积分|魔力|金币|银币|铜币| bonus|points?)/i,
+  ];
+  let price = '';
+  for (const p of pricePatterns) {
+    const m = text.match(p);
+    if (m) { price = m[1].trim(); break; }
+  }
+
+  const durationPatterns = [
+    /(?:有效期|时效|期限|持续时间|时长)[：:]\s*(.+?)(?:\s|$)/,
+    /(永久|长期|无期限|不限时)/,
+    /(\d+\s*(?:天|日|周|月|年|小时|day|week|month|year|hour))/i,
+  ];
+  let duration = '';
+  for (const p of durationPatterns) {
+    const m = text.match(p);
+    if (m) { duration = m[1].trim(); break; }
+  }
+
+  medals.push({ name, price, duration });
 };
 
 chrome.action.onClicked.addListener(() => {
@@ -195,5 +239,5 @@ chrome.runtime.onMessage.addListener((request, _sender, _sendResponse) => {
 });
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { getCookieDomain, fetchWithTimeout, extractMedalsFromHtml };
+  module.exports = { getCookieDomain, fetchWithTimeout, extractMedalsFromHtml, extractMedalInfo };
 }
