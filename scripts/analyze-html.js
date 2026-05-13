@@ -19,7 +19,6 @@ if (!fs.existsSync(inputPath)) {
 
 const ext = path.extname(inputPath).toLowerCase();
 
-// Mock minimal chrome API for background.js
 const mockStorage = new Map();
 global.chrome = {
   storage: {
@@ -63,7 +62,7 @@ function stripTags(html) {
 }
 
 function findPurchaseInputs(html) {
-  const regex = /<input[^>]*value="购买[^"]*"[^>]*>/gi;
+  const regex = /<input[^>]*?value\s*=\s*"[^"]*(?:购买|購買|交换)[^"]*"[^>]*>/gi;
   const matches = [];
   let m;
   while ((m = regex.exec(html)) !== null) {
@@ -72,37 +71,22 @@ function findPurchaseInputs(html) {
   return matches;
 }
 
-function analyzeContainer(html, pos) {
-  const before = html.slice(Math.max(0, pos - 2000), pos);
-  const after = html.slice(pos, pos + 2000);
-
-  const boundaries = {};
-  const trIdx = before.lastIndexOf('<tr');
-  if (trIdx !== -1) boundaries.tr = trIdx;
-  if (trIdx === -1) {
-    const tdIdx = before.lastIndexOf('<td');
-    if (tdIdx !== -1) boundaries.td = tdIdx;
+function analyzeRow(tds, layout) {
+  const stride = layout.stride;
+  const groups = [];
+  for (let i = 0; i + stride - 1 < tds.length; i += stride) {
+    const group = tds.slice(i, i + stride);
+    const actionTd = group[layout.actionIdx] || '';
+    const actionInputs = actionTd.match(/value\s*=\s*"([^"]*)"/i);
+    const actionValue = actionInputs ? actionInputs[1] : '(no input)';
+    const nameText = bg.extractTdText(group[layout.nameIdx] || '');
+    const nameH1 = nameText.match(/^(.+?)(?:\n|$)/);
+    const name = nameH1 ? nameH1[1].trim() : '(no h1)';
+    const price = bg.extractTdText(group[layout.priceIdx] || '').trim();
+    const duration = bg.extractTdText(group[layout.durationIdx] || '').trim();
+    groups.push({ name, price, duration, actionValue });
   }
-  if (Object.keys(boundaries).length === 0) {
-    const divIdx = before.lastIndexOf('<div');
-    if (divIdx !== -1) boundaries.div = divIdx;
-  }
-
-  let containerHtml;
-  const startValues = Object.values(boundaries);
-  if (startValues.length > 0) {
-    const start = Math.max(...startValues);
-    containerHtml = html.slice(start, pos + 2000);
-  } else {
-    containerHtml = before + after;
-  }
-
-  const altMatch = containerHtml.match(/alt\s*=\s*["']([^"']+)["']/i);
-  const altText = altMatch ? altMatch[1].trim() : '';
-
-  const text = stripTags(containerHtml);
-
-  return { boundaries, containerHtml: containerHtml.slice(0, 300), altText, text };
+  return groups;
 }
 
 function analyzeFile(filePath) {
@@ -130,7 +114,6 @@ function analyzeFile(filePath) {
   }
 
   let totalFound = 0;
-  let totalExpected = 0;
 
   for (const page of pages) {
     const { url, html } = page;
@@ -139,35 +122,79 @@ function analyzeFile(filePath) {
     console.log(`📐 HTML 大小: ${(html.length / 1024).toFixed(1)} KB`);
     console.log('───────────────────────────────────────────────────────');
 
-    // Step 1: Find all purchase inputs
-    const inputs = findPurchaseInputs(html);
-    console.log(`\n📥 购买按钮匹配: ${inputs.length} 个`);
-    inputs.forEach((inp, i) => {
-      const ctx = analyzeContainer(html, inp.index);
-      console.log(`\n  [${i + 1}] 位置 ${inp.index}: ${inp.text}`);
-      console.log(`      容器边界: ${JSON.stringify(ctx.boundaries)}`);
-      console.log(`      alt文本: ${ctx.altText || '(无)'}`);
-      console.log(`      去标签文本: ${ctx.text.slice(0, 200)}`);
-    });
+    const isBuyCenter = url.includes('buycenter.php');
 
-    // Step 2: Run the actual extraction
-    const medals = bg.extractMedalsFromHtml(html);
-    console.log(`\n🏅 实际提取结果: ${medals.length} 个勋章`);
+    if (isBuyCenter) {
+      // Analyze buycenter structure
+      console.log('\n📋 BuyCenter 分析:');
+      const rows = html.match(/<tr[\s\S]*?(?=<tr|$)/gi) || [];
+      let dataRowCount = 0;
+      for (const row of rows) {
+        const tds = row.match(/<td[^>]*>[\s\S]*?<\/td>/gi) || [];
+        if (tds.length >= 6) {
+          const nameText = bg.extractTdText(tds[1] || '');
+          const actionTd = tds[5] || '';
+          const actionInputs = actionTd.match(/value\s*=\s*"([^"]*)"/i);
+          const actionValue = actionInputs ? actionInputs[1] : '(none)';
+          const isDisabled = actionTd.includes('disabled');
+          const price = bg.extractTdText(tds[4] || '');
+          console.log(`  行 ${dataRowCount}: price=${price} action="${actionValue}"${isDisabled ? ' [disabled]' : ''} name="${nameText.substring(0, 50)}"`);
+          dataRowCount++;
+        }
+      }
+      console.log(`  数据行数: ${dataRowCount}`);
+    } else {
+      // Analyze table structure
+      console.log('\n📋 表格结构分析:');
+      const rows = html.match(/<tr[\s\S]*?(?=<tr|$)/gi) || [];
+      const colCounts = {};
+      let dataRows = 0;
+
+      for (const row of rows) {
+        const tds = row.match(/<td[^>]*>[\s\S]*?<\/td>/gi) || [];
+        if (tds.length >= 5) {
+          colCounts[tds.length] = (colCounts[tds.length] || 0) + 1;
+          if (!row.includes('colhead') && !row.includes('thead')) {
+            dataRows++;
+            const layout = bg.getColumnLayout(tds.length);
+            if (layout) {
+              const groups = analyzeRow(tds, layout);
+              if (groups.length > 0) {
+                console.log(`  ${tds.length}列数据行 (${groups.length}组):`);
+                groups.forEach((g, gi) => {
+                  const purchasable = g.actionValue.includes('购买') || g.actionValue.includes('購買') ? '✅' : '❌';
+                  console.log(`    [${gi}] ${purchasable} name="${g.name.substring(0, 40)}" price=${g.price} duration=${g.duration} action="${g.actionValue}"`);
+                });
+              }
+            }
+          }
+        }
+      }
+
+      console.log(`  列数分布: ${JSON.stringify(colCounts)}`);
+      console.log(`  数据行数: ${dataRows}`);
+
+      // Find all purchase inputs
+      const inputs = findPurchaseInputs(html);
+      console.log(`\n📥 购买/交换按钮: ${inputs.length} 个`);
+      const uniqueActions = new Set();
+      inputs.forEach(inp => {
+        const valMatch = inp.text.match(/value\s*=\s*"([^"]*)"/i);
+        if (valMatch) uniqueActions.add(valMatch[1]);
+      });
+      console.log(`  按钮类型: ${[...uniqueActions].join(', ')}`);
+    }
+
+    // Run actual extraction
+    const medals = isBuyCenter
+      ? bg.extractMedalsFromBuyCenter(html)
+      : bg.extractMedalsFromHtml(html);
+    console.log(`\n🏅 实际提取结果: ${medals.length} 个`);
     medals.forEach((m, i) => {
-      console.log(`  [${i + 1}] 名称="${m.name}"  价格="${m.price}"  有效期="${m.duration}"`);
+      console.log(`  [${i + 1}] 「${m.name}」 价格=${m.price} 有效期=${m.duration}`);
     });
 
     totalFound += medals.length;
-
-    // Step 3: Show HTML context around each purchase button (raw)
-    console.log('\n📄 原始HTML上下文（每个购买按钮前后300字符）:');
-    inputs.forEach((inp, i) => {
-      const start = Math.max(0, inp.index - 300);
-      const end = Math.min(html.length, inp.index + 300);
-      console.log(`\n  --- [${i + 1}] input at ${inp.index} ---`);
-      console.log(`  ${html.slice(start, end).replace(/\n/g, '\\n')}`);
-    });
-
     console.log('');
   }
 
