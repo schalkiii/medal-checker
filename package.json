@@ -29,6 +29,8 @@
   "homepage": "https://github.com/schalkiii/medal-checker#readme",
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "eslint": "^10.3.0"
+    "eslint": "^10.3.0",
+    "jsdom": "^29.1.1",
+    "puppeteer": "^24.43.1"
   }
 }

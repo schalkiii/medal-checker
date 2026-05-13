@@ -22,12 +22,15 @@ const extractMedalsFromHtml = (html) => {
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, 'text/html');
 
-  const purchaseInputs = doc.querySelectorAll('input[value*="购买"]');
+  const purchaseInputs = doc.querySelectorAll('input[value^="购买"]');
   const medals = [];
 
   purchaseInputs.forEach(input => {
-    const container = input.closest('tr') || input.closest('td') || input.closest('div');
-    if (!container) return;
+    let container = input.closest('tr') || input.closest('td') || input.closest('div') || input.parentElement;
+    if (!container) {
+      medals.push({ name: '未知勋章', price: '', duration: '' });
+      return;
+    }
 
     const text = container.textContent.replace(/\s+/g, ' ').trim();
 
@@ -190,3 +193,7 @@ chrome.runtime.onMessage.addListener((request, _sender, _sendResponse) => {
   }
   return true;
 });
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { getCookieDomain, fetchWithTimeout, extractMedalsFromHtml };
+}
