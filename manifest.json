@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "PT勋章扫描器",
   "version": "1.0",
-  "permissions": ["cookies", "storage", "activeTab", "alarms"],
+"permissions": ["cookies", "storage", "activeTab", "alarms"],
      "host_permissions": [
     "<all_urls>"
   ],

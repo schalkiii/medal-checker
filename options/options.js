@@ -172,7 +172,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    chrome.storage.local.get(['sites', 'scanResults', 'scanHistory', 'scheduleConfig'], ({ sites, scanResults, scanHistory, scheduleConfig }) => {
+chrome.storage.local.get(['sites', 'scanResults', 'scanHistory', 'scheduleConfig'], ({ sites, scanResults, scanHistory, scheduleConfig }) => {
       elements.sitesTextarea.value = sites?.join('\n') || '';
       if (scanResults) updateResultDisplay(scanResults);
       if (scanHistory && scanHistory.length >= 2) {
@@ -410,7 +410,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
 
-    function updateScheduleStatus() {
+function updateScheduleStatus() {
       const enabled = elements.scheduleToggle.checked;
       elements.scheduleStatus.textContent = enabled ? '已启用' : '已禁用';
       elements.scheduleStatus.className = 'schedule-status' + (enabled ? ' active' : '');

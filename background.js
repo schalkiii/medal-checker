@@ -341,8 +341,7 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
       chrome.runtime.sendMessage({ type: 'scanResult', data: results });
     });
   }
-
-  if (request.action === 'updateScheduleConfig') {
+if (request.action === 'updateScheduleConfig') {
     const { scheduleConfig } = request;
     setupAlarm(scheduleConfig);
     sendResponse({ success: true });

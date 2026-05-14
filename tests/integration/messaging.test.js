@@ -70,7 +70,7 @@ async function runAll() {
     console.log(`     ${e.message}`);
   }
 
-  try {
+try {
     const bgActions = bgContent.match(/action\s*===\s*['"](\w+)['"]/g) || [];
     const optActions = optContent.match(/action:\s*['"](\w+)['"]/g) || [];
 

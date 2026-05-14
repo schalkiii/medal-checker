@@ -34,7 +34,7 @@ function createChromeMock(config = {}) {
           } else if (typeof keys === 'string') {
             result[keys] = _storage.get(keys);
           }
-          if (callback) callback(result);
+if (callback) callback(result);
           return Promise.resolve(result);
         },
         set(items, callback) {
@@ -89,7 +89,7 @@ function createChromeMock(config = {}) {
       }
     },
 
-    alarms: {
+alarms: {
       _created: [],
       _cleared: false,
       create(name, options) {
