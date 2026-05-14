@@ -341,9 +341,185 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
       chrome.runtime.sendMessage({ type: 'scanResult', data: results });
     });
   }
+
+  if (request.action === 'updateScheduleConfig') {
+    const { scheduleConfig } = request;
+    setupAlarm(scheduleConfig);
+    sendResponse({ success: true });
+    return true;
+  }
+
   return true;
 });
 
+// ===== 定时任务 & 飞书推送 =====
+
+const ALARM_NAME = 'dailyMedalScan';
+
+function sendToFeishu(webhookUrl, results, scanTime) {
+  const totalMedals = results.reduce((sum, r) => sum + r.count, 0);
+  const validSites = results.filter(r => r.count > 0);
+
+  const lines = [
+    [{ tag: 'text', text: `扫描时间: ${scanTime}` }],
+    [{ tag: 'text', text: `共扫描 ${results.length} 个站点，发现 ${totalMedals} 个可购买勋章` }],
+    [{ tag: 'text', text: '' }]
+  ];
+
+  if (validSites.length === 0) {
+    lines.push([{ tag: 'text', text: '😴 没有发现可购买的勋章' }]);
+  } else {
+    for (const site of validSites) {
+      lines.push([
+        { tag: 'text', text: `\n📌 ${site.siteName}（${site.count}个）` }
+      ]);
+      for (const medal of site.medals) {
+        const parts = [`  • ${medal.name}`];
+        if (medal.price) parts.push(`💰${medal.price}`);
+        if (medal.duration) parts.push(`⏱${medal.duration}`);
+        if (medal.bonus) parts.push(`📈${medal.bonus}`);
+        lines.push([{ tag: 'text', text: parts.join(' ') }]);
+      }
+    }
+  }
+
+  const payload = {
+    msg_type: 'post',
+    content: {
+      post: {
+        zh_cn: {
+          title: '🏅 PT勋章扫描报告',
+          content: lines
+        }
+      }
+    }
+  };
+
+  return fetchWithTimeout(webhookUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  }, 15000);
+}
+
+function setupAlarm(scheduleConfig) {
+  chrome.alarms.clear(ALARM_NAME, () => {
+    if (!scheduleConfig || !scheduleConfig.enabled) return;
+
+    const [hour, minute] = scheduleConfig.time.split(':').map(Number);
+    const now = new Date();
+    const scheduled = new Date(now);
+    scheduled.setHours(hour, minute, 0, 0);
+    if (scheduled <= now) scheduled.setDate(scheduled.getDate() + 1);
+    const delayMs = scheduled - now;
+    const delayMinutes = Math.ceil(delayMs / 60000);
+
+    chrome.alarms.create(ALARM_NAME, {
+      delayInMinutes: delayMinutes,
+      periodInMinutes: 1440
+    });
+  });
+}
+
+async function performScheduledScan() {
+  const { sites, scheduleConfig } = await chrome.storage.local.get(['sites', 'scheduleConfig']);
+  const webhookUrl = scheduleConfig?.webhookUrl;
+
+  if (!sites || sites.length === 0) return;
+  if (!webhookUrl) return;
+
+  const results = [];
+
+  for (const site of sites) {
+    const [siteName, siteUrl] = site.split('|');
+    try {
+      const domain = getCookieDomain(siteUrl);
+      const [cookiesMain, cookiesSub] = await Promise.all([
+        chrome.cookies.getAll({ url: siteUrl }),
+        chrome.cookies.getAll({ domain })
+      ]);
+      const cookies = [...new Set([...cookiesMain, ...cookiesSub])];
+
+      if (cookies.length === 0) continue;
+
+      const response = await fetchWithTimeout(siteUrl, {
+        headers: {
+          Cookie: cookies.map(c => `${c.name}=${c.value}`).join('; '),
+          'User-Agent': navigator.userAgent
+        }
+      }, 10000);
+
+      if (!response.ok) continue;
+
+      const html = await response.text();
+      let medals = siteUrl.includes('buycenter.php')
+        ? extractMedalsFromBuyCenter(html)
+        : extractMedalsFromHtml(html);
+
+      for (let i = 1; i < 15; i++) {
+        const re = new RegExp(`href\\s*=\\s*["']\\?page=${i}["']`, 'g');
+        if ((html.match(re) || []).length > 0) {
+          try {
+            const newUrl = siteUrl + '?page=' + i;
+            const r2 = await fetchWithTimeout(newUrl, {
+              headers: {
+                Cookie: cookies.map(c => `${c.name}=${c.value}`).join('; '),
+                'User-Agent': navigator.userAgent
+              }
+            }, 10000);
+            const h2 = await r2.text();
+            medals = medals.concat(extractMedalsFromHtml(h2));
+          } catch {
+            break;
+          }
+        } else {
+          break;
+        }
+      }
+
+      results.push({ siteName, count: medals.length, url: siteUrl, medals });
+    } catch {
+      // skip failed sites silently
+    }
+  }
+
+  const now = new Date();
+  const scanTime = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  const dateStr = now.toISOString().slice(0, 10);
+  const timestamp = Date.now();
+
+  const scanEntry = { timestamp, dateStr, results };
+  const { scanHistory } = await chrome.storage.local.get(['scanHistory']);
+  const history = scanHistory || [];
+  history.push(scanEntry);
+  if (history.length > 60) history.shift();
+  await chrome.storage.local.set({ scanResults: results, scanHistory: history });
+
+  try {
+    await sendToFeishu(webhookUrl, results, scanTime);
+  } catch {
+    // silently fail
+  }
+}
+
+chrome.runtime.onStartup?.addListener(() => {
+  chrome.storage.local.get(['scheduleConfig'], ({ scheduleConfig }) => {
+    setupAlarm(scheduleConfig);
+  });
+});
+
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.storage.local.get(['scheduleConfig'], ({ scheduleConfig }) => {
+    setupAlarm(scheduleConfig);
+  });
+});
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === ALARM_NAME) {
+    performScheduledScan();
+  }
+});
+
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { getCookieDomain, fetchWithTimeout, extractMedalsFromHtml, extractTdText, getColumnLayout, extractMedalsFromBuyCenter };
+  module.exports = { getCookieDomain, fetchWithTimeout, extractMedalsFromHtml, extractTdText, getColumnLayout, extractMedalsFromBuyCenter, sendToFeishu, setupAlarm, performScheduledScan, ALARM_NAME };
 }
