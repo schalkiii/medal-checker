@@ -12,7 +12,9 @@ document.addEventListener('DOMContentLoaded', () => {
     resultStats: document.getElementById('resultStats'),
     clearResultsBtn: document.getElementById('clearResultsBtn'),
     diffToggleBtn: document.getElementById('diffToggleBtn'),
-    debugExportBtn: document.getElementById('debugExportBtn')
+    debugExportBtn: document.getElementById('debugExportBtn'),
+    detectBtn: document.getElementById('detectBtn'),
+    detectSummary: document.getElementById('detectSummary')
   };
 
   let diffMode = false;
@@ -351,6 +353,47 @@ document.addEventListener('DOMContentLoaded', () => {
 
         URL.revokeObjectURL(url);
         addLog(`📦 调试包已导出（${debugData.pages.length} 个页面，${blob.size} 字节）`);
+      });
+    });
+
+    elements.detectBtn.addEventListener('click', () => {
+      elements.detectBtn.disabled = true;
+      elements.detectBtn.innerHTML = '⏳ 检测中...';
+      elements.detectSummary.style.display = 'block';
+      elements.detectSummary.innerHTML = '正在检测已登录的站点...';
+
+      chrome.runtime.sendMessage({ action: 'detectSites' }, (response) => {
+        elements.detectBtn.disabled = false;
+        elements.detectBtn.innerHTML = '🔍 检测站点 Cookie';
+
+        if (!response) {
+          elements.detectSummary.innerHTML = '❌ 检测失败：无法连接到后台服务';
+          return;
+        }
+
+        const { found, notFound, total } = response;
+
+        const currentLines = elements.sitesTextarea.value
+          .split('\n')
+          .filter(l => l.includes('|'))
+          .map(l => l.trim());
+
+        const existingUrls = new Set(currentLines.map(l => l.split('|')[1]));
+
+        const newSites = found.filter(s => !existingUrls.has(s.split('|')[1]));
+        const merged = [...currentLines, ...newSites];
+
+        elements.sitesTextarea.value = merged.join('\n');
+
+        chrome.storage.local.set({ sites: merged }, () => {
+          addLog(`✅ 配置已保存（${merged.length} 个站点）`);
+        });
+
+        elements.detectSummary.innerHTML = `
+          已检测 <strong>${total}</strong> 个内置站点<br>
+          ✅ 已登录：<strong>${found.length}</strong> 个（新增 <strong>${newSites.length}</strong> 个）<br>
+          ❌ 未登录：<strong>${notFound.length}</strong> 个
+        `;
       });
     });
 

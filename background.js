@@ -191,17 +191,38 @@ const DEFAULT_SITES = [
   'zrpt.cc|https://zrpt.cc/medal.php',
 ];
 
-chrome.runtime.onInstalled.addListener(({ reason }) => {
-  if (reason === 'install') {
-    chrome.storage.local.set({ sites: DEFAULT_SITES });
-  }
-});
-
 chrome.action.onClicked.addListener(() => {
   chrome.runtime.openOptionsPage();
 });
 
-chrome.runtime.onMessage.addListener((request, _sender, _sendResponse) => {
+chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
+  if (request.action === 'detectSites') {
+    (async () => {
+      const found = [];
+      const notFound = [];
+      for (const site of DEFAULT_SITES) {
+        const [name, url] = site.split('|');
+        try {
+          const domain = getCookieDomain(url);
+          const [cookiesMain, cookiesSub] = await Promise.all([
+            chrome.cookies.getAll({ url }),
+            chrome.cookies.getAll({ domain })
+          ]);
+          const allCookies = [...new Set([...cookiesMain, ...cookiesSub])];
+          if (allCookies.length > 0) {
+            found.push(site);
+          } else {
+            notFound.push(name);
+          }
+        } catch {
+          notFound.push(name);
+        }
+      }
+      sendResponse({ found, notFound, total: DEFAULT_SITES.length });
+    })();
+    return true;
+  }
+
   if (request.action === 'startScan') {
     chrome.storage.local.get(['sites'], async ({ sites }) => {
       const results = [];
