@@ -22,8 +22,8 @@ const fetchWithTimeout = (url, options = {}, timeout = 10000) => {
 
 const getColumnLayout = (tdsLength) => {
   if (tdsLength <= 0) return null;
-  if (tdsLength % 10 === 0) return { stride: 10, actionIdx: 8, nameIdx: 2, priceIdx: 6, durationIdx: 4 };
-  if (tdsLength % 9 === 0) return { stride: 9, actionIdx: 7, nameIdx: 1, priceIdx: 5, durationIdx: 3 };
+  if (tdsLength % 10 === 0) return { stride: 10, actionIdx: 8, nameIdx: 2, priceIdx: 6, durationIdx: 4, bonusIdx: 5, stockIdx: 7, timeIdx: 3 };
+  if (tdsLength % 9 === 0) return { stride: 9, actionIdx: 7, nameIdx: 1, priceIdx: 5, durationIdx: 3, bonusIdx: 4, stockIdx: 6, timeIdx: 2 };
   return null;
 };
 
@@ -56,7 +56,13 @@ const extractMedalsFromHtml = (html) => {
       const durationRaw = extractTdText(group[layout.durationIdx] || '').trim();
       const duration = durationRaw === '不限' ? '不限' : durationRaw;
 
-      medals.push({ name, price, duration });
+      const bonus = extractTdText(group[layout.bonusIdx] || '').trim();
+      const stock = extractTdText(group[layout.stockIdx] || '').trim();
+
+      const timeRaw = extractTdText(group[layout.timeIdx] || '').trim();
+      const timeRange = timeRaw === '不限 ~ 不限' ? '不限' : timeRaw;
+
+      medals.push({ name, price, duration, bonus, stock, timeRange });
     }
   }
 
@@ -90,10 +96,15 @@ const extractMedalsFromBuyCenter = (html) => {
 
     const price = extractTdText(tds[4] || '').trim();
 
+    const stock = extractTdText(tds[2] || '').trim();
+
     const durationMatch = nameText.match(/(\d+)\s*天|永久/);
     const duration = durationMatch ? durationMatch[0] : '';
 
-    medals.push({ name, price, duration });
+    const timeMatch = nameText.match(/可购买时间:\s*([^)]+)/);
+    const timeRange = timeMatch ? timeMatch[1].trim() : '';
+
+    medals.push({ name, price, duration, stock, timeRange });
   }
 
   return medals;

@@ -104,13 +104,13 @@ function makeNexusRow(medals) {
   let tds = '';
   for (const m of medals) {
     tds += `<td>${m.id}</td>`;
-    tds += `<td><img src="${m.img}" class="preview"></td>`;
+    tds += `<td><img src="${m.img}"></td>`;
     tds += `<td><h1>${m.name}</h1>${m.desc || ''}</td>`;
     tds += `<td>${m.timeRange || '不限 ~ 不限'}</td>`;
     tds += `<td>${m.duration}</td>`;
-    tds += `<td>${m.bonus}</td>`;
+    tds += `<td>${m.bonus || '0%'}</td>`;
     tds += `<td>${m.price}</td>`;
-    tds += `<td>${m.stock}</td>`;
+    tds += `<td>${m.stock || '无限'}</td>`;
     tds += `<td><input type="button" class="buy" data-id="${m.id}" value="${m.actionValue}"></td>`;
     tds += `<td><input type="button" value="赠送"></td>`;
   }
@@ -192,6 +192,15 @@ test('单行多个勋章正确分组', () => {
   assertEqual(medals[0].name, '勋章A');
   assertEqual(medals[1].name, '勋章B');
   assertEqual(medals[2].name, '勋章C');
+  assertEqual(medals[0].bonus, '1%');
+  assertEqual(medals[1].bonus, '2%');
+  assertEqual(medals[2].bonus, '0%');
+  assertEqual(medals[0].stock, '无限');
+  assertEqual(medals[1].stock, '无限');
+  assertEqual(medals[2].stock, '无限');
+  assertEqual(medals[0].timeRange, '不限');
+  assertEqual(medals[1].timeRange, '不限');
+  assertEqual(medals[2].timeRange, '不限');
 });
 
 test('多行多个勋章', () => {
@@ -266,6 +275,9 @@ test('10列布局', () => {
   assertEqual(r.nameIdx, 2);
   assertEqual(r.priceIdx, 6);
   assertEqual(r.durationIdx, 4);
+  assertEqual(r.bonusIdx, 5);
+  assertEqual(r.stockIdx, 7);
+  assertEqual(r.timeIdx, 3);
 });
 
 test('20列（2个10列勋章）', () => {
@@ -280,6 +292,9 @@ test('9列布局', () => {
   assertEqual(r.nameIdx, 1);
   assertEqual(r.priceIdx, 5);
   assertEqual(r.durationIdx, 3);
+  assertEqual(r.bonusIdx, 4);
+  assertEqual(r.stockIdx, 6);
+  assertEqual(r.timeIdx, 2);
 });
 
 test('18列（2个9列勋章）', () => {
@@ -305,9 +320,9 @@ function makeNexus9Row(medals) {
     tds += `<td><h1>${m.name}</h1>${m.desc || ''}</td>`;
     tds += `<td>${m.timeRange || '不限 ~ 不限'}</td>`;
     tds += `<td>${m.duration}</td>`;
-    tds += `<td>${m.bonus}</td>`;
+    tds += `<td>${m.bonus || '0%'}</td>`;
     tds += `<td>${m.price}</td>`;
-    tds += `<td>${m.stock}</td>`;
+    tds += `<td>${m.stock || '无限'}</td>`;
     tds += `<td><input type="button" class="buy" data-id="${m.id}" value="${m.actionValue}"></td>`;
     tds += `<td><input type="button" value="赠送"></td>`;
   }
@@ -331,7 +346,7 @@ const sample9Col = `<table>
   <tbody>
     ${makeNexus9Row([
       { id: 1, img: 'a.png', name: '9列勋章A', duration: '30', bonus: '1%', price: '1,000', stock: '无限', actionValue: '购买' },
-      { id: 2, img: 'b.png', name: '9列勋章B', duration: '永久有效', bonus: '0.5%', price: '500', stock: '无限', actionValue: '购买' },
+      { id: 2, img: 'b.png', name: '9列勋章B', duration: '永久有效', bonus: '0.5%', price: '500', stock: '10', actionValue: '购买' },
       { id: 3, img: 'c.png', name: '9列已过期', duration: '30', bonus: '0%', price: '100', stock: '无限', actionValue: '已过可购买时间' }
     ])}
   </tbody>
@@ -358,6 +373,24 @@ test('9列表格提取有效期', () => {
   const medals = bg.extractMedalsFromHtml(sample9Col);
   assertEqual(medals[0].duration, '30');
   assertEqual(medals[1].duration, '永久有效');
+});
+
+test('9列表格提取加成', () => {
+  const medals = bg.extractMedalsFromHtml(sample9Col);
+  assertEqual(medals[0].bonus, '1%');
+  assertEqual(medals[1].bonus, '0.5%');
+});
+
+test('9列表格提取库存', () => {
+  const medals = bg.extractMedalsFromHtml(sample9Col);
+  assertEqual(medals[0].stock, '无限');
+  assertEqual(medals[1].stock, '10');
+});
+
+test('9列表格提取可购买时间', () => {
+  const medals = bg.extractMedalsFromHtml(sample9Col);
+  assertEqual(medals[0].timeRange, '不限');
+  assertEqual(medals[1].timeRange, '不限');
 });
 
 test('9列表格多勋章单行', () => {
@@ -431,6 +464,17 @@ test('buycenter提取价格', () => {
   const medals = bg.extractMedalsFromBuyCenter(html);
   assertEqual(medals.length, 1);
   assertEqual(medals[0].price, '50,000');
+});
+
+test('buycenter提取库存和时间', () => {
+  const html = `<table>
+    <tr><td></td><td>《测试勋章》 ⠀测试描述 (可购买时间: 2025-01-01 ~ 2025-12-31)</td><td>88</td><td>1</td><td>50,000</td>
+      <td><input type="button" value="交换&nbsp;/&nbsp;赠送" onclick="submit_karma_gift(1)"></td></tr>
+  </table>`;
+  const medals = bg.extractMedalsFromBuyCenter(html);
+  assertEqual(medals.length, 1);
+  assertEqual(medals[0].stock, '88');
+  assertEqual(medals[0].timeRange, '2025-01-01 ~ 2025-12-31');
 });
 
 test('buycenter空HTML返回空数组', () => {

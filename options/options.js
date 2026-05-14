@@ -136,13 +136,23 @@ document.addEventListener('DOMContentLoaded', () => {
             const medalItem = document.createElement('div');
             medalItem.className = 'medal-item' + (isNew ? ' new-medal' : '');
 
-            const parts = [];
-            if (medal.price) parts.push(`<span class="price">💰 ${medal.price}</span>`);
-            if (medal.duration) parts.push(`<span class="duration">⏱ ${medal.duration}</span>`);
+            const metaParts = [];
+            if (medal.price) metaParts.push(`<span class="meta-price">💰 ${medal.price}</span>`);
+            if (medal.duration) metaParts.push(`<span class="meta-duration">⏱ ${medal.duration}</span>`);
+            if (medal.bonus) metaParts.push(`<span class="meta-bonus">📈 ${medal.bonus}</span>`);
+            if (medal.stock) metaParts.push(`<span class="meta-stock">📦 ${medal.stock}</span>`);
+
+            let timeHtml = '';
+            if (medal.timeRange && medal.timeRange !== '不限') {
+              timeHtml = `<div class="medal-time">🕐 可购买时间: ${medal.timeRange}</div>`;
+            }
 
             medalItem.innerHTML = `
-              <span class="medal-name">${medal.name}${isNew ? '<span class="diff-badge">NEW</span>' : ''}</span>
-              <span class="medal-meta">${parts.join('')}</span>
+              <div class="medal-info">
+                <span class="medal-name">${medal.name}${isNew ? '<span class="diff-badge">NEW</span>' : ''}</span>
+                <div class="medal-meta">${metaParts.join('')}</div>
+                ${timeHtml}
+              </div>
             `;
             medalList.appendChild(medalItem);
           });

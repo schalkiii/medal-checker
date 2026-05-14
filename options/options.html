@@ -158,14 +158,11 @@
     }
 
     .medal-item {
-      padding: 8px 10px;
+      padding: 10px;
       margin: 4px 0;
       background: #fafbfc;
       border-radius: 4px;
       font-size: 13px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
       border-left: 3px solid #e0e0e0;
       transition: background 0.2s;
     }
@@ -179,6 +176,13 @@
       background: #fff8e1;
     }
 
+    .medal-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      width: 100%;
+    }
+
     .medal-name {
       font-weight: 500;
       color: #333;
@@ -186,23 +190,36 @@
 
     .medal-meta {
       display: flex;
-      gap: 16px;
+      flex-wrap: wrap;
+      gap: 12px;
       font-size: 12px;
-      color: #888;
-      flex-shrink: 0;
     }
 
     .medal-meta span {
       white-space: nowrap;
     }
 
-    .medal-meta .price {
+    .meta-price {
       color: #e65100;
       font-weight: 500;
     }
 
-    .medal-meta .duration {
+    .meta-duration {
       color: #1565C0;
+    }
+
+    .meta-bonus {
+      color: #2e7d32;
+    }
+
+    .meta-stock {
+      color: #6a1b9a;
+    }
+
+    .medal-time {
+      font-size: 11px;
+      color: #888;
+      margin-top: 2px;
     }
 
     .diff-badge {
