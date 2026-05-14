@@ -81,6 +81,7 @@ function createChromeMock(config = {}) {
         addListener(cb) { listeners.set('runtime.onMessage', cb); },
         removeListener() { listeners.delete('runtime.onMessage'); }
       },
+      onInstalled: new ChromeEvent(),
       openOptionsPage() {
         mock._optionsPageOpened = true;
         return Promise.resolve();

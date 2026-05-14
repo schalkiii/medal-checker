@@ -120,6 +120,83 @@ const extractTdText = (tdHtml) => {
     .trim();
 };
 
+const DEFAULT_SITES = [
+  '13city.org|https://13city.org/medal.php',
+  '1ptba.com|https://1ptba.com/medal.php',
+  '52movie.top|https://www.52movie.top/medal.php',
+  'agsvpt.com|https://www.agsvpt.com/medal.php',
+  'bilibili.download|https://bilibili.download/medal.php',
+  'cangbao.ge|https://cangbao.ge/medal.php',
+  'carpt.net|https://carpt.net/medal.php',
+  'cc.mypt.cc|https://cc.mypt.cc/medal.php',
+  'crabpt.vip|https://crabpt.vip/medal.php',
+  'cspt.top|https://cspt.top/medal.php',
+  'cyanbug.net|https://cyanbug.net/medal.php',
+  'discfan.net|https://discfan.net/medal.php',
+  'dubhe.site|https://dubhe.site/medal.php',
+  'duckboobee.org|https://duckboobee.org/medal.php',
+  'gamegamept.com|https://www.gamegamept.com/medal.php',
+  'greatposterwall.com|https://greatposterwall.com/medal.php',
+  'hdfans.org|http://hdfans.org/medal.php',
+  'hdkyl.in|https://www.hdkyl.in/medal.php',
+  'hdpt.xyz|https://hdpt.xyz/medal.php',
+  'hdtime.org|https://hdtime.org/medal.php',
+  'hdvideo.one|https://hdvideo.one/medal.php',
+  'hitpt.com|https://www.hitpt.com/medal.php',
+  'htpt.cc (buycenter)|https://www.htpt.cc/buycenter.php',
+  'hxpt.org|https://www.hxpt.org/medal.php',
+  'icc2022.com|https://www.icc2022.com/medal.php',
+  'kamept.com|https://kamept.com/medal.php',
+  'kufei.org|https://kufei.org/medal.php',
+  'leaves.red|https://leaves.red/medal.php',
+  'lemonhd.net|https://lemonhd.net/medal.php',
+  'momentpt.top|https://www.momentpt.top/medal.php',
+  'njtupt.top|https://njtupt.top/medal.php',
+  'okpt.net|https://www.okpt.net/medal.php',
+  'oshen.win|http://www.oshen.win/medal.php',
+  'p.t-baozi.cc|https://p.t-baozi.cc/medal.php',
+  'pandapt.net|https://pandapt.net/medal.php',
+  'piggo.me|https://piggo.me/medal.php',
+  'playletpt.xyz|https://playletpt.xyz/medal.php',
+  'pt.0ff.cc|https://pt.0ff.cc/medal.php',
+  'pt.aling.de|https://pt.aling.de/medal.php',
+  'pt.gtkpw.xyz|https://pt.gtkpw.xyz/medal.php',
+  'pt.lajidui.top|https://pt.lajidui.top/medal.php',
+  'pt.luckpt.de|https://pt.luckpt.de/medal.php',
+  'pt.muxuege.org|https://pt.muxuege.org/medal.php',
+  'pt.novahd.top|https://pt.novahd.top/medal.php',
+  'pt.soulvoice.club|https://pt.soulvoice.club/medal.php',
+  'pt.xingyungept.org|https://pt.xingyungept.org/medal.php',
+  'ptcafe.club|https://ptcafe.club/medal.php',
+  'pterclub.com|https://pterclub.com/medal.php',
+  'ptfans.cc|https://ptfans.cc/medal.php',
+  'ptlgs.org|https://ptlgs.org/medal.php',
+  'ptskit.com|https://www.ptskit.com/medal.php',
+  'ptzone.xyz|https://ptzone.xyz/medal.php',
+  'qingwapt.com|https://qingwapt.com/medal.php',
+  'raingfh.top|https://raingfh.top/medal.php',
+  'rousi.zip|https://rousi.zip/medal.php',
+  'sewerpt.com|https://sewerpt.com/medal.php',
+  'si-qi.xyz|https://si-qi.xyz/medal.php',
+  'springsunday.net (badges)|https://springsunday.net/badges.php',
+  'tangpt.top|https://www.tangpt.top/medal.php',
+  'tokyo-manga.top|https://www.tokyo-manga.top/medal.php',
+  'totheglory.im (mall)|https://totheglory.im/mall.php',
+  'ubits.club|https://ubits.club/medal.php',
+  'wintersakura.net|https://wintersakura.net/medal.php',
+  'wukongwendao.top|https://wukongwendao.top/medal.php',
+  'xingtan.one|https://xingtan.one/medal.php',
+  'yhpp.cc|https://www.yhpp.cc/medal.php',
+  'zmpt.cc|https://zmpt.cc/medal.php',
+  'zrpt.cc|https://zrpt.cc/medal.php',
+];
+
+chrome.runtime.onInstalled.addListener(({ reason }) => {
+  if (reason === 'install') {
+    chrome.storage.local.set({ sites: DEFAULT_SITES });
+  }
+});
+
 chrome.action.onClicked.addListener(() => {
   chrome.runtime.openOptionsPage();
 });
