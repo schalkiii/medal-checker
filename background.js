@@ -197,11 +197,42 @@ chrome.action.onClicked.addListener(() => {
 
 chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   if (request.action === 'detectSites') {
+    const DETECT_TIMEOUT = 90000;
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      try { sendResponse({ found: [], notFound: [], total: DEFAULT_SITES.length, timedOut: true }); } catch { /* background may terminate */ }
+    }, DETECT_TIMEOUT);
+
     (async () => {
       const found = [];
       const notFound = [];
-      for (const site of DEFAULT_SITES) {
+      const debugLogs = [];
+      const total = DEFAULT_SITES.length;
+
+      for (let i = 0; i < total; i++) {
+        if (timedOut) break;
+        const site = DEFAULT_SITES[i];
         const [name, url] = site.split('|');
+        const startTime = Date.now();
+
+        const sendProgress = (status, detail = '') => {
+          try {
+            chrome.runtime.sendMessage({
+              type: 'detectProgress',
+              current: i + 1,
+              total,
+              siteName: name,
+              siteUrl: url,
+              status,
+              detail,
+              elapsed: Date.now() - startTime
+            });
+          } catch { /* options page may close */ }
+        };
+
+        sendProgress('checking');
+
         try {
           const domain = getCookieDomain(url);
           const [cookiesMain, cookiesSub] = await Promise.all([
@@ -211,14 +242,24 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
           const allCookies = [...new Set([...cookiesMain, ...cookiesSub])];
           if (allCookies.length > 0) {
             found.push(site);
+            debugLogs.push(`${name}: ✅ 已登录 (${allCookies.length} cookies)`);
+            sendProgress('found', `${allCookies.length} 个 cookie`);
           } else {
             notFound.push(name);
+            debugLogs.push(`${name}: ❌ 未登录`);
+            sendProgress('notfound');
           }
-        } catch {
+        } catch (err) {
           notFound.push(name);
+          debugLogs.push(`${name}: ⚠️ 检测异常 - ${err.message}`);
+          sendProgress('error', err.message);
         }
       }
-      sendResponse({ found, notFound, total: DEFAULT_SITES.length });
+
+      clearTimeout(timer);
+      if (!timedOut) {
+        try { sendResponse({ found, notFound, total, timedOut: false, debugLogs }); } catch { /* background may terminate */ }
+      }
     })();
     return true;
   }

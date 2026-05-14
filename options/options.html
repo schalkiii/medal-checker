@@ -362,6 +362,83 @@
       box-shadow: none;
     }
 
+    .detect-progress {
+      margin: 12px 0;
+      padding: 14px 16px;
+      background: linear-gradient(135deg, rgba(102,126,234,0.06), rgba(118,75,162,0.04));
+      border-radius: 8px;
+      border: 1px solid rgba(102,126,234,0.1);
+    }
+
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      font-size: 13px;
+      color: #555;
+    }
+
+    .progress-header #progressPercent {
+      font-weight: 600;
+      color: #667eea;
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 8px;
+      background: #e8e8e8;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #667eea, #764ba2);
+      border-radius: 4px;
+      transition: width 0.3s ease;
+    }
+
+    .progress-detail {
+      margin-top: 8px;
+      font-size: 12px;
+      color: #888;
+      min-height: 18px;
+    }
+
+    .debug-info {
+      margin-top: 6px;
+      max-height: 120px;
+      overflow-y: auto;
+      font-size: 11px;
+      line-height: 1.6;
+      color: #999;
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      border-top: 1px dashed #e0e0e0;
+      padding-top: 6px;
+    }
+
+    .debug-info .debug-line {
+      padding: 2px 4px;
+      border-radius: 3px;
+    }
+
+    .debug-info .debug-line:hover {
+      background: #f5f5f5;
+    }
+
+    .debug-info .debug-line.found {
+      color: #4CAF50;
+    }
+
+    .debug-info .debug-line.notfound {
+      color: #999;
+    }
+
+    .debug-info .debug-line.error {
+      color: #e53935;
+    }
+
     .btn-group {
       display: flex;
       gap: 8px;
@@ -501,6 +578,18 @@
       </button>
 
       <div id="detectSummary" style="display: none;" class="detect-summary"></div>
+
+      <div id="detectProgress" style="display: none;" class="detect-progress">
+        <div class="progress-header">
+          <span id="progressLabel">正在检测站点登录状态...</span>
+          <span id="progressPercent">0%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="progressFill" style="width: 0%;"></div>
+        </div>
+        <div class="progress-detail" id="progressDetail"></div>
+        <div class="debug-info" id="debugInfo"></div>
+      </div>
 
       <div class="config-tip">
         点击上方按钮自动检测已登录站点<br>

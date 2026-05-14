@@ -15,6 +15,12 @@ document.addEventListener('DOMContentLoaded', () => {
     debugExportBtn: document.getElementById('debugExportBtn'),
     detectBtn: document.getElementById('detectBtn'),
     detectSummary: document.getElementById('detectSummary'),
+    detectProgress: document.getElementById('detectProgress'),
+    progressLabel: document.getElementById('progressLabel'),
+    progressPercent: document.getElementById('progressPercent'),
+    progressFill: document.getElementById('progressFill'),
+    progressDetail: document.getElementById('progressDetail'),
+    debugInfo: document.getElementById('debugInfo'),
     scheduleToggle: document.getElementById('scheduleToggle'),
     scheduleTime: document.getElementById('scheduleTime'),
     webhookUrl: document.getElementById('webhookUrl'),
@@ -372,17 +378,70 @@ chrome.storage.local.get(['sites', 'scanResults', 'scanHistory', 'scheduleConfig
     elements.detectBtn.addEventListener('click', () => {
       elements.detectBtn.disabled = true;
       elements.detectBtn.innerHTML = '⏳ 检测中...';
-      elements.detectSummary.style.display = 'block';
-      elements.detectSummary.innerHTML = '正在检测已登录的站点...';
+      elements.detectSummary.style.display = 'none';
+      elements.detectSummary.innerHTML = '';
+
+      elements.detectProgress.style.display = 'block';
+      elements.progressFill.style.width = '0%';
+      elements.progressPercent.textContent = '0%';
+      elements.progressLabel.textContent = '正在检测站点登录状态...';
+      elements.progressDetail.textContent = '';
+      elements.debugInfo.innerHTML = '';
+
+      const detectTimeout = setTimeout(() => {
+        elements.detectBtn.disabled = false;
+        elements.detectBtn.innerHTML = '🔍 检测站点 Cookie';
+        elements.progressLabel.textContent = '⏰ 检测超时，请重试';
+        elements.detectSummary.style.display = 'block';
+        elements.detectSummary.innerHTML = '❌ 检测超时（90秒无响应），后台服务可能已断开';
+        setTimeout(() => { elements.detectProgress.style.display = 'none'; }, 3000);
+      }, 95000);
+
+      const progressHandler = (message) => {
+        if (message.type !== 'detectProgress') return;
+        const pct = Math.round((message.current / message.total) * 100);
+        elements.progressFill.style.width = pct + '%';
+        elements.progressPercent.textContent = pct + '%';
+        elements.progressLabel.textContent = `正在检测 (${message.current}/${message.total})`;
+
+        const statusIcon = { checking: '🔍', found: '✅', notfound: '⏭️', error: '⚠️' };
+        elements.progressDetail.textContent = `${statusIcon[message.status] || '🔍'} ${message.siteName} - ${message.detail || (message.status === 'checking' ? '检测中...' : '')}`;
+
+        const line = document.createElement('div');
+        line.className = 'debug-line ' + message.status;
+        const elapsed = message.elapsed ? ` (${message.elapsed}ms)` : '';
+        line.textContent = `${statusIcon[message.status] || '🔍'} ${message.siteName}${elapsed}`;
+        if (message.detail) line.textContent += ` - ${message.detail}`;
+        elements.debugInfo.appendChild(line);
+        elements.debugInfo.scrollTop = elements.debugInfo.scrollHeight;
+      };
+
+      chrome.runtime.onMessage.addListener(progressHandler);
 
       chrome.runtime.sendMessage({ action: 'detectSites' }, (response) => {
+        clearTimeout(detectTimeout);
+        chrome.runtime.onMessage.removeListener(progressHandler);
+
         elements.detectBtn.disabled = false;
         elements.detectBtn.innerHTML = '🔍 检测站点 Cookie';
 
         if (!response) {
+          elements.detectSummary.style.display = 'block';
           elements.detectSummary.innerHTML = '❌ 检测失败：无法连接到后台服务';
+          elements.progressLabel.textContent = '❌ 检测失败';
           return;
         }
+
+        if (response.timedOut) {
+          elements.detectSummary.style.display = 'block';
+          elements.detectSummary.innerHTML = '❌ 检测超时，后台服务可能已断开';
+          elements.progressLabel.textContent = '❌ 检测超时';
+          return;
+        }
+
+        elements.progressFill.style.width = '100%';
+        elements.progressPercent.textContent = '100%';
+        elements.progressLabel.textContent = `✅ 检测完成 (${response.found.length} 个已登录)`;
 
         const { found, notFound, total } = response;
 
@@ -402,11 +461,14 @@ chrome.storage.local.get(['sites', 'scanResults', 'scanHistory', 'scheduleConfig
           addLog(`✅ 配置已保存（${merged.length} 个站点）`);
         });
 
+        elements.detectSummary.style.display = 'block';
         elements.detectSummary.innerHTML = `
           已检测 <strong>${total}</strong> 个内置站点<br>
           ✅ 已登录：<strong>${found.length}</strong> 个（新增 <strong>${newSites.length}</strong> 个）<br>
           ❌ 未登录：<strong>${notFound.length}</strong> 个
         `;
+
+        setTimeout(() => { elements.detectProgress.style.display = 'none'; }, 5000);
       });
     });
 
