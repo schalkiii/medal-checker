@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <style>
-    /* 基础样式 */
     body {
       width: 900px;
       padding: 20px;
@@ -12,14 +11,12 @@
       line-height: 1.6;
     }
 
-    /* 主容器布局 */
     .main-container {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 25px;
     }
 
-    /* 配置区块样式 */
     .config-section {
       background: white;
       padding: 25px;
@@ -27,7 +24,6 @@
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
 
-    /* 操作按钮组 */
     .action-buttons {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -35,7 +31,6 @@
       margin: 20px 0;
     }
 
-    /* 按钮通用样式 */
     button {
       padding: 10px 15px;
       border: none;
@@ -54,14 +49,15 @@
       box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     }
 
-    /* 按钮颜色定义 */
     #scanBtn { background: #4CAF50; color: white; }
     #openAllBtn { background: #17a2b8; color: white; }
     #saveBtn { background: #2196F3; color: white; }
     #importBtn { background: #FF9800; color: white; }
     #exportBtn { background: #9C27B0; color: white; }
+    #diffToggleBtn { background: #6c757d; color: white; }
+    #diffToggleBtn.active { background: #28a745; color: white; }
+    #debugExportBtn { background: #e91e63; color: white; }
 
-    /* 文本输入区 */
     textarea {
       width: 100%;
       height: 200px;
@@ -74,7 +70,6 @@
       resize: vertical;
     }
 
-    /* 输出容器样式 */
     .output-container {
       background: white;
       padding: 25px;
@@ -82,7 +77,6 @@
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
 
-    /* 日志区域 */
     #scanLog {
       height: 300px;
       overflow-y: auto;
@@ -107,7 +101,6 @@
       font-size: 12px;
     }
 
-    /* 结果展示区 */
     #resultBox {
       margin-top: 25px;
       border: 1px solid #e0e0e0;
@@ -116,29 +109,130 @@
     }
 
     #resultList {
-      max-height: 300px;
+      max-height: 400px;
       overflow-y: auto;
       padding: 15px;
     }
 
-    .result-item {
-      padding: 12px;
-      margin: 8px 0;
-      background: #f8f9fa;
-      border-left: 3px solid #4CAF50;
-      border-radius: 4px;
-      display: grid;
-      grid-template-columns: 1fr auto;
+    .result-site {
+      margin-bottom: 16px;
+      border: 1px solid #e8e8e8;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .result-site-header {
+      padding: 10px 14px;
+      background: #f0f4f8;
+      display: flex;
+      justify-content: space-between;
       align-items: center;
+      border-bottom: 1px solid #e8e8e8;
     }
 
-    .result-url {
-      color: #666;
+    .result-site-name {
+      font-weight: 600;
+      font-size: 14px;
+      color: #2c3e50;
+    }
+
+    .result-site-link {
       font-size: 12px;
-      margin-top: 4px;
+      color: #2196F3;
+      text-decoration: none;
+      margin-left: 10px;
     }
 
-    /* 统计信息 */
+    .result-site-link:hover {
+      text-decoration: underline;
+    }
+
+    .result-site-count {
+      color: #4CAF50;
+      font-weight: bold;
+      font-size: 13px;
+    }
+
+    .medal-list {
+      padding: 8px 14px;
+    }
+
+    .medal-item {
+      padding: 10px;
+      margin: 4px 0;
+      background: #fafbfc;
+      border-radius: 4px;
+      font-size: 13px;
+      border-left: 3px solid #e0e0e0;
+      transition: background 0.2s;
+    }
+
+    .medal-item:hover {
+      background: #f0f4f8;
+    }
+
+    .medal-item.new-medal {
+      border-left-color: #FF9800;
+      background: #fff8e1;
+    }
+
+    .medal-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      width: 100%;
+    }
+
+    .medal-name {
+      font-weight: 500;
+      color: #333;
+    }
+
+    .medal-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 12px;
+    }
+
+    .medal-meta span {
+      white-space: nowrap;
+    }
+
+    .meta-price {
+      color: #e65100;
+      font-weight: 500;
+    }
+
+    .meta-duration {
+      color: #1565C0;
+    }
+
+    .meta-bonus {
+      color: #2e7d32;
+    }
+
+    .meta-stock {
+      color: #6a1b9a;
+    }
+
+    .medal-time {
+      font-size: 11px;
+      color: #888;
+      margin-top: 2px;
+    }
+
+    .diff-badge {
+      display: inline-block;
+      background: #FF9800;
+      color: white;
+      font-size: 11px;
+      padding: 1px 6px;
+      border-radius: 10px;
+      margin-left: 6px;
+      font-weight: 500;
+    }
+
     #resultStats {
       background: rgba(76, 175, 80, 0.08);
       padding: 12px;
@@ -146,7 +240,6 @@
       font-size: 14px;
     }
 
-    /* 配置说明 */
     .config-notice {
       background: #fff3e0;
       padding: 18px;
@@ -181,27 +274,29 @@
       white-space: pre-wrap;
       margin: 8px 0;
     }
-	/* 清除按钮悬停效果 */
-#clearResultsBtn:hover {
-  background: #c82333 !important;
-  transform: scale(0.98);
-}
 
-/* 空状态提示 */
-.empty-result {
-  text-align: center;
-  color: #6c757d;
-  padding: 20px;
-  font-size: 14px;
-}
+    #clearResultsBtn:hover {
+      background: #c82333 !important;
+      transform: scale(0.98);
+    }
 
+    .empty-result {
+      text-align: center;
+      color: #6c757d;
+      padding: 20px;
+      font-size: 14px;
+    }
+
+    .result-site-link {
+      cursor: pointer;
+      font-size: 12px;
+    }
   </style>
 </head>
 <body>
   <h2 style="margin:0 0 25px 0; color: #2c3e50;">PT 勋章扫描器控制台</h2>
-  
+
   <div class="main-container">
-    <!-- 左侧配置区 -->
     <div class="config-section">
       <div class="config-notice">
         <h4>📋 配置导入说明</h4>
@@ -237,22 +332,23 @@
 秋天PT|https://autumnpt.org/medal.php"></textarea>
     </div>
 
-    <!-- 右侧操作区 -->
     <div class="output-container">
       <div class="action-buttons">
         <button id="scanBtn">🔍 开始扫描</button>
         <button id="openAllBtn">🌐 一键打开</button>
+        <button id="diffToggleBtn" title="对比上次扫描结果，高亮新增勋章">🔄 差异模式</button>
+        <button id="debugExportBtn" title="导出扫描的原始HTML，用于调试勋章识别">🐛 导出调试包</button>
       </div>
 
       <h3 style="margin:15px 0 10px; color: #444;">实时日志</h3>
       <div id="scanLog"></div>
 
       <h3 style="margin:25px 0 10px; color: #444; display: flex; justify-content: space-between; align-items: center;">
-  <span>扫描结果</span>
-  <button id="clearResultsBtn" style="background: #dc3545; padding: 5px 10px; font-size: 12px;">
-    🗑️ 清除结果
-  </button>
-</h3>
+        <span>扫描结果</span>
+        <button id="clearResultsBtn" style="background: #dc3545; padding: 5px 10px; font-size: 12px;">
+          🗑️ 清除结果
+        </button>
+      </h3>
       <div id="resultBox">
         <div id="resultList"></div>
         <div id="resultStats"></div>
