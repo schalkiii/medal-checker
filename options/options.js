@@ -14,7 +14,13 @@ document.addEventListener('DOMContentLoaded', () => {
     diffToggleBtn: document.getElementById('diffToggleBtn'),
     debugExportBtn: document.getElementById('debugExportBtn'),
     detectBtn: document.getElementById('detectBtn'),
-    detectSummary: document.getElementById('detectSummary')
+    detectSummary: document.getElementById('detectSummary'),
+    scheduleToggle: document.getElementById('scheduleToggle'),
+    scheduleTime: document.getElementById('scheduleTime'),
+    webhookUrl: document.getElementById('webhookUrl'),
+    scheduleStatus: document.getElementById('scheduleStatus'),
+    saveScheduleBtn: document.getElementById('saveScheduleBtn'),
+    testWebhookBtn: document.getElementById('testWebhookBtn')
   };
 
   let diffMode = false;
@@ -166,11 +172,18 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    chrome.storage.local.get(['sites', 'scanResults', 'scanHistory'], ({ sites, scanResults, scanHistory }) => {
+chrome.storage.local.get(['sites', 'scanResults', 'scanHistory', 'scheduleConfig'], ({ sites, scanResults, scanHistory, scheduleConfig }) => {
       elements.sitesTextarea.value = sites?.join('\n') || '';
       if (scanResults) updateResultDisplay(scanResults);
       if (scanHistory && scanHistory.length >= 2) {
         previousResults = scanHistory[scanHistory.length - 2].results;
+      }
+
+      if (scheduleConfig) {
+        elements.scheduleToggle.checked = scheduleConfig.enabled || false;
+        if (scheduleConfig.time) elements.scheduleTime.value = scheduleConfig.time;
+        if (scheduleConfig.webhookUrl) elements.webhookUrl.value = scheduleConfig.webhookUrl;
+        updateScheduleStatus();
       }
     });
 
@@ -394,6 +407,74 @@ document.addEventListener('DOMContentLoaded', () => {
           ✅ 已登录：<strong>${found.length}</strong> 个（新增 <strong>${newSites.length}</strong> 个）<br>
           ❌ 未登录：<strong>${notFound.length}</strong> 个
         `;
+      });
+    });
+
+function updateScheduleStatus() {
+      const enabled = elements.scheduleToggle.checked;
+      elements.scheduleStatus.textContent = enabled ? '已启用' : '已禁用';
+      elements.scheduleStatus.className = 'schedule-status' + (enabled ? ' active' : '');
+    }
+
+    elements.scheduleToggle.addEventListener('change', updateScheduleStatus);
+
+    elements.saveScheduleBtn.addEventListener('click', () => {
+      const scheduleConfig = {
+        enabled: elements.scheduleToggle.checked,
+        time: elements.scheduleTime.value || '08:00',
+        webhookUrl: elements.webhookUrl.value.trim()
+      };
+
+      chrome.storage.local.set({ scheduleConfig }, () => {
+        addLog(`⏰ 定时配置已保存（${scheduleConfig.enabled ? '已启用' : '已禁用'}，每日 ${scheduleConfig.time} 执行）`);
+      });
+
+      chrome.runtime.sendMessage({ action: 'updateScheduleConfig', scheduleConfig });
+    });
+
+    elements.testWebhookBtn.addEventListener('click', () => {
+      const webhookUrl = elements.webhookUrl.value.trim();
+      if (!webhookUrl) {
+        addLog('❌ 请先填写 Webhook URL', true);
+        return;
+      }
+
+      elements.testWebhookBtn.disabled = true;
+      elements.testWebhookBtn.innerHTML = '⏳ 发送中...';
+
+      const testPayload = {
+        msg_type: 'post',
+        content: {
+          post: {
+            zh_cn: {
+              title: '🧪 PT勋章扫描器 - 测试消息',
+              content: [
+                [{ tag: 'text', text: '这是一条测试推送消息' }],
+                [{ tag: 'text', text: '如果收到此消息，说明 Webhook 配置正确 ✅' }],
+                [{ tag: 'text', text: `发送时间: ${new Date().toLocaleString()}` }]
+              ]
+            }
+          }
+        }
+      };
+
+      fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(testPayload)
+      }).then(response => {
+        if (response.ok) {
+          addLog('✅ 测试推送成功！请检查飞书机器人消息');
+        } else {
+          return response.text().then(text => {
+            addLog(`❌ 推送失败 (HTTP ${response.status}): ${text}`, true);
+          });
+        }
+      }).catch(error => {
+        addLog(`❌ 推送失败: ${error.message}`, true);
+      }).finally(() => {
+        elements.testWebhookBtn.disabled = false;
+        elements.testWebhookBtn.innerHTML = '📤 测试推送';
       });
     });
 

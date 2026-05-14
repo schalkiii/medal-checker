@@ -483,6 +483,142 @@ test('buycenter空HTML返回空数组', () => {
 });
 
 // ============================================================
+// sendToFeishu
+// ============================================================
+console.log('\n  ▶ sendToFeishu');
+
+test('sendToFeishu 发送POST请求', async () => {
+  let capturedUrl, capturedOptions;
+  const originalFetch = global.fetch;
+  global.fetch = (url, options) => {
+    capturedUrl = url;
+    capturedOptions = options;
+    return Promise.resolve({ ok: true });
+  };
+
+  const results = [{ siteName: '测试站', count: 2, url: 'https://test.com', medals: [{ name: '勋章A', price: '1000' }, { name: '勋章B', duration: '30天' }] }];
+  await bg.sendToFeishu('https://webhook.test', results, '2026-05-14 10:00');
+
+  assertEqual(capturedUrl, 'https://webhook.test');
+  assertEqual(capturedOptions.method, 'POST');
+  assertEqual(capturedOptions.headers['Content-Type'], 'application/json');
+
+  const body = JSON.parse(capturedOptions.body);
+  assertEqual(body.msg_type, 'post');
+  assert(body.content.post.zh_cn.title.includes('PT勋章扫描报告'));
+  assert(body.content.post.zh_cn.content.length > 0);
+
+  global.fetch = originalFetch;
+});
+
+test('sendToFeishu 空结果也发送', async () => {
+  let capturedBody;
+  const originalFetch = global.fetch;
+  global.fetch = (url, options) => {
+    capturedBody = JSON.parse(options.body);
+    return Promise.resolve({ ok: true });
+  };
+
+  await bg.sendToFeishu('https://webhook.test', [], '2026-05-14 10:00');
+  assert(capturedBody.content.post.zh_cn.content.some(line =>
+    line.some(block => block.text && block.text.includes('没有发现'))
+  ));
+
+  global.fetch = originalFetch;
+});
+
+test('sendToFeishu 包含勋章详情', async () => {
+  let capturedBody;
+  const originalFetch = global.fetch;
+  global.fetch = (url, options) => {
+    capturedBody = JSON.parse(options.body);
+    return Promise.resolve({ ok: true });
+  };
+
+  const results = [{ siteName: '测试站', count: 1, url: 'https://test.com', medals: [{ name: '稀有勋章', price: '5000', duration: '永久', bonus: '2%' }] }];
+  await bg.sendToFeishu('https://webhook.test', results, '2026-05-14 10:00');
+
+  const allText = capturedBody.content.post.zh_cn.content.map(line => line.map(b => b.text).join('')).join('');
+  assert(allText.includes('稀有勋章'));
+  assert(allText.includes('5000'));
+  assert(allText.includes('永久'));
+
+  global.fetch = originalFetch;
+});
+
+// ============================================================
+// setupAlarm
+// ============================================================
+console.log('\n  ▶ setupAlarm');
+
+test('setupAlarm 禁用时不创建alarm', () => {
+  global.chrome.alarms._created = [];
+  global.chrome.alarms._cleared = false;
+  const origClear = global.chrome.alarms.clear;
+  global.chrome.alarms.clear = (name, cb) => {
+    global.chrome.alarms._cleared = true;
+    if (cb) cb();
+  };
+  bg.setupAlarm({ enabled: false, time: '08:00' });
+  assert(global.chrome.alarms._cleared);
+  assertEqual(global.chrome.alarms._created.length, 0);
+  global.chrome.alarms.clear = origClear;
+});
+
+test('setupAlarm 启用时创建alarm', () => {
+  const origClear = global.chrome.alarms.clear;
+  global.chrome.alarms.clear = (name, cb) => {
+    global.chrome.alarms._cleared = true;
+    if (cb) cb();
+  };
+  global.chrome.alarms._created = [];
+  global.chrome.alarms._cleared = false;
+  bg.setupAlarm({ enabled: true, time: '08:00' });
+  assert(global.chrome.alarms._cleared);
+  assertEqual(global.chrome.alarms._created.length, 1);
+  assertEqual(global.chrome.alarms._created[0].name, bg.ALARM_NAME);
+  assertEqual(global.chrome.alarms._created[0].options.periodInMinutes, 1440);
+  global.chrome.alarms.clear = origClear;
+});
+
+test('setupAlarm null配置不创建alarm', () => {
+  global.chrome.alarms._created = [];
+  global.chrome.alarms._cleared = false;
+  const origClear = global.chrome.alarms.clear;
+  global.chrome.alarms.clear = (name, cb) => {
+    global.chrome.alarms._cleared = true;
+    if (cb) cb();
+  };
+  bg.setupAlarm(null);
+  assert(global.chrome.alarms._cleared);
+  assertEqual(global.chrome.alarms._created.length, 0);
+  global.chrome.alarms.clear = origClear;
+});
+
+// ============================================================
+// updateScheduleConfig 消息处理
+// ============================================================
+console.log('\n  ▶ updateScheduleConfig 消息');
+
+test('updateScheduleConfig 消息触发setupAlarm', () => {
+  const origClear = global.chrome.alarms.clear;
+  global.chrome.alarms.clear = (name, cb) => {
+    global.chrome.alarms._cleared = true;
+    if (cb) cb();
+  };
+
+  const msgHandler = global.chrome._listeners.get('runtime.onMessage');
+  assert(msgHandler, 'message handler should exist');
+
+  msgHandler({ action: 'updateScheduleConfig', scheduleConfig: { enabled: true, time: '10:00' } }, {}, () => {});
+  assert(global.chrome.alarms._cleared);
+  assertEqual(global.chrome.alarms._created.length, 1);
+  assertEqual(global.chrome.alarms._created[0].name, bg.ALARM_NAME);
+
+  global.chrome.alarms.clear = origClear;
+});
+
+// ============================================================
 // 汇总
 // ============================================================
 console.log(`\n  ━━━ background.js: ${passed}/${tests} 通过 ━━━`);

@@ -28,6 +28,11 @@ function mark(name, ok) {
 console.log('\n━━━ 消息传递集成测试 ━━━');
 
 async function runAll() {
+  const fs = require('fs');
+  const path = require('path');
+  const bgContent = fs.readFileSync(path.resolve(__dirname, '../../background.js'), 'utf-8');
+  const optContent = fs.readFileSync(path.resolve(__dirname, '../../options/options.js'), 'utf-8');
+
   // ============================================================
   // 1. 消息协议一致性（同步）
   // ============================================================
@@ -52,11 +57,6 @@ async function runAll() {
   }
 
   try {
-    const fs = require('fs');
-    const path = require('path');
-    const bgContent = fs.readFileSync(path.resolve(__dirname, '../../background.js'), 'utf-8');
-    const optContent = fs.readFileSync(path.resolve(__dirname, '../../options/options.js'), 'utf-8');
-
     const bgTypes = bgContent.match(/type:\s*['"](\w+)['"]/g) || [];
     const optTypes = optContent.match(/message\.type\s*===\s*['"](\w+)['"]/g) || [];
 
@@ -67,6 +67,22 @@ async function runAll() {
     mark('scanResult type 前后端匹配', true);
   } catch (e) {
     mark('scanResult type 前后端匹配', false);
+    console.log(`     ${e.message}`);
+  }
+
+try {
+    const bgActions = bgContent.match(/action\s*===\s*['"](\w+)['"]/g) || [];
+    const optActions = optContent.match(/action:\s*['"](\w+)['"]/g) || [];
+
+    assert(bgActions.some(a => a.includes('startScan')), 'background应处理startScan');
+    assert(bgActions.some(a => a.includes('detectSites')), 'background应处理detectSites');
+    assert(bgActions.some(a => a.includes('updateScheduleConfig')), 'background应处理updateScheduleConfig');
+    assert(optActions.some(a => a.includes('startScan')), 'options应发送startScan');
+    assert(optActions.some(a => a.includes('detectSites')), 'options应发送detectSites');
+    assert(optActions.some(a => a.includes('updateScheduleConfig')), 'options应发送updateScheduleConfig');
+    mark('startScan action 前后端匹配', true);
+  } catch (e) {
+    mark('startScan action 前后端匹配', false);
     console.log(`     ${e.message}`);
   }
 

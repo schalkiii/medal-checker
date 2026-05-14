@@ -257,7 +257,64 @@ test('无勋章站点不显示', () => {
 });
 
 // ============================================================
-// 5. Diff模式高亮
+// 5. 定时任务配置
+// ============================================================
+console.log('\n  ▶ 定时任务配置');
+
+test('定时配置DOM元素存在', () => {
+  const chromeMock = createChromeMock();
+  setupDOM();
+  loadOptions(chromeMock);
+
+  const ids = ['scheduleToggle', 'scheduleTime', 'webhookUrl', 'scheduleStatus', 'saveScheduleBtn', 'testWebhookBtn'];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    assert(el !== null, `元素 #${id} 应存在`);
+  });
+});
+
+test('定时配置从storage加载', () => {
+  const chromeMock = createChromeMock();
+  chromeMock._storage.set('scheduleConfig', { enabled: true, time: '09:30', webhookUrl: 'https://webhook.test/hook' });
+  chromeMock._storage.set('sites', ['SiteX|https://x.com/medal.php']);
+  setupDOM();
+  loadOptions(chromeMock);
+
+  assert(document.getElementById('scheduleToggle').checked, 'toggle应被勾选');
+  assertEqual(document.getElementById('scheduleTime').value, '09:30');
+  assertEqual(document.getElementById('webhookUrl').value, 'https://webhook.test/hook');
+  assertContains(document.getElementById('scheduleStatus').textContent, '已启用');
+});
+
+test('保存定时配置写入storage并发送消息', () => {
+  const chromeMock = createChromeMock();
+  chromeMock._storage.set('sites', ['SiteX|https://x.com/medal.php']);
+  setupDOM();
+  loadOptions(chromeMock);
+
+  const toggle = document.getElementById('scheduleToggle');
+  const timeInput = document.getElementById('scheduleTime');
+  const urlInput = document.getElementById('webhookUrl');
+
+  toggle.checked = true;
+  timeInput.value = '07:00';
+  urlInput.value = 'https://feishu.webhook/test';
+
+  document.getElementById('saveScheduleBtn').click();
+
+  const saved = chromeMock._storage.get('scheduleConfig');
+  assert(saved !== undefined, 'scheduleConfig应保存到storage');
+  assertEqual(saved.enabled, true);
+  assertEqual(saved.time, '07:00');
+  assertEqual(saved.webhookUrl, 'https://feishu.webhook/test');
+
+  const sentMsg = chromeMock._sentMessages.find(m => m.action === 'updateScheduleConfig');
+  assert(sentMsg !== undefined, '应发送updateScheduleConfig消息');
+  assertEqual(sentMsg.scheduleConfig.enabled, true);
+});
+
+// ============================================================
+// 6. Diff模式高亮
 // ============================================================
 console.log('\n  ▶ Diff模式');
 

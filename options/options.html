@@ -367,6 +367,122 @@
       gap: 8px;
       flex-wrap: wrap;
     }
+
+    /* 定时任务配置样式 */
+    .schedule-card {
+      margin-top: 25px;
+    }
+
+    .schedule-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 12px 0;
+      flex-wrap: wrap;
+    }
+
+    .schedule-row label {
+      font-size: 13px;
+      color: #555;
+      min-width: 80px;
+      font-weight: 500;
+    }
+
+    .schedule-row input[type="time"] {
+      padding: 8px 12px;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 14px;
+      background: #fafbfc;
+      color: #333;
+      font-family: inherit;
+    }
+
+    .schedule-row input[type="time"]:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .schedule-row input[type="url"] {
+      flex: 1;
+      min-width: 200px;
+      padding: 8px 12px;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 13px;
+      background: #fafbfc;
+      color: #555;
+      font-family: inherit;
+    }
+
+    .schedule-row input[type="url"]:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .schedule-row .hint {
+      font-size: 11px;
+      color: #aaa;
+      margin-left: 4px;
+    }
+
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: #ccc;
+      border-radius: 24px;
+      transition: 0.3s;
+    }
+
+    .toggle-slider::before {
+      content: '';
+      position: absolute;
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background: white;
+      border-radius: 50%;
+      transition: 0.3s;
+    }
+
+    .toggle-switch input:checked + .toggle-slider {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+    }
+
+    .toggle-switch input:checked + .toggle-slider::before {
+      transform: translateX(20px);
+    }
+
+    .schedule-status {
+      font-size: 13px;
+      color: #888;
+    }
+
+    .schedule-status.active {
+      color: #4CAF50;
+      font-weight: 500;
+    }
   </style>
 </head>
 <body>
@@ -430,6 +546,36 @@
         <div id="resultList"></div>
         <div id="resultStats"></div>
       </div>
+    </div>
+  </div>
+
+<div class="card schedule-card">
+    <h3>⏰ 定时任务配置</h3>
+
+    <div class="schedule-row">
+      <label>启用定时</label>
+      <label class="toggle-switch">
+        <input type="checkbox" id="scheduleToggle">
+        <span class="toggle-slider"></span>
+      </label>
+      <span id="scheduleStatus" class="schedule-status">已禁用</span>
+    </div>
+
+    <div class="schedule-row">
+      <label>执行时间</label>
+      <input type="time" id="scheduleTime" value="08:00">
+      <span class="hint">每日固定时间自动扫描</span>
+    </div>
+
+    <div class="schedule-row">
+      <label>Webhook URL</label>
+      <input type="url" id="webhookUrl" placeholder="https://open.feishu.cn/open-apis/bot/v2/hook/xxxxxx" style="flex:1;">
+      <span class="hint">飞书机器人 webhook 地址</span>
+    </div>
+
+    <div class="action-buttons" style="margin-top: 16px;">
+      <button id="saveScheduleBtn" class="btn-save">💾 保存定时配置</button>
+      <button id="testWebhookBtn" class="btn-detect" style="background: linear-gradient(135deg, #43e97b, #38f9d7); color: #1a3a2a;">📤 测试推送</button>
     </div>
   </div>
 

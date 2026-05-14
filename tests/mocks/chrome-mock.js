@@ -34,7 +34,7 @@ function createChromeMock(config = {}) {
           } else if (typeof keys === 'string') {
             result[keys] = _storage.get(keys);
           }
-          if (callback) setTimeout(() => callback(result), 0);
+if (callback) callback(result);
           return Promise.resolve(result);
         },
         set(items, callback) {
@@ -82,10 +82,24 @@ function createChromeMock(config = {}) {
         removeListener() { listeners.delete('runtime.onMessage'); }
       },
       onInstalled: new ChromeEvent(),
+      onStartup: new ChromeEvent(),
       openOptionsPage() {
         mock._optionsPageOpened = true;
         return Promise.resolve();
       }
+    },
+
+alarms: {
+      _created: [],
+      _cleared: false,
+      create(name, options) {
+        mock.alarms._created.push({ name, options });
+      },
+      clear(name, callback) {
+        mock.alarms._cleared = true;
+        if (callback) setTimeout(callback, 0);
+      },
+      onAlarm: new ChromeEvent()
     },
 
     tabs: {
@@ -107,6 +121,8 @@ function createChromeMock(config = {}) {
       mock._sentMessages = [];
       mock._optionsPageOpened = false;
       mock._lastResponse = null;
+      mock.alarms._created = [];
+      mock.alarms._cleared = false;
     }
   };
 
