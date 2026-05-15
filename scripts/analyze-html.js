@@ -40,10 +40,17 @@ global.chrome = {
   cookies: { getAll(_details, cb) { if (cb) setTimeout(() => cb([]), 0); return Promise.resolve([]); } },
   runtime: {
     sendMessage() {},
-    onMessage: { addListener() {} }
+    onMessage: { addListener() {} },
+    onStartup: { addListener() {} },
+    onInstalled: { addListener() {} }
   },
   action: { onClicked: { addListener() {} } },
-  tabs: { create() {} }
+  tabs: { create() {} },
+  alarms: {
+    create() {},
+    clear(_name, cb) { if (cb) cb(); },
+    onAlarm: { addListener() {} }
+  }
 };
 global.AbortController = AbortController;
 global.navigator = { userAgent: 'Mozilla/5.0 Analyzer' };
