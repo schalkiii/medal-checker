@@ -120,7 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <span>🎯 有效站点：<strong>${validResults.length}</strong></span>
           <span>🏅 总勋章数：<strong style="color:#4CAF50;">${totalBadges}</strong></span>
           ${diffMode ? `<span>🆕 新增勋章：<strong style="color:#FF9800;">${totalNewBadges}</strong></span>` : ''}
-          ${diffMode ? '<span style="color:#e53935; font-size:12px;">差异模式下仅显示新增勋章</span>' : ''}
+${diffMode ? '<span style="color:#e53935; font-size:12px;">差异模式下仅显示新增勋章</span>' : ''}
         </div>
       `;
 
@@ -150,7 +150,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <span class="result-site-name">${site.siteName}</span>
             <a class="result-site-link" href="${site.url}" target="_blank" title="点击跳转到勋章页面">🔗 ${site.url}</a>
           </div>
-          <span class="result-site-count">${displayCount} 勋章</span>
+<span class="result-site-count">${displayCount} 勋章</span>
         `;
         siteDiv.appendChild(header);
 
@@ -165,7 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const medalItem = document.createElement('div');
             medalItem.className = 'medal-item' + (isNew ? ' new-medal' : '');
 
-            const medalUrl = medal.medalId ? `${site.url}?medal=${medal.medalId}` : site.url;
+const medalUrl = medal.medalId ? `${site.url}?medal=${medal.medalId}` : site.url;
 
             const metaParts = [];
             if (medal.price) metaParts.push(`<span class="meta-price">💰 ${medal.price}</span>`);
@@ -180,7 +180,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             medalItem.innerHTML = `
               <div class="medal-info">
-                <a class="medal-name-link" href="${medalUrl}" target="_blank" title="点击跳转到领取页面">${medal.name}${isNew ? '<span class="diff-badge">NEW</span>' : ''}</a>
+<a class="medal-name-link" href="${medalUrl}" target="_blank" title="点击跳转到领取页面">${medal.name}${isNew ? '<span class="diff-badge">NEW</span>' : ''}</a>
                 <div class="medal-meta">${metaParts.join('')}</div>
                 ${timeHtml}
               </div>
