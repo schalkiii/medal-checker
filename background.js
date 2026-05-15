@@ -47,6 +47,9 @@ const extractMedalsFromHtml = (html) => {
       const actionTd = group[layout.actionIdx] || '';
       if (!actionTd.includes('value="购买"') && !actionTd.includes('value="購買"')) continue;
 
+      const medalIdMatch = actionTd.match(/name="medal"\s+value="(\d+)"/);
+      const medalId = medalIdMatch ? medalIdMatch[1] : '';
+
       const nameText = extractTdText(group[layout.nameIdx] || '');
       const nameH1 = nameText.match(/^(.+?)(?:\n|$)/);
       const name = nameH1 ? nameH1[1].trim() : '未知勋章';
@@ -62,7 +65,7 @@ const extractMedalsFromHtml = (html) => {
       const timeRaw = extractTdText(group[layout.timeIdx] || '').trim();
       const timeRange = timeRaw === '不限 ~ 不限' ? '不限' : timeRaw;
 
-      medals.push({ name, price, duration, bonus, stock, timeRange });
+      medals.push({ name, price, duration, bonus, stock, timeRange, medalId });
     }
   }
 
