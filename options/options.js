@@ -138,7 +138,6 @@ document.addEventListener('DOMContentLoaded', () => {
         siteDiv.className = 'result-site';
 
         let siteMedals = site.medals || [];
-        let displayCount = site.count;
 
         if (diffMode) {
           const siteNewFps = diffMap[site.siteName];
@@ -158,8 +157,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (filterPositive) {
           siteMedals = siteMedals.filter(m => m.bonus && parseFloat(m.bonus) > 0);
         }
-        displayCount = siteMedals.length;
-
         if (siteMedals.length === 0) return;
 
         const header = document.createElement('div');
@@ -169,7 +166,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <span class="result-site-name">${site.siteName}</span>
             <a class="result-site-link" href="${site.url}" target="_blank" title="点击跳转到勋章页面">🔗 ${site.url}</a>
           </div>
-          <span class="result-site-count">${displayCount} 勋章</span>
+          <span class="result-site-count">${siteMedals.length} 勋章</span>
         `;
         siteDiv.appendChild(header);
 
