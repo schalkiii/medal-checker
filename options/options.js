@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
     fileInput: document.getElementById('fileInput'),
     scanBtn: document.getElementById('scanBtn'),
     openAllBtn: document.getElementById('openAllBtn'),
+    openFilteredBtn: document.getElementById('openFilteredBtn'),
     resultList: document.getElementById('resultList'),
     resultStats: document.getElementById('resultStats'),
     clearResultsBtn: document.getElementById('clearResultsBtn'),
@@ -350,6 +351,74 @@ chrome.storage.local.get(['sites', 'scanResults', 'scanHistory', 'scheduleConfig
       });
 
       addLog(`🌐 已在后台打开 ${validSites.length} 个站点`);
+    });
+
+    elements.openFilteredBtn.addEventListener('click', async () => {
+      const { scanResults, scanHistory } = await chrome.storage.local.get(['scanResults', 'scanHistory']);
+
+      if (!scanResults || scanResults.length === 0) {
+        addLog('⚠️ 没有可用扫描结果', true);
+        return;
+      }
+
+      const hasFilter = diffMode || filterPermanent || filterLimited || filterPositive;
+      if (!hasFilter) {
+        addLog('⚠️ 请先启用至少一个过滤条件（差异模式/永久/限时/正收益）', true);
+        return;
+      }
+
+      let diffMap = {};
+      if (diffMode) {
+        if (scanHistory && scanHistory.length >= 2) {
+          const previous = scanHistory[scanHistory.length - 2].results;
+          diffMap = computeDiff(scanResults, previous);
+        } else {
+          addLog('⚠️ 暂无历史扫描记录可供对比，差异模式无效', true);
+        }
+      }
+
+      const urlsToOpen = [];
+
+      scanResults.forEach(site => {
+        let siteMedals = site.medals || [];
+
+        if (diffMode) {
+          const siteNewFps = diffMap[site.siteName];
+          if (siteNewFps) {
+            siteMedals = siteMedals.filter(m => siteNewFps.has(getMedalFingerprint(site.siteName, m)));
+          } else {
+            siteMedals = [];
+          }
+        }
+
+        if (filterPermanent) {
+          siteMedals = siteMedals.filter(m => m.duration && (m.duration.includes('不限') || m.duration.includes('永久')));
+        }
+        if (filterLimited) {
+          siteMedals = siteMedals.filter(m => m.timeRange && !m.timeRange.includes('不限'));
+        }
+        if (filterPositive) {
+          siteMedals = siteMedals.filter(m => m.bonus && parseFloat(m.bonus) > 0);
+        }
+
+        if (siteMedals.length === 0) return;
+
+        siteMedals.forEach(medal => {
+          const url = medal.medalId ? `${site.url}?medal=${medal.medalId}` : site.url;
+          urlsToOpen.push(url);
+        });
+      });
+
+      if (urlsToOpen.length === 0) {
+        addLog('⚠️ 当前过滤条件下没有匹配的勋章', true);
+        return;
+      }
+
+      urlsToOpen.forEach(url => {
+        chrome.tabs.create({ url, active: false });
+      });
+
+      addLog(`🔍 已在后台打开 ${urlsToOpen.length} 个过滤后的勋章页面`);
     });
 
     elements.diffToggleBtn.addEventListener('click', () => {
