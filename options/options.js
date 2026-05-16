@@ -12,6 +12,9 @@ document.addEventListener('DOMContentLoaded', () => {
     resultStats: document.getElementById('resultStats'),
     clearResultsBtn: document.getElementById('clearResultsBtn'),
     diffToggleBtn: document.getElementById('diffToggleBtn'),
+    filterPermanentBtn: document.getElementById('filterPermanentBtn'),
+    filterLimitedBtn: document.getElementById('filterLimitedBtn'),
+    filterPositiveBtn: document.getElementById('filterPositiveBtn'),
     debugExportBtn: document.getElementById('debugExportBtn'),
     detectBtn: document.getElementById('detectBtn'),
     detectSummary: document.getElementById('detectSummary'),
@@ -30,6 +33,9 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   let diffMode = false;
+  let filterPermanent = false;
+  let filterLimited = false;
+  let filterPositive = false;
   let currentResults = null;
   let previousResults = null;
 
@@ -121,6 +127,9 @@ document.addEventListener('DOMContentLoaded', () => {
           <span>🏅 总勋章数：<strong style="color:#4CAF50;">${totalBadges}</strong></span>
           ${diffMode ? `<span>🆕 新增勋章：<strong style="color:#FF9800;">${totalNewBadges}</strong></span>` : ''}
           ${diffMode ? '<span style="color:#e53935; font-size:12px;">差异模式下仅显示新增勋章</span>' : ''}
+          ${filterPermanent ? '<span style="color:#17a2b8; font-size:12px;">♾️ 仅永久勋章</span>' : ''}
+          ${filterLimited ? '<span style="color:#17a2b8; font-size:12px;">⏳ 仅限时售卖</span>' : ''}
+          ${filterPositive ? '<span style="color:#17a2b8; font-size:12px;">📈 仅正收益</span>' : ''}
         </div>
       `;
 
@@ -138,8 +147,18 @@ document.addEventListener('DOMContentLoaded', () => {
           } else {
             siteMedals = [];
           }
-          displayCount = siteMedals.length;
         }
+
+        if (filterPermanent) {
+          siteMedals = siteMedals.filter(m => m.duration && (m.duration.includes('不限') || m.duration.includes('永久')));
+        }
+        if (filterLimited) {
+          siteMedals = siteMedals.filter(m => m.timeRange && !m.timeRange.includes('不限'));
+        }
+        if (filterPositive) {
+          siteMedals = siteMedals.filter(m => m.bonus && parseFloat(m.bonus) > 0);
+        }
+        displayCount = siteMedals.length;
 
         if (siteMedals.length === 0) return;
 
@@ -357,6 +376,30 @@ chrome.storage.local.get(['sites', 'scanResults', 'scanHistory', 'scheduleConfig
         addLog('差异模式已关闭');
         if (currentResults) updateResultDisplay(currentResults);
       }
+    });
+
+    elements.filterPermanentBtn.addEventListener('click', () => {
+      filterPermanent = !filterPermanent;
+      elements.filterPermanentBtn.classList.toggle('active', filterPermanent);
+      elements.filterPermanentBtn.innerHTML = filterPermanent ? '♾️ 永久勋章 ✓' : '♾️ 永久勋章';
+      addLog(filterPermanent ? '🔽 已启用「只看永久勋章」过滤' : '🔽 已关闭「只看永久勋章」过滤');
+      if (currentResults) updateResultDisplay(currentResults);
+    });
+
+    elements.filterLimitedBtn.addEventListener('click', () => {
+      filterLimited = !filterLimited;
+      elements.filterLimitedBtn.classList.toggle('active', filterLimited);
+      elements.filterLimitedBtn.innerHTML = filterLimited ? '⏳ 限时售卖 ✓' : '⏳ 限时售卖';
+      addLog(filterLimited ? '🔽 已启用「只看限时售卖」过滤' : '🔽 已关闭「只看限时售卖」过滤');
+      if (currentResults) updateResultDisplay(currentResults);
+    });
+
+    elements.filterPositiveBtn.addEventListener('click', () => {
+      filterPositive = !filterPositive;
+      elements.filterPositiveBtn.classList.toggle('active', filterPositive);
+      elements.filterPositiveBtn.innerHTML = filterPositive ? '📈 正收益 ✓' : '📈 正收益';
+      addLog(filterPositive ? '🔽 已启用「只看正收益」过滤' : '🔽 已关闭「只看正收益」过滤');
+      if (currentResults) updateResultDisplay(currentResults);
     });
 
     elements.debugExportBtn.addEventListener('click', () => {
