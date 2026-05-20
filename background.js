@@ -120,42 +120,20 @@ const extractMedalsFromBuyCenter = (html) => {
 
 const extractMedalsFromCards = (html) => {
   const medals = [];
-  const startTag = '<div class="medal-cards">';
-  const startIdx = html.indexOf(startTag);
-  if (startIdx < 0) return medals;
-
-  let depth = 0;
-  let endIdx = -1;
-  for (let i = startIdx; i < html.length; i++) {
-    if (html[i] === '<') {
-      const tagEnd = html.indexOf('>', i);
-      if (tagEnd < 0) break;
-      const tag = html.substring(i, tagEnd + 1);
-      if (tag.startsWith('<div ') || tag.startsWith('<div>')) depth++;
-      else if (tag.startsWith('</div>')) {
-        depth--;
-        if (depth === 0) { endIdx = tagEnd + 1; break; }
-      }
-      i = tagEnd;
-    }
-  }
-  if (endIdx < 0) return medals;
-
-  const section = html.substring(startIdx, endIdx);
-
   const cards = [];
   let pos = 0;
-  while (pos < section.length) {
-    const cardStart = section.indexOf('<div class="medal-card ', pos);
+
+  while (pos < html.length) {
+    const cardStart = html.indexOf('<div class="medal-card ', pos);
     if (cardStart < 0) break;
 
     let d = 0;
     let cardEnd = -1;
-    for (let i = cardStart; i < section.length; i++) {
-      if (section[i] === '<') {
-        const tagEnd = section.indexOf('>', i);
+    for (let i = cardStart; i < html.length; i++) {
+      if (html[i] === '<') {
+        const tagEnd = html.indexOf('>', i);
         if (tagEnd < 0) break;
-        const tag = section.substring(i, tagEnd + 1);
+        const tag = html.substring(i, tagEnd + 1);
         if (tag.startsWith('<div ') || tag.startsWith('<div>')) d++;
         else if (tag.startsWith('</div>')) {
           d--;
@@ -164,18 +142,29 @@ const extractMedalsFromCards = (html) => {
         i = tagEnd;
       }
     }
+
     if (cardEnd > 0) {
-      cards.push(section.substring(cardStart, cardEnd));
+      cards.push(html.substring(cardStart, cardEnd));
       pos = cardEnd;
     } else break;
   }
 
   for (const card of cards) {
-    const actionMatch = card.match(/<input[^>]*\bclass="btn buy"[^>]*\/?\s*>/i);
+    const actionMatch = card.match(/<(?:input|button)[^>]*\bclass="btn buy[^"]*"[^>]*\/?\s*>/i);
     if (!actionMatch) continue;
 
     const actionHtml = actionMatch[0];
-    if (!actionHtml.includes('value="购买"') && !actionHtml.includes('value="購買"')) continue;
+    const isButton = actionHtml.startsWith('<button');
+
+    if (isButton) {
+      const btnClose = card.indexOf('</button>', actionMatch.index);
+      if (btnClose < 0) continue;
+      const btnText = card.substring(actionMatch.index + actionHtml.length, btnClose).trim();
+      if (!btnText.includes('购买') && !btnText.includes('購買')) continue;
+    } else {
+      if (!actionHtml.includes('value="购买"') && !actionHtml.includes('value="購買"')) continue;
+    }
+
     if (actionHtml.includes('disabled')) continue;
 
     const dataIdMatch = actionHtml.match(/data-id="(\d+)"/);

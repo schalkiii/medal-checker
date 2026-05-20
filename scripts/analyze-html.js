@@ -150,6 +150,28 @@ function analyzeFile(filePath) {
         }
       }
       console.log(`  数据行数: ${dataRowCount}`);
+    } else if (html.includes('medal-container') || html.includes('medal-cards') || html.includes('medal-card ')) {
+      // Analyze card layout
+      console.log('\n📋 卡片布局分析:');
+      const cardTags = html.match(/<div class="medal-card[^"]*"[^>]*>/g) || [];
+      const buyButtons = html.match(/<(?:input|button)[^>]*\bclass="btn buy[^"]*"[^>]*>/gi) || [];
+      const enabledButtons = buyButtons.filter(b => !b.includes('disabled'));
+      console.log(`  勋章卡片数: ${cardTags.length}`);
+      console.log(`  购买按钮数: ${buyButtons.length}（可用: ${enabledButtons.length}）`);
+      enabledButtons.forEach((btn, i) => {
+        const isButton = btn.startsWith('<button');
+        let btnText;
+        if (isButton) {
+          const btnMatch = html.match(new RegExp(btn.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '([\\s\\S]*?)<\\/button>', 'i'));
+          btnText = btnMatch ? btnMatch[1].trim() : '(unknown)';
+        } else {
+          const valMatch = btn.match(/value\s*=\s*"([^"]*)"/i);
+          btnText = valMatch ? valMatch[1] : '(unknown)';
+        }
+        const idMatch = btn.match(/data-id="(\d+)"/);
+        const medalId = idMatch ? idMatch[1] : '?';
+        console.log(`    [${i}] id=${medalId} btn="${btnText}"`);
+      });
     } else {
       // Analyze table structure
       console.log('\n📋 表格结构分析:');

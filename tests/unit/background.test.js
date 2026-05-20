@@ -547,6 +547,138 @@ test('sendToFeishu 包含勋章详情', async () => {
 });
 
 // ============================================================
+// extractMedalsFromCards — card layout
+// ============================================================
+console.log('\n  ▶ extractMedalsFromCards - card layout');
+
+function makeCardHtml(medals, useButton = false) {
+  let cards = '';
+  for (const m of medals) {
+    const btnHtml = useButton
+      ? `<div class="medal-action"><button type="button" class="btn buy " data-id="${m.id}"${m.disabled ? ' disabled' : ''}>${m.btnText || '购买'}</button></div>`
+      : `<div class="medal-action"><input type="button" class="btn buy" data-id="${m.id}" value="${m.btnText || '购买'}"${m.disabled ? ' disabled' : ''}></div>`;
+    cards += `<div class="medal-card ${m.cardClass || 'unpurchased'}">
+      <div class="medal-image-container"><img src="${m.img}.png" alt="${m.name}"></div>
+      <div class="medal-name">${m.name}</div>
+      <div class="medal-info">
+        <div><strong>可购买时间：</strong>${m.timeRange || '不限'}</div>
+        <div><strong>购买后有效期(天)：</strong>${m.duration}</div>
+        <div><strong>啤酒瓶加成：</strong>${m.bonus}</div>
+        <div><strong>价格：</strong>${m.price}</div>
+        <div><strong>库存：</strong>${m.stock}</div>
+      </div>
+      ${btnHtml}
+    </div>`;
+  }
+  return `<div class="medal-cards"><div class="medal-list">${cards}</div></div>`;
+}
+
+function makeCardContainerHtml(medals) {
+  let cards = '';
+  for (const m of medals) {
+    cards += `<div class="medal-card ${m.cardClass || 'unpurchased'}">
+      <div class="medal-image-container"><img src="${m.img}.png" alt="${m.name}"></div>
+      <div class="medal-name">${m.name}</div>
+      <div class="medal-info">
+        <div><strong>可购买时间：</strong>${m.timeRange || '不限'}</div>
+        <div><strong>购买后有效期(天)：</strong>${m.duration}</div>
+        <div><strong>啤酒瓶加成：</strong>${m.bonus}</div>
+        <div><strong>价格：</strong>${m.price}</div>
+        <div><strong>库存：</strong>${m.stock}</div>
+      </div>
+      <div class="medal-action"><button type="button" class="btn buy " data-id="${m.id}"${m.disabled ? ' disabled' : ''}>${m.btnText || '购买'}</button></div>
+    </div>`;
+  }
+  return `<div class="medal-container"><div class="medal-list-time">${cards}</div></div>`;
+}
+
+const sampleCardInput = makeCardHtml([
+  { id: 82, img: 'dashu', name: '大暑', duration: '365', bonus: '0.5%', price: '24,000', stock: '无限', btnText: '未到可购买时间', disabled: true },
+  { id: 81, img: 'xiaoshu', name: '小暑', duration: '365', bonus: '0.5%', price: '24,000', stock: '无限', btnText: '未到可购买时间', disabled: true },
+  { id: 80, img: 'xiazhi', name: '夏至', duration: '365', bonus: '0.5%', price: '24,000', stock: '无限', btnText: '购买', disabled: false },
+  { id: 79, img: 'mangzhong', name: '芒种', duration: '365', bonus: '0.5%', price: '24,000', stock: '无限', btnText: '购买', disabled: false },
+  { id: 78, img: 'xiaoman', name: '小满', duration: '365', bonus: '0.5%', price: '24,000', stock: '无限', btnText: '已过期', disabled: true }
+]);
+
+const sampleCardButton = makeCardContainerHtml([
+  { id: 82, img: 'dashu', name: '大暑', duration: '365', bonus: '0.5%', price: '24,000', stock: '无限', btnText: '未到可购买时间', disabled: true },
+  { id: 81, img: 'xiaoshu', name: '小暑', duration: '365', bonus: '0.5%', price: '24,000', stock: '无限', btnText: '未到可购买时间', disabled: true },
+  { id: 80, img: 'xiazhi', name: '夏至', duration: '365', bonus: '0.5%', price: '24,000', stock: '无限', btnText: '购买', disabled: false },
+  { id: 79, img: 'mangzhong', name: '芒种', duration: '365', bonus: '0.5%', price: '24,000', stock: '无限', btnText: '购买', disabled: false }
+]);
+
+test('卡片布局(medal-cards+input)提取可购买勋章', () => {
+  const medals = bg.extractMedalsFromCards(sampleCardInput);
+  assertEqual(medals.length, 2, '应提取2个可购买勋章');
+});
+
+test('卡片布局提取名称', () => {
+  const medals = bg.extractMedalsFromCards(sampleCardInput);
+  assert(medals[0].name.includes('夏至'), `实际名称: ${medals[0].name}`);
+  assert(medals[1].name.includes('芒种'), `实际名称: ${medals[1].name}`);
+});
+
+test('卡片布局提取价格和有效期', () => {
+  const medals = bg.extractMedalsFromCards(sampleCardInput);
+  assertEqual(medals[0].price, '24,000');
+  assertEqual(medals[0].duration, '365');
+});
+
+test('卡片布局提取加成和库存', () => {
+  const medals = bg.extractMedalsFromCards(sampleCardInput);
+  assertEqual(medals[0].bonus, '0.5%');
+  assertEqual(medals[0].stock, '无限');
+});
+
+test('卡片布局提取medalId', () => {
+  const medals = bg.extractMedalsFromCards(sampleCardInput);
+  assertEqual(medals[0].medalId, '80');
+  assertEqual(medals[1].medalId, '79');
+});
+
+test('卡片布局(medal-container+button)提取可购买勋章', () => {
+  const medals = bg.extractMedalsFromCards(sampleCardButton);
+  assertEqual(medals.length, 2, 'medal-container+button 应提取2个可购买勋章');
+});
+
+test('卡片布局button格式提取名称和价格', () => {
+  const medals = bg.extractMedalsFromCards(sampleCardButton);
+  assert(medals[0].name.includes('夏至'));
+  assertEqual(medals[0].price, '24,000');
+  assertEqual(medals[0].medalId, '80');
+});
+
+test('卡片布局过滤disabled按钮', () => {
+  const html = makeCardHtml([
+    { id: 1, img: 'a', name: '已禁用', duration: '30', bonus: '0%', price: '100', stock: '无限', btnText: '购买', disabled: true },
+    { id: 2, img: 'b', name: '可用', duration: '30', bonus: '0%', price: '200', stock: '无限', btnText: '购买', disabled: false }
+  ]);
+  const medals = bg.extractMedalsFromCards(html);
+  assertEqual(medals.length, 1);
+  assert(medals[0].name.includes('可用'));
+});
+
+test('卡片布局过滤非购买文本', () => {
+  const html = makeCardHtml([
+    { id: 1, img: 'a', name: '仅授予', duration: '30', bonus: '0%', price: '100', stock: '无限', btnText: '仅授予', disabled: false },
+    { id: 2, img: 'b', name: '可购买', duration: '30', bonus: '0%', price: '200', stock: '无限', btnText: '购买', disabled: false }
+  ]);
+  const medals = bg.extractMedalsFromCards(html);
+  assertEqual(medals.length, 1);
+  assert(medals[0].name.includes('可购买'));
+});
+
+test('卡片布局空HTML返回空数组', () => {
+  const medals = bg.extractMedalsFromCards('');
+  assertEqual(medals.length, 0);
+});
+
+test('卡片布局无容器返回空数组', () => {
+  const medals = bg.extractMedalsFromCards('<div>普通页面</div>');
+  assertEqual(medals.length, 0);
+});
+
+// ============================================================
 // setupAlarm
 // ============================================================
 console.log('\n  ▶ setupAlarm');
