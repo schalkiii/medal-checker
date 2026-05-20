@@ -1,0 +1,1086 @@
+{
+  "generatedAt": "2026-05-20T00:16:28.769Z",
+  "sourceFile": "PT_Debug_2026-05-19.json",
+  "totalPages": 97,
+  "sites": [
+    {
+      "url": "https://1ptba.com/medal.php",
+      "domain": "1ptba.com",
+      "path": "/medal.php",
+      "htmlBytes": 14715,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://audiences.me/medal_center.php",
+      "domain": "audiences.me",
+      "path": "/medal_center.php",
+      "htmlBytes": 93157,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://springsunday.net/badges.php",
+      "domain": "springsunday.net",
+      "path": "/badges.php",
+      "htmlBytes": 65166,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://carpt.net/medal.php",
+      "domain": "carpt.net",
+      "path": "/medal.php",
+      "htmlBytes": 13849,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://discfan.net/medal.php",
+      "domain": "discfan.net",
+      "path": "/medal.php",
+      "htmlBytes": 14803,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://pt.0ff.cc/medal.php",
+      "domain": "pt.0ff.cc",
+      "path": "/medal.php",
+      "htmlBytes": 46193,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://greatposterwall.com/medal.php",
+      "domain": "greatposterwall.com",
+      "path": "/medal.php",
+      "htmlBytes": 26240,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://hdpt.xyz/medal.php",
+      "domain": "hdpt.xyz",
+      "path": "/medal.php",
+      "htmlBytes": 1063,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://hdtime.org/medal.php",
+      "domain": "hdtime.org",
+      "path": "/medal.php",
+      "htmlBytes": 16815,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://hdvideo.one/medal.php",
+      "domain": "hdvideo.one",
+      "path": "/medal.php",
+      "htmlBytes": 4650,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "http://hdfans.org/medal.php",
+      "domain": "hdfans.org",
+      "path": "/medal.php",
+      "htmlBytes": 23311,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://www.hitpt.com/medal.php",
+      "domain": "www.hitpt.com",
+      "path": "/medal.php",
+      "htmlBytes": 10043,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "http://www.oshen.win/medal.php",
+      "domain": "www.oshen.win",
+      "path": "/medal.php",
+      "htmlBytes": 19,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://pt.soulvoice.club/medal.php",
+      "domain": "pt.soulvoice.club",
+      "path": "/medal.php",
+      "htmlBytes": 9241,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://totheglory.im/mall.php?cid=5",
+      "domain": "totheglory.im",
+      "path": "/mall.php",
+      "htmlBytes": 23929,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://wintersakura.net/medal.php",
+      "domain": "wintersakura.net",
+      "path": "/medal.php",
+      "htmlBytes": 14370,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://leaves.red/medal.php",
+      "domain": "leaves.red",
+      "path": "/medal.php",
+      "htmlBytes": 1548,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://www.icc2022.com/medal.php",
+      "domain": "www.icc2022.com",
+      "path": "/medal.php",
+      "htmlBytes": 4654,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://cyanbug.net/medal.php",
+      "domain": "cyanbug.net",
+      "path": "/medal.php",
+      "htmlBytes": 20907,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://www.okpt.net/medal.php",
+      "domain": "www.okpt.net",
+      "path": "/medal.php",
+      "htmlBytes": 22144,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://www.okpt.net/medal.php?page=1",
+      "domain": "www.okpt.net",
+      "path": "/medal.php",
+      "htmlBytes": 15809,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://www.gamegamept.com/medal.php",
+      "domain": "www.gamegamept.com",
+      "path": "/medal.php",
+      "htmlBytes": 21796,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://www.gamegamept.com/medal.php?page=1",
+      "domain": "www.gamegamept.com",
+      "path": "/medal.php",
+      "htmlBytes": 20715,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://pandapt.net/medal.php",
+      "domain": "pandapt.net",
+      "path": "/medal.php",
+      "htmlBytes": 27473,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://pandapt.net/medal.php?page=1",
+      "domain": "pandapt.net",
+      "path": "/medal.php",
+      "htmlBytes": 27325,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://pandapt.net/medal.php?page=2",
+      "domain": "pandapt.net",
+      "path": "/medal.php",
+      "htmlBytes": 27418,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://pandapt.net/medal.php?page=3",
+      "domain": "pandapt.net",
+      "path": "/medal.php",
+      "htmlBytes": 26425,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://kufei.org/medal.php",
+      "domain": "kufei.org",
+      "path": "/medal.php",
+      "htmlBytes": 32467,
+      "medalCount": 2,
+      "medals": [
+        {
+          "name": "猴",
+          "price": "98,000",
+          "duration": "180",
+          "bonus": "10%",
+          "stock": "无限",
+          "timeRange": "不限",
+          "medalId": ""
+        },
+        {
+          "name": "羊",
+          "price": "98,000",
+          "duration": "180",
+          "bonus": "10%",
+          "stock": "无限",
+          "timeRange": "不限",
+          "medalId": ""
+        }
+      ]
+    },
+    {
+      "url": "https://rousi.zip/medal.php",
+      "domain": "rousi.zip",
+      "path": "/medal.php",
+      "htmlBytes": 461,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://ptcafe.club/medal.php",
+      "domain": "ptcafe.club",
+      "path": "/medal.php",
+      "htmlBytes": 10184,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://pt.gtkpw.xyz/medal.php",
+      "domain": "pt.gtkpw.xyz",
+      "path": "/medal.php",
+      "htmlBytes": 11214,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://crabpt.vip/medal.php",
+      "domain": "crabpt.vip",
+      "path": "/medal.php",
+      "htmlBytes": 31722,
+      "medalCount": 2,
+      "medals": [
+        {
+          "name": "发种大赛保种勋章 纪念意义",
+          "price": "9,999",
+          "duration": "30",
+          "bonus": "0%",
+          "stock": "无限",
+          "timeRange": "不限",
+          "medalId": ""
+        },
+        {
+          "name": "负勋章 蟹老板听说你的蟹币很多，出柜台，不退款",
+          "price": "250",
+          "duration": "20",
+          "bonus": "-5%",
+          "stock": "无限",
+          "timeRange": "2025-03-01 00:00:00 ~ 2055-03-21 00:00:00",
+          "medalId": ""
+        }
+      ]
+    },
+    {
+      "url": "https://crabpt.vip/medal.php?page=1",
+      "domain": "crabpt.vip",
+      "path": "/medal.php",
+      "htmlBytes": 31472,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://ptfans.cc/medal.php",
+      "domain": "ptfans.cc",
+      "path": "/medal.php",
+      "htmlBytes": 17108,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://ptzone.xyz/medal.php",
+      "domain": "ptzone.xyz",
+      "path": "/medal.php",
+      "htmlBytes": 12973,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://raingfh.top/medal.php",
+      "domain": "raingfh.top",
+      "path": "/medal.php",
+      "htmlBytes": 20749,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://raingfh.top/medal.php?page=1",
+      "domain": "raingfh.top",
+      "path": "/medal.php",
+      "htmlBytes": 19486,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://ptlgs.org/medal.php",
+      "domain": "ptlgs.org",
+      "path": "/medal.php",
+      "htmlBytes": 55857,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://ptlgs.org/medal.php?page=1",
+      "domain": "ptlgs.org",
+      "path": "/medal.php",
+      "htmlBytes": 37509,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://njtupt.top/medal.php",
+      "domain": "njtupt.top",
+      "path": "/medal.php",
+      "htmlBytes": 11594,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://ubits.club/medal.php",
+      "domain": "ubits.club",
+      "path": "/medal.php",
+      "htmlBytes": 46818,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://ubits.club/medal.php?page=1",
+      "domain": "ubits.club",
+      "path": "/medal.php",
+      "htmlBytes": 46758,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://ubits.club/medal.php?page=2",
+      "domain": "ubits.club",
+      "path": "/medal.php",
+      "htmlBytes": 39052,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://kamept.com/medal.php",
+      "domain": "kamept.com",
+      "path": "/medal.php",
+      "htmlBytes": 22484,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://kamept.com/medal.php?page=1",
+      "domain": "kamept.com",
+      "path": "/medal.php",
+      "htmlBytes": 22917,
+      "medalCount": 5,
+      "medals": [
+        {
+          "name": "卟啵电竞出道纪念 白咲露理 【ぶいすぽっ！】中華圏プロジェクト“VSPO! CN”始動。8月28日に4名がデビュー，初配信スケジュール，8月29日(木) 20:00～22:00 白咲露理(https://space.bilibili.com/3546695864421312/) 录播：https://www.bilibili.com/video/BV1K1HueSEbm/",
+          "price": "20,000",
+          "duration": "永久有效",
+          "bonus": "0%",
+          "stock": "无限",
+          "timeRange": "不限",
+          "medalId": ""
+        },
+        {
+          "name": "卟啵电竞出道纪念 小针彩 【ぶいすぽっ！】中華圏プロジェクト“VSPO! CN”始動。8月28日に4名がデビュー，初配信スケジュール，8月28日(水) 20:00～22:00 小针彩(https://space.bilibili.com/3546695948306751/) 录播：https://www.bilibili.com/video/BV1uNs3eiEYc/",
+          "price": "20,000",
+          "duration": "永久有效",
+          "bonus": "0%",
+          "stock": "无限",
+          "timeRange": "不限",
+          "medalId": ""
+        },
+        {
+          "name": "妹头四周年纪念 小森めと4周年 https://www.youtube.com/watch?v=DEYUNQS5ykI",
+          "price": "20,000",
+          "duration": "永久有效",
+          "bonus": "0%",
+          "stock": "无限",
+          "timeRange": "不限",
+          "medalId": ""
+        },
+        {
+          "name": "银狼点赞 银狼可爱捏",
+          "price": "20,000",
+          "duration": "永久有效",
+          "bonus": "0%",
+          "stock": "无限",
+          "timeRange": "不限",
+          "medalId": ""
+        },
+        {
+          "name": "vspo3D化纪念 夢野あかり 夢野あかり3Dお披露目会：https://www.youtube.com/watch?v=tu-34pcxhk4 B站熟肉：https://www.bilibili.com/video/BV19D421E7VK",
+          "price": "20,000",
+          "duration": "永久有效",
+          "bonus": "0%",
+          "stock": "无限",
+          "timeRange": "不限",
+          "medalId": ""
+        }
+      ]
+    },
+    {
+      "url": "https://kamept.com/medal.php?page=2",
+      "domain": "kamept.com",
+      "path": "/medal.php",
+      "htmlBytes": 22870,
+      "medalCount": 12,
+      "medals": [
+        {
+          "name": "vspo3D化纪念 小森めと 小森めと 3Dお披露目会：https://www.youtube.com/watch?v=98vpCPsJT4U B站熟肉：https://www.bilibili.com/video/BV1nw411k7Zj/",
+          "price": "20,000",
+          "duration": "永久有效",
+          "bonus": "0%",
+          "stock": "无限",
+          "timeRange": "不限",
+          "medalId": ""
+        },
+        {
+          "name": "vspo3D化纪念 白波らむね 白波らむね 3Dお披露目会 配信開始日時：10/14(土) 20:00～：https://www.youtube.com/live/Kscas2952Ls",
+          "price": "20,000",
+          "duration": "永久有效",
+          "bonus": "0%",
+          "stock": "无限",
+          "timeRange": "不限",
+          "medalId": ""
+        },
+        {
+          "name": "vspo3D化纪念 神成きゅぴ 神成きゅぴ 3Dお披露目会：https://www.youtube.com/watch?v=tDzNdC0QLow B站熟肉：https://www.bilibili.com/video/BV1Tz4y1J7bc",
+          "price": "20,000",
+          "duration": "永久有效",
+          "bonus": "0%",
+          "stock": "无限",
+          "timeRange": "不限",
+          "medalId": ""
+        },
+        {
+          "name": "vspo3D化纪念 猫汰つな 猫汰つな 3Dお披露目会：https://www.youtube.com/watch?v=CSCwoNQHCRc B站熟肉：https://www.bilibili.com/video/BV1gN411r725/",
+          "price": "20,000",
+          "duration": "永久有效",
+          "bonus": "0%",
+          "stock": "无限",
+          "timeRange": "不限",
+          "medalId": ""
+        },
+        {
+          "name": "vspo3D化纪念 空澄セナ 空澄セナ3Dお披露目会：https://www.youtube.com/watch?v=oFLKsJL5N74 B站熟肉：https://www.bilibili.com/video/BV12h4y137to",
+          "price": "20,000",
+          "duration": "永久有效",
+          "bonus": "0%",
+          "stock": "无限",
+          "timeRange": "不限",
+          "medalId": ""
+        },
+        {
+          "name": "vspo3D化纪念 橘ひなの 橘ひなの 3Dお披露目会：https://www.youtube.com/watch?v=Mxa7MhlTJXc B站熟肉：https://www.bilibili.com/video/BV1Fu411a7Y6/",
+          "price": "20,000",
+          "duration": "永久有效",
+          "bonus": "0%",
+          "stock": "无限",
+          "timeRange": "不限",
+          "medalId": ""
+        },
+        {
+          "name": "vspo3D化纪念 小雀とと 小雀とと 3Dお披露目会：https://www.youtube.com/watch?v=rNjXIw3-rBs B站熟肉：https://www.bilibili.com/video/BV1xP41147jN/",
+          "price": "20,000",
+          "duration": "永久有效",
+          "bonus": "0%",
+          "stock": "无限",
+          "timeRange": "不限",
+          "medalId": ""
+        },
+        {
+          "name": "vspo3D化纪念 花芽なずな 花芽なずな 3Dお披露目会：https://www.youtube.com/watch?v=aY61VTVuI84 B站熟肉：https://www.bilibili.com/video/BV15h4y197vj",
+          "price": "20,000",
+          "duration": "永久有效",
+          "bonus": "0%",
+          "stock": "无限",
+          "timeRange": "不限",
+          "medalId": ""
+        },
+        {
+          "name": "vspo3D化纪念 八雲べに 八雲べに 3Dお披露目会：https://www.youtube.com/live/WZ2zvy_gxtM B站熟肉：https://www.bilibili.com/video/BV1is4y1v7PR",
+          "price": "20,000",
+          "duration": "永久有效",
+          "bonus": "0%",
+          "stock": "无限",
+          "timeRange": "不限",
+          "medalId": ""
+        },
+        {
+          "name": "vspo3D化纪念 如月れん 如月れん 3Dお披露目会：https://www.youtube.com/live/WYcrqEKvZdQ B站熟肉：https://www.bilibili.com/video/BV1H94y1i79M",
+          "price": "20,000",
+          "duration": "永久有效",
+          "bonus": "0%",
+          "stock": "无限",
+          "timeRange": "不限",
+          "medalId": ""
+        },
+        {
+          "name": "vspo3D化纪念 兎咲ミミ 兎咲ミミ 3Dお披露目会：https://www.youtube.com/live/oIRfSF-AbA0 B站熟肉：https://www.bilibili.com/video/BV1Ys4y1i7dH",
+          "price": "20,000",
+          "duration": "永久有效",
+          "bonus": "0%",
+          "stock": "无限",
+          "timeRange": "不限",
+          "medalId": ""
+        },
+        {
+          "name": "vspo3D化纪念 紫宮るな 紫宮るな 3Dお披露目会：https://youtube.com/live/B3WOJ7A6Gfk B站熟肉：https://www.bilibili.com/video/BV12z4y1b7yj/",
+          "price": "20,000",
+          "duration": "永久有效",
+          "bonus": "0%",
+          "stock": "无限",
+          "timeRange": "不限",
+          "medalId": ""
+        }
+      ]
+    },
+    {
+      "url": "https://kamept.com/medal.php?page=3",
+      "domain": "kamept.com",
+      "path": "/medal.php",
+      "htmlBytes": 17841,
+      "medalCount": 5,
+      "medals": [
+        {
+          "name": "vspo3D化纪念 藍沢エマ 藍沢エマ 3Dお披露目会：https://www.youtube.com/watch?v=Cb7MUQdIgx0 B站熟肉：https://www.bilibili.com/video/BV1Ts4y1u7Bq/",
+          "price": "20,000",
+          "duration": "永久有效",
+          "bonus": "0%",
+          "stock": "无限",
+          "timeRange": "不限",
+          "medalId": ""
+        },
+        {
+          "name": "vspo3D化纪念 一ノ瀬うるは 一ノ瀬うるは 3Dお披露目会：https://www.youtube.com/live/vluF8oofChg B站熟肉：https://www.bilibili.com/video/BV1cV4y1r7PN/",
+          "price": "20,000",
+          "duration": "永久有效",
+          "bonus": "0%",
+          "stock": "无限",
+          "timeRange": "不限",
+          "medalId": ""
+        },
+        {
+          "name": "vspo3D化纪念 花芽すみれ 花芽すみれ3Dお披露目会：https://youtube.com/watch?v=g-bN6gisi3g B站熟肉：https://www.bilibili.com/video/BV1So4y1V7HQ",
+          "price": "20,000",
+          "duration": "永久有效",
+          "bonus": "0%",
+          "stock": "无限",
+          "timeRange": "不限",
+          "medalId": ""
+        },
+        {
+          "name": "vspo3D化纪念 英リサ 英リサ3Dお披露目会：https://youtube.com/watch?v=ey9KCNzSALQ B站熟肉：https://www.bilibili.com/video/BV1so4y1V7sZ",
+          "price": "20,000",
+          "duration": "永久有效",
+          "bonus": "0%",
+          "stock": "无限",
+          "timeRange": "不限",
+          "medalId": ""
+        },
+        {
+          "name": "vspo3D化纪念 胡桃のあ 胡桃のあ3Dお披露目会：https://youtube.com/watch?v=ZpAJBxTsuTE B站熟肉：https://www.bilibili.com/video/BV1fL411z7Kz",
+          "price": "20,000",
+          "duration": "永久有效",
+          "bonus": "0%",
+          "stock": "无限",
+          "timeRange": "不限",
+          "medalId": ""
+        }
+      ]
+    },
+    {
+      "url": "https://tracker.ldo.pics/medal.php",
+      "domain": "tracker.ldo.pics",
+      "path": "/medal.php",
+      "htmlBytes": 399,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://hdbao.cc/medal.php",
+      "domain": "hdbao.cc",
+      "path": "/medal.php",
+      "htmlBytes": 13658,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://lemonhd.net/medal.php",
+      "domain": "lemonhd.net",
+      "path": "/medal.php",
+      "htmlBytes": 9390,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://sewerpt.com/medal.php",
+      "domain": "sewerpt.com",
+      "path": "/medal.php",
+      "htmlBytes": 23016,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://hdvideo.one/medal.php",
+      "domain": "hdvideo.one",
+      "path": "/medal.php",
+      "htmlBytes": 4650,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://bilibili.download/medal.php",
+      "domain": "bilibili.download",
+      "path": "/medal.php",
+      "htmlBytes": 12940,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://playletpt.xyz/medal.php",
+      "domain": "playletpt.xyz",
+      "path": "/medal.php",
+      "htmlBytes": 4658,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://pterclub.com/medal.php",
+      "domain": "pterclub.com",
+      "path": "/medal.php",
+      "htmlBytes": 4650,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://zmpt.cc/medal.php",
+      "domain": "zmpt.cc",
+      "path": "/medal.php",
+      "htmlBytes": 19845,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://www.hdkyl.in/medal.php",
+      "domain": "www.hdkyl.in",
+      "path": "/medal.php",
+      "htmlBytes": 52212,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://piggo.me/medal.php",
+      "domain": "piggo.me",
+      "path": "/medal.php",
+      "htmlBytes": 115169,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://www.agsvpt.com/medal.php",
+      "domain": "www.agsvpt.com",
+      "path": "/medal.php",
+      "htmlBytes": 122820,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://www.yemapt.org/#/consumer/badge",
+      "domain": "www.yemapt.org",
+      "path": "/",
+      "htmlBytes": 1952,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://pt.xingyungept.org/medal.php",
+      "domain": "pt.xingyungept.org",
+      "path": "/medal.php",
+      "htmlBytes": 61767,
+      "medalCount": 1,
+      "medals": [
+        {
+          "name": "小寒",
+          "price": "100,000",
+          "duration": "永久有效",
+          "bonus": "0%",
+          "stock": "无限",
+          "timeRange": "不限",
+          "medalId": ""
+        }
+      ]
+    },
+    {
+      "url": "https://pt.xingyungept.org/medal.php?page=1",
+      "domain": "pt.xingyungept.org",
+      "path": "/medal.php",
+      "htmlBytes": 61825,
+      "medalCount": 1,
+      "medals": [
+        {
+          "name": "处暑 残暑扫除一雨空，时临秋色渐浓融",
+          "price": "80,000",
+          "duration": "永久有效",
+          "bonus": "0%",
+          "stock": "无限",
+          "timeRange": "不限",
+          "medalId": ""
+        }
+      ]
+    },
+    {
+      "url": "https://pt.xingyungept.org/medal.php?page=2",
+      "domain": "pt.xingyungept.org",
+      "path": "/medal.php",
+      "htmlBytes": 61116,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://pt.xingyungept.org/medal.php?page=3",
+      "domain": "pt.xingyungept.org",
+      "path": "/medal.php",
+      "htmlBytes": 61863,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://pt.xingyungept.org/medal.php?page=4",
+      "domain": "pt.xingyungept.org",
+      "path": "/medal.php",
+      "htmlBytes": 26352,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://cspt.top/medal.php",
+      "domain": "cspt.top",
+      "path": "/medal.php",
+      "htmlBytes": 152724,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://qingwapt.com/medal.php",
+      "domain": "qingwapt.com",
+      "path": "/medal.php",
+      "htmlBytes": 88049,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://www.ptskit.com/medal.php",
+      "domain": "www.ptskit.com",
+      "path": "/medal.php",
+      "htmlBytes": 25594,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://www.ptskit.com/medal.php?page=1",
+      "domain": "www.ptskit.com",
+      "path": "/medal.php",
+      "htmlBytes": 25527,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://www.ptskit.com/medal.php?page=2",
+      "domain": "www.ptskit.com",
+      "path": "/medal.php",
+      "htmlBytes": 22633,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://cc.mypt.cc//medal.php",
+      "domain": "cc.mypt.cc",
+      "path": "//medal.php",
+      "htmlBytes": 15325,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://pt.lajidui.top/medal.php",
+      "domain": "pt.lajidui.top",
+      "path": "/medal.php",
+      "htmlBytes": 18617,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://si-qi.xyz/medal.php",
+      "domain": "si-qi.xyz",
+      "path": "/medal.php",
+      "htmlBytes": 171938,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://13city.org/medal.php",
+      "domain": "13city.org",
+      "path": "/medal.php",
+      "htmlBytes": 141633,
+      "medalCount": 2,
+      "medals": [
+        {
+          "name": "小满",
+          "price": "24,000",
+          "duration": "365",
+          "bonus": "0.5%",
+          "stock": "无限",
+          "timeRange": "",
+          "medalId": "78"
+        },
+        {
+          "name": "攒VIP专用",
+          "price": "10,000",
+          "duration": "30",
+          "bonus": "1.5%",
+          "stock": "无限",
+          "timeRange": "",
+          "medalId": "9"
+        }
+      ]
+    },
+    {
+      "url": "https://www.htpt.cc/buycenter.php",
+      "domain": "www.htpt.cc",
+      "path": "/buycenter.php",
+      "htmlBytes": 22779,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://cangbao.ge/medal.php",
+      "domain": "cangbao.ge",
+      "path": "/medal.php",
+      "htmlBytes": 23976,
+      "medalCount": 1,
+      "medals": [
+        {
+          "name": "凛冬坚守 致敬那些不惧挑战、默默坚守的忠实用户。",
+          "price": "1,000,000",
+          "duration": "永久有效",
+          "bonus": "2%",
+          "stock": "52",
+          "timeRange": "不限",
+          "medalId": ""
+        }
+      ]
+    },
+    {
+      "url": "https://cangbao.ge/medal.php?page=1",
+      "domain": "cangbao.ge",
+      "path": "/medal.php",
+      "htmlBytes": 22843,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://pt.aling.de/medal.php",
+      "domain": "pt.aling.de",
+      "path": "/medal.php",
+      "htmlBytes": 9972,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://duckboobee.org/medal.php",
+      "domain": "duckboobee.org",
+      "path": "/medal.php",
+      "htmlBytes": 48763,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://www.hxpt.org/medal.php",
+      "domain": "www.hxpt.org",
+      "path": "/medal.php",
+      "htmlBytes": 287605,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://www.52movie.top/medal.php",
+      "domain": "www.52movie.top",
+      "path": "/medal.php",
+      "htmlBytes": 8438,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://pt.luckpt.de/medal.php",
+      "domain": "pt.luckpt.de",
+      "path": "/medal.php",
+      "htmlBytes": 118241,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://pt.novahd.top/medal.php",
+      "domain": "pt.novahd.top",
+      "path": "/medal.php",
+      "htmlBytes": 27360,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://pt.novahd.top/medal.php?page=1",
+      "domain": "pt.novahd.top",
+      "path": "/medal.php",
+      "htmlBytes": 26940,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://pt.novahd.top/medal.php?page=2",
+      "domain": "pt.novahd.top",
+      "path": "/medal.php",
+      "htmlBytes": 27092,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://pt.novahd.top/medal.php?page=3",
+      "domain": "pt.novahd.top",
+      "path": "/medal.php",
+      "htmlBytes": 26965,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://pt.novahd.top/medal.php?page=4",
+      "domain": "pt.novahd.top",
+      "path": "/medal.php",
+      "htmlBytes": 21965,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://www.yhpp.cc/medal.php",
+      "domain": "www.yhpp.cc",
+      "path": "/medal.php",
+      "htmlBytes": 10480,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://dubhe.site/medal.php",
+      "domain": "dubhe.site",
+      "path": "/medal.php",
+      "htmlBytes": 287631,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://www.tangpt.top/medal.php",
+      "domain": "www.tangpt.top",
+      "path": "/medal.php",
+      "htmlBytes": 23026,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://www.tangpt.top/medal.php?page=1",
+      "domain": "www.tangpt.top",
+      "path": "/medal.php",
+      "htmlBytes": 23197,
+      "medalCount": 1,
+      "medals": [
+        {
+          "name": "井盖视角",
+          "price": "365,000",
+          "duration": "365",
+          "bonus": "0.5%",
+          "stock": "276",
+          "timeRange": "不限",
+          "medalId": ""
+        }
+      ]
+    },
+    {
+      "url": "https://www.tangpt.top/medal.php?page=2",
+      "domain": "www.tangpt.top",
+      "path": "/medal.php",
+      "htmlBytes": 23427,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://zrpt.cc/medal.php",
+      "domain": "zrpt.cc",
+      "path": "/medal.php",
+      "htmlBytes": 17266,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://p.t-baozi.cc/medal.php",
+      "domain": "p.t-baozi.cc",
+      "path": "/medal.php",
+      "htmlBytes": 28936,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://pt.muxuege.org/medal.php",
+      "domain": "pt.muxuege.org",
+      "path": "/medal.php",
+      "htmlBytes": 11986,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://www.momentpt.top/medal.php",
+      "domain": "www.momentpt.top",
+      "path": "/medal.php",
+      "htmlBytes": 241363,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://www.tokyo-manga.top/medal.php",
+      "domain": "www.tokyo-manga.top",
+      "path": "/medal.php",
+      "htmlBytes": 13459,
+      "medalCount": 0,
+      "medals": []
+    }
+  ],
+  "summary": {
+    "sitesWithMedals": 10,
+    "totalMedals": 32,
+    "pagesWithoutMedals": 87
+  }
+}

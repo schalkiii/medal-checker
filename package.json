@@ -8,7 +8,9 @@
     "lint": "eslint background.js options/options.js",
     "lint:fix": "node scripts/lint-fix.js",
     "watch": "node scripts/watch.js",
-    "test": "npm run check",
+    "test": "node tests/run.js && npm run check",
+    "test:regression": "node tests/regression/snapshot.test.js",
+    "snapshot": "node scripts/build-snapshot.js",
     "analyze": "node scripts/analyze-html.js"
   },
   "repository": {
