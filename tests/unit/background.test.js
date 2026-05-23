@@ -483,6 +483,87 @@ test('buycenter空HTML返回空数组', () => {
 });
 
 // ============================================================
+// pterclub 自定义表格布局
+// ============================================================
+console.log('\n  ▶ extractMedalsFromPterclub');
+
+const makePterclubHtml = (medalsData) => {
+  let html = '<table align="center" width="70%" border="1" cellspacing="0" cellpadding="3">\n';
+  html += '<tr><td class="colhead" colspan="6"><font class="big">猫 站 纪 念 徽 章</font></td></tr>\n';
+  html += '<tr><td class="text" align="center" colspan="6">用你的猫粮换取徽章！</td></tr>\n';
+
+  for (const m of medalsData) {
+    html += '<tr><td class="colhead" align="center" colspan="6"><font class="big">[' + m.catId + '] ' + m.catName + '<br>(' + m.code + ' ' + m.desc + ')</font></td></tr>\n';
+    html += '<tr>\n';
+    html += '<td colspan="6"><div class="text" style="text-align:center;">';
+    html += '<img title="' + m.name + '" src="storage/uploadpicz/hz/' + m.code + '.jpg" /><br>\n';
+    html += '<form action="?page=page010&action=buymedal" method="post"><center>';
+    const disabledAttr = m.disabled ? ' disabled="disabled"' : '';
+    html += '<input type="submit" name="medalchosen" value="' + m.code + ' (' + m.price + ' 猫粮)"' + disabledAttr + ' />';
+    html += '</center></form></div></td>\n</tr>\n';
+  }
+
+  html += '</table>';
+  return html;
+};
+
+const samplePterclubHtml = makePterclubHtml([
+  { catId: '042', catName: '五二零表白日', code: '042-001', name: '2026年五二零表白日纪念徽章', price: '52,099', desc: '此徽章仅于2026年5月20日至5月23日换领。', disabled: false },
+  { catId: '041', catName: '五一劳动节暨母亲节', code: '041-001', name: '2026年五一劳动节纪念徽章', price: '30,000', desc: '此徽章仅于2026年5月1日至5月10日换领', disabled: false },
+  { catId: '040', catName: '清明节', code: '040-001', name: '2026年清明节纪念徽章', price: '45,400', desc: '此徽章仅于2026年4月5日至4月8日换领。', disabled: true },
+  { catId: '039', catName: '三八妇女节/女神节', code: '039-001', name: '2026年三八妇女节/女神节纪念徽章', price: '38,000', desc: '此徽章仅于2026年3月8日至3月14日换领。', disabled: true },
+]);
+
+test('pterclub 提取非disabled勋章', () => {
+  const medals = bg.extractMedalsFromPterclub(samplePterclubHtml);
+  assertEqual(medals.length, 2, '应提取2个非disabled勋章');
+});
+
+test('pterclub 提取名称', () => {
+  const medals = bg.extractMedalsFromPterclub(samplePterclubHtml);
+  assertEqual(medals[0].name, '2026年五二零表白日纪念徽章');
+  assertEqual(medals[1].name, '2026年五一劳动节纪念徽章');
+});
+
+test('pterclub 提取价格', () => {
+  const medals = bg.extractMedalsFromPterclub(samplePterclubHtml);
+  assertEqual(medals[0].price, '52099');
+  assertEqual(medals[1].price, '30000');
+});
+
+test('pterclub 提取medalId (code)', () => {
+  const medals = bg.extractMedalsFromPterclub(samplePterclubHtml);
+  assertEqual(medals[0].medalId, '042-001');
+  assertEqual(medals[1].medalId, '041-001');
+});
+
+test('pterclub 全部disabled返回空数组', () => {
+  const html = makePterclubHtml([
+    { catId: '040', catName: '清明节', code: '040-001', name: '清明节纪念徽章', price: '45,400', desc: '仅于4月5日至4月8日换领。', disabled: true },
+  ]);
+  const medals = bg.extractMedalsFromPterclub(html);
+  assertEqual(medals.length, 0);
+});
+
+test('pterclub 空HTML返回空数组', () => {
+  const medals = bg.extractMedalsFromPterclub('');
+  assertEqual(medals.length, 0);
+});
+
+test('pterclub 无medalchosen按钮返回空数组', () => {
+  const medals = bg.extractMedalsFromPterclub('<table><tr><td>No medals here</td></tr></table>');
+  assertEqual(medals.length, 0);
+});
+
+test('pterclub 名称不存在的勋章被跳过', () => {
+  const html = makePterclubHtml([
+    { catId: '040', catName: '测试', code: '040-001', name: '', price: '45,400', desc: 'test', disabled: false },
+  ]);
+  const medals = bg.extractMedalsFromPterclub(html);
+  assertEqual(medals.length, 0);
+});
+
+// ============================================================
 // sendToFeishu
 // ============================================================
 console.log('\n  ▶ sendToFeishu');

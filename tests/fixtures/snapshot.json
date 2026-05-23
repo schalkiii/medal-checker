@@ -1,13 +1,13 @@
 {
-  "generatedAt": "2026-05-20T00:16:28.769Z",
-  "sourceFile": "PT_Debug_2026-05-19.json",
-  "totalPages": 97,
+  "generatedAt": "2026-05-23T08:08:51.268Z",
+  "sourceFile": "PT_Debug_2026-05-23.json",
+  "totalPages": 105,
   "sites": [
     {
       "url": "https://1ptba.com/medal.php",
       "domain": "1ptba.com",
       "path": "/medal.php",
-      "htmlBytes": 14715,
+      "htmlBytes": 14714,
       "medalCount": 0,
       "medals": []
     },
@@ -15,7 +15,7 @@
       "url": "https://audiences.me/medal_center.php",
       "domain": "audiences.me",
       "path": "/medal_center.php",
-      "htmlBytes": 93157,
+      "htmlBytes": 93089,
       "medalCount": 0,
       "medals": []
     },
@@ -23,7 +23,7 @@
       "url": "https://springsunday.net/badges.php",
       "domain": "springsunday.net",
       "path": "/badges.php",
-      "htmlBytes": 65166,
+      "htmlBytes": 65164,
       "medalCount": 0,
       "medals": []
     },
@@ -31,7 +31,7 @@
       "url": "https://carpt.net/medal.php",
       "domain": "carpt.net",
       "path": "/medal.php",
-      "htmlBytes": 13849,
+      "htmlBytes": 13848,
       "medalCount": 0,
       "medals": []
     },
@@ -39,7 +39,7 @@
       "url": "https://discfan.net/medal.php",
       "domain": "discfan.net",
       "path": "/medal.php",
-      "htmlBytes": 14803,
+      "htmlBytes": 14804,
       "medalCount": 0,
       "medals": []
     },
@@ -47,7 +47,7 @@
       "url": "https://pt.0ff.cc/medal.php",
       "domain": "pt.0ff.cc",
       "path": "/medal.php",
-      "htmlBytes": 46193,
+      "htmlBytes": 46192,
       "medalCount": 0,
       "medals": []
     },
@@ -55,15 +55,7 @@
       "url": "https://greatposterwall.com/medal.php",
       "domain": "greatposterwall.com",
       "path": "/medal.php",
-      "htmlBytes": 26240,
-      "medalCount": 0,
-      "medals": []
-    },
-    {
-      "url": "https://hdpt.xyz/medal.php",
-      "domain": "hdpt.xyz",
-      "path": "/medal.php",
-      "htmlBytes": 1063,
+      "htmlBytes": 26213,
       "medalCount": 0,
       "medals": []
     },
@@ -71,7 +63,7 @@
       "url": "https://hdtime.org/medal.php",
       "domain": "hdtime.org",
       "path": "/medal.php",
-      "htmlBytes": 16815,
+      "htmlBytes": 16814,
       "medalCount": 0,
       "medals": []
     },
@@ -87,7 +79,7 @@
       "url": "http://hdfans.org/medal.php",
       "domain": "hdfans.org",
       "path": "/medal.php",
-      "htmlBytes": 23311,
+      "htmlBytes": 23336,
       "medalCount": 0,
       "medals": []
     },
@@ -95,7 +87,7 @@
       "url": "https://www.hitpt.com/medal.php",
       "domain": "www.hitpt.com",
       "path": "/medal.php",
-      "htmlBytes": 10043,
+      "htmlBytes": 10044,
       "medalCount": 0,
       "medals": []
     },
@@ -119,7 +111,7 @@
       "url": "https://totheglory.im/mall.php?cid=5",
       "domain": "totheglory.im",
       "path": "/mall.php",
-      "htmlBytes": 23929,
+      "htmlBytes": 30687,
       "medalCount": 0,
       "medals": []
     },
@@ -127,7 +119,7 @@
       "url": "https://wintersakura.net/medal.php",
       "domain": "wintersakura.net",
       "path": "/medal.php",
-      "htmlBytes": 14370,
+      "htmlBytes": 14369,
       "medalCount": 0,
       "medals": []
     },
@@ -156,10 +148,26 @@
       "medals": []
     },
     {
+      "url": "https://xingtan.one/medal.php",
+      "domain": "xingtan.one",
+      "path": "/medal.php",
+      "htmlBytes": 48851,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://xingtan.one/medal.php?page=1",
+      "domain": "xingtan.one",
+      "path": "/medal.php",
+      "htmlBytes": 43538,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
       "url": "https://www.okpt.net/medal.php",
       "domain": "www.okpt.net",
       "path": "/medal.php",
-      "htmlBytes": 22144,
+      "htmlBytes": 22142,
       "medalCount": 0,
       "medals": []
     },
@@ -167,7 +175,7 @@
       "url": "https://www.okpt.net/medal.php?page=1",
       "domain": "www.okpt.net",
       "path": "/medal.php",
-      "htmlBytes": 15809,
+      "htmlBytes": 15808,
       "medalCount": 0,
       "medals": []
     },
@@ -191,7 +199,7 @@
       "url": "https://pandapt.net/medal.php",
       "domain": "pandapt.net",
       "path": "/medal.php",
-      "htmlBytes": 27473,
+      "htmlBytes": 27476,
       "medalCount": 0,
       "medals": []
     },
@@ -199,7 +207,7 @@
       "url": "https://pandapt.net/medal.php?page=1",
       "domain": "pandapt.net",
       "path": "/medal.php",
-      "htmlBytes": 27325,
+      "htmlBytes": 27324,
       "medalCount": 0,
       "medals": []
     },
@@ -207,7 +215,7 @@
       "url": "https://pandapt.net/medal.php?page=2",
       "domain": "pandapt.net",
       "path": "/medal.php",
-      "htmlBytes": 27418,
+      "htmlBytes": 27417,
       "medalCount": 0,
       "medals": []
     },
@@ -215,7 +223,7 @@
       "url": "https://pandapt.net/medal.php?page=3",
       "domain": "pandapt.net",
       "path": "/medal.php",
-      "htmlBytes": 26425,
+      "htmlBytes": 26424,
       "medalCount": 0,
       "medals": []
     },
@@ -247,10 +255,10 @@
       ]
     },
     {
-      "url": "https://rousi.zip/medal.php",
-      "domain": "rousi.zip",
+      "url": "https://wukongwendao.top/medal.php",
+      "domain": "wukongwendao.top",
       "path": "/medal.php",
-      "htmlBytes": 461,
+      "htmlBytes": 487,
       "medalCount": 0,
       "medals": []
     },
@@ -258,7 +266,7 @@
       "url": "https://ptcafe.club/medal.php",
       "domain": "ptcafe.club",
       "path": "/medal.php",
-      "htmlBytes": 10184,
+      "htmlBytes": 10183,
       "medalCount": 0,
       "medals": []
     },
@@ -266,7 +274,7 @@
       "url": "https://pt.gtkpw.xyz/medal.php",
       "domain": "pt.gtkpw.xyz",
       "path": "/medal.php",
-      "htmlBytes": 11214,
+      "htmlBytes": 11213,
       "medalCount": 0,
       "medals": []
     },
@@ -274,7 +282,7 @@
       "url": "https://crabpt.vip/medal.php",
       "domain": "crabpt.vip",
       "path": "/medal.php",
-      "htmlBytes": 31722,
+      "htmlBytes": 31723,
       "medalCount": 2,
       "medals": [
         {
@@ -301,7 +309,7 @@
       "url": "https://crabpt.vip/medal.php?page=1",
       "domain": "crabpt.vip",
       "path": "/medal.php",
-      "htmlBytes": 31472,
+      "htmlBytes": 31473,
       "medalCount": 0,
       "medals": []
     },
@@ -317,7 +325,7 @@
       "url": "https://ptzone.xyz/medal.php",
       "domain": "ptzone.xyz",
       "path": "/medal.php",
-      "htmlBytes": 12973,
+      "htmlBytes": 12972,
       "medalCount": 0,
       "medals": []
     },
@@ -325,7 +333,7 @@
       "url": "https://raingfh.top/medal.php",
       "domain": "raingfh.top",
       "path": "/medal.php",
-      "htmlBytes": 20749,
+      "htmlBytes": 20750,
       "medalCount": 0,
       "medals": []
     },
@@ -333,7 +341,7 @@
       "url": "https://raingfh.top/medal.php?page=1",
       "domain": "raingfh.top",
       "path": "/medal.php",
-      "htmlBytes": 19486,
+      "htmlBytes": 19487,
       "medalCount": 0,
       "medals": []
     },
@@ -341,7 +349,7 @@
       "url": "https://ptlgs.org/medal.php",
       "domain": "ptlgs.org",
       "path": "/medal.php",
-      "htmlBytes": 55857,
+      "htmlBytes": 55826,
       "medalCount": 0,
       "medals": []
     },
@@ -357,7 +365,7 @@
       "url": "https://njtupt.top/medal.php",
       "domain": "njtupt.top",
       "path": "/medal.php",
-      "htmlBytes": 11594,
+      "htmlBytes": 11593,
       "medalCount": 0,
       "medals": []
     },
@@ -365,7 +373,7 @@
       "url": "https://ubits.club/medal.php",
       "domain": "ubits.club",
       "path": "/medal.php",
-      "htmlBytes": 46818,
+      "htmlBytes": 46821,
       "medalCount": 0,
       "medals": []
     },
@@ -373,7 +381,7 @@
       "url": "https://ubits.club/medal.php?page=1",
       "domain": "ubits.club",
       "path": "/medal.php",
-      "htmlBytes": 46758,
+      "htmlBytes": 46761,
       "medalCount": 0,
       "medals": []
     },
@@ -381,7 +389,7 @@
       "url": "https://ubits.club/medal.php?page=2",
       "domain": "ubits.club",
       "path": "/medal.php",
-      "htmlBytes": 39052,
+      "htmlBytes": 39055,
       "medalCount": 0,
       "medals": []
     },
@@ -389,7 +397,7 @@
       "url": "https://kamept.com/medal.php",
       "domain": "kamept.com",
       "path": "/medal.php",
-      "htmlBytes": 22484,
+      "htmlBytes": 22483,
       "medalCount": 0,
       "medals": []
     },
@@ -397,7 +405,7 @@
       "url": "https://kamept.com/medal.php?page=1",
       "domain": "kamept.com",
       "path": "/medal.php",
-      "htmlBytes": 22917,
+      "htmlBytes": 22916,
       "medalCount": 5,
       "medals": [
         {
@@ -451,7 +459,7 @@
       "url": "https://kamept.com/medal.php?page=2",
       "domain": "kamept.com",
       "path": "/medal.php",
-      "htmlBytes": 22870,
+      "htmlBytes": 22869,
       "medalCount": 12,
       "medals": [
         {
@@ -568,7 +576,7 @@
       "url": "https://kamept.com/medal.php?page=3",
       "domain": "kamept.com",
       "path": "/medal.php",
-      "htmlBytes": 17841,
+      "htmlBytes": 17840,
       "medalCount": 5,
       "medals": [
         {
@@ -630,7 +638,7 @@
       "url": "https://hdbao.cc/medal.php",
       "domain": "hdbao.cc",
       "path": "/medal.php",
-      "htmlBytes": 13658,
+      "htmlBytes": 13299,
       "medalCount": 0,
       "medals": []
     },
@@ -638,7 +646,7 @@
       "url": "https://lemonhd.net/medal.php",
       "domain": "lemonhd.net",
       "path": "/medal.php",
-      "htmlBytes": 9390,
+      "htmlBytes": 9391,
       "medalCount": 0,
       "medals": []
     },
@@ -646,7 +654,7 @@
       "url": "https://sewerpt.com/medal.php",
       "domain": "sewerpt.com",
       "path": "/medal.php",
-      "htmlBytes": 23016,
+      "htmlBytes": 23015,
       "medalCount": 0,
       "medals": []
     },
@@ -675,10 +683,10 @@
       "medals": []
     },
     {
-      "url": "https://pterclub.com/medal.php",
-      "domain": "pterclub.com",
+      "url": "https://pterclub.net/medal.php",
+      "domain": "pterclub.net",
       "path": "/medal.php",
-      "htmlBytes": 4650,
+      "htmlBytes": 58340,
       "medalCount": 0,
       "medals": []
     },
@@ -686,7 +694,7 @@
       "url": "https://zmpt.cc/medal.php",
       "domain": "zmpt.cc",
       "path": "/medal.php",
-      "htmlBytes": 19845,
+      "htmlBytes": 19848,
       "medalCount": 0,
       "medals": []
     },
@@ -694,7 +702,7 @@
       "url": "https://www.hdkyl.in/medal.php",
       "domain": "www.hdkyl.in",
       "path": "/medal.php",
-      "htmlBytes": 52212,
+      "htmlBytes": 52213,
       "medalCount": 0,
       "medals": []
     },
@@ -702,7 +710,7 @@
       "url": "https://piggo.me/medal.php",
       "domain": "piggo.me",
       "path": "/medal.php",
-      "htmlBytes": 115169,
+      "htmlBytes": 115167,
       "medalCount": 0,
       "medals": []
     },
@@ -710,7 +718,7 @@
       "url": "https://www.agsvpt.com/medal.php",
       "domain": "www.agsvpt.com",
       "path": "/medal.php",
-      "htmlBytes": 122820,
+      "htmlBytes": 122384,
       "medalCount": 0,
       "medals": []
     },
@@ -726,43 +734,23 @@
       "url": "https://pt.xingyungept.org/medal.php",
       "domain": "pt.xingyungept.org",
       "path": "/medal.php",
-      "htmlBytes": 61767,
-      "medalCount": 1,
-      "medals": [
-        {
-          "name": "小寒",
-          "price": "100,000",
-          "duration": "永久有效",
-          "bonus": "0%",
-          "stock": "无限",
-          "timeRange": "不限",
-          "medalId": ""
-        }
-      ]
+      "htmlBytes": 61817,
+      "medalCount": 0,
+      "medals": []
     },
     {
       "url": "https://pt.xingyungept.org/medal.php?page=1",
       "domain": "pt.xingyungept.org",
       "path": "/medal.php",
-      "htmlBytes": 61825,
-      "medalCount": 1,
-      "medals": [
-        {
-          "name": "处暑 残暑扫除一雨空，时临秋色渐浓融",
-          "price": "80,000",
-          "duration": "永久有效",
-          "bonus": "0%",
-          "stock": "无限",
-          "timeRange": "不限",
-          "medalId": ""
-        }
-      ]
+      "htmlBytes": 61944,
+      "medalCount": 0,
+      "medals": []
     },
     {
       "url": "https://pt.xingyungept.org/medal.php?page=2",
       "domain": "pt.xingyungept.org",
       "path": "/medal.php",
-      "htmlBytes": 61116,
+      "htmlBytes": 61387,
       "medalCount": 0,
       "medals": []
     },
@@ -770,7 +758,7 @@
       "url": "https://pt.xingyungept.org/medal.php?page=3",
       "domain": "pt.xingyungept.org",
       "path": "/medal.php",
-      "htmlBytes": 61863,
+      "htmlBytes": 61930,
       "medalCount": 0,
       "medals": []
     },
@@ -778,7 +766,7 @@
       "url": "https://pt.xingyungept.org/medal.php?page=4",
       "domain": "pt.xingyungept.org",
       "path": "/medal.php",
-      "htmlBytes": 26352,
+      "htmlBytes": 26357,
       "medalCount": 0,
       "medals": []
     },
@@ -802,7 +790,7 @@
       "url": "https://www.ptskit.com/medal.php",
       "domain": "www.ptskit.com",
       "path": "/medal.php",
-      "htmlBytes": 25594,
+      "htmlBytes": 25335,
       "medalCount": 0,
       "medals": []
     },
@@ -810,7 +798,7 @@
       "url": "https://www.ptskit.com/medal.php?page=1",
       "domain": "www.ptskit.com",
       "path": "/medal.php",
-      "htmlBytes": 25527,
+      "htmlBytes": 25265,
       "medalCount": 0,
       "medals": []
     },
@@ -818,7 +806,7 @@
       "url": "https://www.ptskit.com/medal.php?page=2",
       "domain": "www.ptskit.com",
       "path": "/medal.php",
-      "htmlBytes": 22633,
+      "htmlBytes": 22939,
       "medalCount": 0,
       "medals": []
     },
@@ -826,7 +814,7 @@
       "url": "https://cc.mypt.cc//medal.php",
       "domain": "cc.mypt.cc",
       "path": "//medal.php",
-      "htmlBytes": 15325,
+      "htmlBytes": 15640,
       "medalCount": 0,
       "medals": []
     },
@@ -842,7 +830,7 @@
       "url": "https://si-qi.xyz/medal.php",
       "domain": "si-qi.xyz",
       "path": "/medal.php",
-      "htmlBytes": 171938,
+      "htmlBytes": 172118,
       "medalCount": 0,
       "medals": []
     },
@@ -850,28 +838,9 @@
       "url": "https://13city.org/medal.php",
       "domain": "13city.org",
       "path": "/medal.php",
-      "htmlBytes": 141633,
-      "medalCount": 2,
-      "medals": [
-        {
-          "name": "小满",
-          "price": "24,000",
-          "duration": "365",
-          "bonus": "0.5%",
-          "stock": "无限",
-          "timeRange": "",
-          "medalId": "78"
-        },
-        {
-          "name": "攒VIP专用",
-          "price": "10,000",
-          "duration": "30",
-          "bonus": "1.5%",
-          "stock": "无限",
-          "timeRange": "",
-          "medalId": "9"
-        }
-      ]
+      "htmlBytes": 141661,
+      "medalCount": 0,
+      "medals": []
     },
     {
       "url": "https://www.htpt.cc/buycenter.php",
@@ -885,25 +854,15 @@
       "url": "https://cangbao.ge/medal.php",
       "domain": "cangbao.ge",
       "path": "/medal.php",
-      "htmlBytes": 23976,
-      "medalCount": 1,
-      "medals": [
-        {
-          "name": "凛冬坚守 致敬那些不惧挑战、默默坚守的忠实用户。",
-          "price": "1,000,000",
-          "duration": "永久有效",
-          "bonus": "2%",
-          "stock": "52",
-          "timeRange": "不限",
-          "medalId": ""
-        }
-      ]
+      "htmlBytes": 24086,
+      "medalCount": 0,
+      "medals": []
     },
     {
       "url": "https://cangbao.ge/medal.php?page=1",
       "domain": "cangbao.ge",
       "path": "/medal.php",
-      "htmlBytes": 22843,
+      "htmlBytes": 22869,
       "medalCount": 0,
       "medals": []
     },
@@ -919,7 +878,7 @@
       "url": "https://duckboobee.org/medal.php",
       "domain": "duckboobee.org",
       "path": "/medal.php",
-      "htmlBytes": 48763,
+      "htmlBytes": 48765,
       "medalCount": 0,
       "medals": []
     },
@@ -943,7 +902,7 @@
       "url": "https://pt.luckpt.de/medal.php",
       "domain": "pt.luckpt.de",
       "path": "/medal.php",
-      "htmlBytes": 118241,
+      "htmlBytes": 119505,
       "medalCount": 0,
       "medals": []
     },
@@ -991,7 +950,7 @@
       "url": "https://www.yhpp.cc/medal.php",
       "domain": "www.yhpp.cc",
       "path": "/medal.php",
-      "htmlBytes": 10480,
+      "htmlBytes": 10479,
       "medalCount": 0,
       "medals": []
     },
@@ -999,7 +958,7 @@
       "url": "https://dubhe.site/medal.php",
       "domain": "dubhe.site",
       "path": "/medal.php",
-      "htmlBytes": 287631,
+      "htmlBytes": 287633,
       "medalCount": 0,
       "medals": []
     },
@@ -1007,7 +966,7 @@
       "url": "https://www.tangpt.top/medal.php",
       "domain": "www.tangpt.top",
       "path": "/medal.php",
-      "htmlBytes": 23026,
+      "htmlBytes": 22989,
       "medalCount": 0,
       "medals": []
     },
@@ -1015,7 +974,7 @@
       "url": "https://www.tangpt.top/medal.php?page=1",
       "domain": "www.tangpt.top",
       "path": "/medal.php",
-      "htmlBytes": 23197,
+      "htmlBytes": 23189,
       "medalCount": 1,
       "medals": [
         {
@@ -1023,7 +982,7 @@
           "price": "365,000",
           "duration": "365",
           "bonus": "0.5%",
-          "stock": "276",
+          "stock": "272",
           "timeRange": "不限",
           "medalId": ""
         }
@@ -1033,7 +992,7 @@
       "url": "https://www.tangpt.top/medal.php?page=2",
       "domain": "www.tangpt.top",
       "path": "/medal.php",
-      "htmlBytes": 23427,
+      "htmlBytes": 23469,
       "medalCount": 0,
       "medals": []
     },
@@ -1041,7 +1000,7 @@
       "url": "https://zrpt.cc/medal.php",
       "domain": "zrpt.cc",
       "path": "/medal.php",
-      "htmlBytes": 17266,
+      "htmlBytes": 17264,
       "medalCount": 0,
       "medals": []
     },
@@ -1057,7 +1016,7 @@
       "url": "https://pt.muxuege.org/medal.php",
       "domain": "pt.muxuege.org",
       "path": "/medal.php",
-      "htmlBytes": 11986,
+      "htmlBytes": 11985,
       "medalCount": 0,
       "medals": []
     },
@@ -1065,7 +1024,7 @@
       "url": "https://www.momentpt.top/medal.php",
       "domain": "www.momentpt.top",
       "path": "/medal.php",
-      "htmlBytes": 241363,
+      "htmlBytes": 241148,
       "medalCount": 0,
       "medals": []
     },
@@ -1076,11 +1035,67 @@
       "htmlBytes": 13459,
       "medalCount": 0,
       "medals": []
+    },
+    {
+      "url": "https://dstudio.me/medal.php",
+      "domain": "dstudio.me",
+      "path": "/medal.php",
+      "htmlBytes": 12583,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://www.musopia.vip/medal.php",
+      "domain": "www.musopia.vip",
+      "path": "/medal.php",
+      "htmlBytes": 9365,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://ptlao.top/medal.php",
+      "domain": "ptlao.top",
+      "path": "/medal.php",
+      "htmlBytes": 11781,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://longpt.org/medal.php",
+      "domain": "longpt.org",
+      "path": "/medal.php",
+      "htmlBytes": 54814,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://longpt.org/medal.php?page=1",
+      "domain": "longpt.org",
+      "path": "/medal.php",
+      "htmlBytes": 55440,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://longpt.org/medal.php?page=2",
+      "domain": "longpt.org",
+      "path": "/medal.php",
+      "htmlBytes": 57000,
+      "medalCount": 0,
+      "medals": []
+    },
+    {
+      "url": "https://longpt.org/medal.php?page=3",
+      "domain": "longpt.org",
+      "path": "/medal.php",
+      "htmlBytes": 44480,
+      "medalCount": 0,
+      "medals": []
     }
   ],
   "summary": {
-    "sitesWithMedals": 10,
-    "totalMedals": 32,
-    "pagesWithoutMedals": 87
+    "sitesWithMedals": 6,
+    "totalMedals": 27,
+    "pagesWithoutMedals": 99
   }
 }

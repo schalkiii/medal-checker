@@ -19,7 +19,7 @@ delete require.cache[require.resolve('../../background.js')];
 const bg = require('../../background.js');
 
 const snapshotPath = path.resolve(__dirname, '../fixtures/snapshot.json');
-const debugPath = path.resolve(__dirname, '../../PT_Debug_2026-05-19.json');
+const debugPath = path.resolve(__dirname, '../../PT_Debug_2026-05-23.json');
 
 if (!fs.existsSync(snapshotPath)) {
   console.log('  ⚠️  快照文件不存在，请先运行: node scripts/build-snapshot.js PT_Debug_*.json');

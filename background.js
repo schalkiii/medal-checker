@@ -70,6 +70,9 @@ const extractMedalsFromHtml = (html) => {
   }
 
   if (medals.length === 0) {
+    const pterclubMedals = extractMedalsFromPterclub(html);
+    if (pterclubMedals.length > 0) return pterclubMedals;
+
     const cardMedals = extractMedalsFromCards(html);
     if (cardMedals.length > 0) return cardMedals;
   }
@@ -113,6 +116,37 @@ const extractMedalsFromBuyCenter = (html) => {
     const timeRange = timeMatch ? timeMatch[1].trim() : '';
 
     medals.push({ name, price, duration, stock, timeRange });
+  }
+
+  return medals;
+};
+
+const extractMedalsFromPterclub = (html) => {
+  const medals = [];
+  const medalRegex = /<input\s+type="submit"\s+name="medalchosen"\s+value="([^"]*)"([^>]*)>/gi;
+  let match;
+
+  while ((match = medalRegex.exec(html)) !== null) {
+    const value = match[1];
+    const attrs = match[2];
+
+    if (attrs.includes('disabled')) continue;
+
+    const codeMatch = value.match(/^(\d{3}-\d{3})/);
+    if (!codeMatch) continue;
+
+    const code = codeMatch[1];
+    const priceMatch = value.match(/\(([\d,]+)\s*猫粮\)/);
+    const price = priceMatch ? priceMatch[1].replace(/,/g, '') : '';
+
+    const before = html.substring(Math.max(0, match.index - 600), match.index);
+    const imgTagMatches = [...before.matchAll(/<img\s+title="([^"]*)"/gi)];
+    const imgMatch = imgTagMatches.length > 0 ? imgTagMatches[imgTagMatches.length - 1] : null;
+    const name = imgMatch ? imgMatch[1].trim() : '';
+
+    if (!name) continue;
+
+    medals.push({ name, price, medalId: code });
   }
 
   return medals;
@@ -250,14 +284,14 @@ const DEFAULT_SITES = [
   'pt.soulvoice.club|https://pt.soulvoice.club/medal.php',
   'pt.xingyungept.org|https://pt.xingyungept.org/medal.php',
   'ptcafe.club|https://ptcafe.club/medal.php',
-  'pterclub.com|https://pterclub.com/medal.php',
+  'pterclub.net|https://pterclub.net/medal.php',
   'ptfans.cc|https://ptfans.cc/medal.php',
   'ptlgs.org|https://ptlgs.org/medal.php',
   'ptskit.com|https://www.ptskit.com/medal.php',
   'ptzone.xyz|https://ptzone.xyz/medal.php',
   'qingwapt.com|https://qingwapt.com/medal.php',
   'raingfh.top|https://raingfh.top/medal.php',
-  'rousi.zip|https://rousi.zip/medal.php',
+  'rousi.pro|https://rousi.pro/medal.php',
   'sewerpt.com|https://sewerpt.com/medal.php',
   'si-qi.xyz|https://si-qi.xyz/medal.php',
   'springsunday.net (badges)|https://springsunday.net/badges.php',
@@ -390,19 +424,23 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
           const html = await response.text();
           const pageHtmls = [{ url: siteUrl, html }];
           allPageHtmls.push(...pageHtmls);
+          const isPterclub = html.includes('name="medalchosen"');
           let medals = siteUrl.includes('buycenter.php')
             ? extractMedalsFromBuyCenter(html)
             : extractMedalsFromHtml(html);
           let all_pages = 1;
 
           for (let i = 1; i < 15; i++) {
-            const query_str = `href\\s*=\\s*["']\\?page=${i}["']`;
+            const pageNum = isPterclub ? String(i).padStart(3, '0') : i;
+            const query_str = isPterclub
+              ? `page=page${pageNum}`
+              : `href\\s*=\\s*["']\\?page=${i}["']`;
             const re = new RegExp(query_str, 'g');
             const has_next_page = (html.match(re) || []).length;
 
             if (has_next_page > 0) {
               try {
-                const new_url = siteUrl + '?page=' + i;
+                const new_url = isPterclub ? siteUrl + '?page=page' + pageNum : siteUrl + '?page=' + i;
                 const response2 = await fetchWithTimeout(new_url, {
                   headers: {
                     Cookie: cookies.map(c => `${c.name}=${c.value}`).join('; '),
@@ -643,5 +681,5 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 });
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { getCookieDomain, fetchWithTimeout, extractMedalsFromHtml, extractTdText, getColumnLayout, extractMedalsFromBuyCenter, extractMedalsFromCards, sendToFeishu, setupAlarm, performScheduledScan, ALARM_NAME };
+  module.exports = { getCookieDomain, fetchWithTimeout, extractMedalsFromHtml, extractTdText, getColumnLayout, extractMedalsFromBuyCenter, extractMedalsFromCards, extractMedalsFromPterclub, sendToFeishu, setupAlarm, performScheduledScan, ALARM_NAME };
 }
