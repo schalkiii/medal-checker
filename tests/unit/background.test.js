@@ -760,6 +760,87 @@ test('卡片布局无容器返回空数组', () => {
 });
 
 // ============================================================
+// hxpt 卡片布局 (class="action-btn btn-primary buy")
+// ============================================================
+console.log('\n  ▶ extractMedalsFromCards - hxpt 卡片布局');
+
+const makeHxptCardHtml = (medalsData) => {
+  let html = '<style>.medal-card{}</style>\n<div class="medal-grid" id="category-1-medals">\n';
+  for (const m of medalsData) {
+    html += `<div class="medal-card">
+      <div class="medal-image-container">
+        <img src="${m.img || 'medal'}.gif" alt="${m.name}" class="medal-image">
+      </div>
+      <div class="medal-content">
+        <div class="medal-title">${m.name}</div>
+        <div class="medal-description">${m.desc || ''}</div>
+        <div class="medal-details">
+          <div class="medal-detail-item"><span>价格:</span><strong>${m.price}</strong></div>
+          <div class="medal-detail-item"><span>时长:</span><strong>${m.duration}</strong></div>
+          <div class="medal-detail-item"><span>加成:</span><strong>${m.bonus || '0%'}</strong></div>
+          <div class="medal-detail-item"><span>赠送费用:</span><strong>${m.giftFee || '100%'}</strong></div>
+        </div>
+        <div class="medal-actions">
+          <button class="action-btn btn-primary view-detail" data-id="${m.id}" data-name="${m.name}" data-price="${m.price}" data-duration="${m.duration}">详情</button>
+          <button class="action-btn btn-primary buy" data-id="${m.id}"${m.disabled ? ' disabled' : ''}>购买</button>
+          <button class="action-btn btn-secondary gift" data-id="${m.id}" disabled>赠送</button>
+        </div>
+      </div>
+    </div>\n`;
+  }
+  html += '</div>';
+  return html;
+};
+
+const sampleHxpt = makeHxptCardHtml([
+  { id: 16, name: '二十四节气 - 白露', price: '188,888', duration: '360 天', bonus: '1%', desc: '白露是二十四节气中的第十五个节气', disabled: false },
+  { id: 17, name: '二十四节气 - 秋分', price: '188,888', duration: '360 天', bonus: '1%', desc: '二十四节气之第十六个节气', disabled: false },
+  { id: 18, name: '二十四节气 - 寒露', price: '188,888', duration: '360 天', bonus: '1%', desc: '已过期勋章', disabled: true },
+]);
+
+test('hxpt卡片提取非disabled勋章', () => {
+  const medals = bg.extractMedalsFromCards(sampleHxpt);
+  assertEqual(medals.length, 2);
+});
+
+test('hxpt卡片提取名称', () => {
+  const medals = bg.extractMedalsFromCards(sampleHxpt);
+  assertEqual(medals[0].name, '二十四节气 - 白露');
+  assertEqual(medals[1].name, '二十四节气 - 秋分');
+});
+
+test('hxpt卡片提取价格和有效期', () => {
+  const medals = bg.extractMedalsFromCards(sampleHxpt);
+  assertEqual(medals[0].price, '188,888');
+  assertEqual(medals[0].duration, '360 天');
+});
+
+test('hxpt卡片提取加成', () => {
+  const medals = bg.extractMedalsFromCards(sampleHxpt);
+  assertEqual(medals[0].bonus, '1%');
+});
+
+test('hxpt卡片提取medalId', () => {
+  const medals = bg.extractMedalsFromCards(sampleHxpt);
+  assertEqual(medals[0].medalId, '16');
+  assertEqual(medals[1].medalId, '17');
+});
+
+test('hxpt卡片过滤disabled', () => {
+  const html = makeHxptCardHtml([
+    { id: 1, name: '已禁用', price: '100', duration: '30 天', disabled: true },
+    { id: 2, name: '可用', price: '200', duration: '60 天', disabled: false },
+  ]);
+  const medals = bg.extractMedalsFromCards(html);
+  assertEqual(medals.length, 1);
+  assert(medals[0].name.includes('可用'));
+});
+
+test('hxpt卡片空HTML返回空数组', () => {
+  assertEqual(bg.extractMedalsFromCards('').length, 0);
+});
+
+// ============================================================
 // setupAlarm
 // ============================================================
 console.log('\n  ▶ setupAlarm');

@@ -182,7 +182,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const medalItem = document.createElement('div');
             medalItem.className = 'medal-item' + (isNew ? ' new-medal' : '');
 
-            const medalUrl = medal.medalId ? `${site.url}?medal=${medal.medalId}` : site.url;
+            let medalUrl = site.url;
+            if (medal.medalId) {
+              const separator = site.url.includes('?') ? '&' : '?';
+              medalUrl = site.url + separator + 'medal=' + encodeURIComponent(medal.medalId);
+            }
 
             const metaParts = [];
             if (medal.price) metaParts.push(`<span class="meta-price">💰 ${medal.price}</span>`);

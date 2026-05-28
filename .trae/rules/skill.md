@@ -95,6 +95,55 @@ v1.2 及之前只匹配 `<input class="btn buy" ... value="购买">`，但卡片
 - 名称提取时必须取 **最后一个** `<img title>` 而非第一个（因为窗口中可能包含上一个勋章图片）
 - 使用 `matchAll` + 取最后一个元素来正确获取最近的图片
 
+## hxpt（好学）卡片布局适配指南
+
+### 布局特征
+
+hxpt 使用 `.medal-grid` 卡片网格布局，卡片元素特征：
+
+```html
+<div class="medal-grid">
+  <div class="medal-card">
+    <div class="medal-image-container">
+      <img alt="名称" src="..." />
+    </div>
+    <div class="medal-content">
+      <div class="medal-title">勋章名称</div>
+      <div class="medal-details">
+        <div class="medal-detail-item"><span>价格:</span><strong>188,888</strong></div>
+        <div class="medal-detail-item"><span>时长:</span><strong>360 天</strong></div>
+      </div>
+      <div class="medal-actions">
+        <button class="action-btn btn-primary buy" data-id="16">购买</button>
+      </div>
+    </div>
+  </div>
+</div>
+```
+
+### 关键点
+
+1. 购买按钮 class 为 `action-btn btn-primary buy`（三个独立 class，`buy` 是最后一个）
+2. 名称在 `<div class="medal-title">` 中
+3. 字段使用反转结构：`<span>标签:</span><strong>值</strong>`（label 在外，value 在 strong 内）
+4. 这与旧格式 `<strong>标签:</strong>值` 相反（旧格式 label 在 strong 内）
+
+### 解决方法
+
+1. 卡片标签匹配改为正则 `/medal-card\b/`（不依赖尾部空格）
+2. 购买按钮正则改为 `\bclass="([^"]*\bbuy\b[^"]*)"`（buy 作为独立词匹配）
+3. 名称提取 3 层回退：medal-name/medal-title/medal-card__name → img alt → 首 h1-h4
+4. 字段提取分两阶段：
+   - 先尝试旧格式 `<strong>标签:</strong>值`（label 在 strong 内）
+   - 若旧格式未匹配任何已知标签，再尝试新格式 `<span>标签:</span><strong>值</strong>`
+
+### 历史参考
+
+- 2026-05-29: 修复 hxpt.org 卡片布局解析 + extractMedalsFromCards 全面泛化（v1.6）
+  - 修改文件：`background.js`（extractMedalsFromCards 重构）、`options/options.js`（勋章链接精准度）
+  - 新增测试：7 个 hxpt 卡片布局单元测试（69→69，重新分配）
+  - DEFAULT_SITES 更新：`agsvpt.com` → `agsvpt.cn`，`playletpt.xyz` → `playlet.cc`
+
 ## 代码修改全流程规范
 
 ### 变更影响范围分析

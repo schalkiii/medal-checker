@@ -156,10 +156,13 @@ const extractMedalsFromCards = (html) => {
   const medals = [];
   const cards = [];
   let pos = 0;
+  const cardTagRegex = /<div[^>]*\bclass=["']medal-card\b[^>]*>/gi;
 
-  while (pos < html.length) {
-    const cardStart = html.indexOf('<div class="medal-card ', pos);
-    if (cardStart < 0) break;
+  cardTagRegex.lastIndex = 0;
+  let cardMatch;
+  while ((cardMatch = cardTagRegex.exec(html)) !== null) {
+    const cardStart = cardMatch.index;
+    if (cardStart < pos) continue;
 
     let d = 0;
     let cardEnd = -1;
@@ -184,7 +187,7 @@ const extractMedalsFromCards = (html) => {
   }
 
   for (const card of cards) {
-    const actionMatch = card.match(/<(?:input|button)[^>]*\bclass="btn buy[^"]*"[^>]*\/?\s*>/i);
+    const actionMatch = card.match(/<(?:input|button)[^>]*\bclass="([^"]*\bbuy\b[^"]*)"[^>]*\/?\s*>/i);
     if (!actionMatch) continue;
 
     const actionHtml = actionMatch[0];
@@ -204,24 +207,91 @@ const extractMedalsFromCards = (html) => {
     const dataIdMatch = actionHtml.match(/data-id="(\d+)"/);
     const medalId = dataIdMatch ? dataIdMatch[1] : '';
 
-    const nameMatch = card.match(/<div class="medal-name">([\s\S]*?)<\/div>/);
-    const name = nameMatch ? nameMatch[1].trim() : '';
-
-    let price = '', duration = '', bonus = '', stock = '', timeRange = '';
-    const fieldPairs = card.match(/<strong>([^<]+)<\/strong>([\s\S]*?)<\/div>/g) || [];
-    for (const pair of fieldPairs) {
-      const labelMatch = pair.match(/<strong>([^<]+)<\/strong>/);
-      const val = pair.replace(/<[^>]+>/g, '').replace(/：/g, ':').replace(/^[^:]*[:：]\s*/, '').trim();
-      if (!labelMatch) continue;
-      const label = labelMatch[1].replace(/[：:]/g, '').trim();
-      if (label.includes('价格') || label.includes('價格')) price = val;
-      else if (label.includes('有效期')) duration = val;
-      else if (label.includes('加成')) bonus = val;
-      else if (label.includes('库存') || label.includes('庫存')) stock = val;
-      else if (label.includes('可购买') || label.includes('可購買')) timeRange = val;
+    let name = '';
+    const namePatterns = [
+      /<(?:h[1-4]|div|span)\s+class="(?:medal-name|medal-title|medal-card__name)"[^>]*>([\s\S]*?)<\/(?:h[1-4]|div|span)>/i,
+      /<div\s+class="cread-name"[^>]*>([\s\S]*?)<\/div>/i
+    ];
+    for (const pat of namePatterns) {
+      const m = card.match(pat);
+      if (m) { name = m[1].replace(/<[^>]+>/g, '').trim(); break; }
     }
 
-    if (name) medals.push({ name, price, duration, bonus, stock, timeRange, medalId });
+    if (!name) {
+      const imgMatch = card.match(/<img[^>]*\balt="([^"]*)"[^>]*>/i);
+      if (imgMatch) name = imgMatch[1].trim();
+    }
+
+    if (!name) {
+      const fallbackH = card.match(/<h([1-4])[^>]*>([\s\S]*?)<\/h\1>/i);
+      if (fallbackH) name = fallbackH[2].replace(/<[^>]+>/g, '').trim().replace(/\s*\(#\d+\)\s*$/, '');
+    }
+
+    if (!name) continue;
+
+    let price = '', duration = '', bonus = '', stock = '', timeRange = '';
+
+    const labelValuePatterns = [
+      /<span\s+class="detail-label">([^<]*)<\/span>\s*<span\s+class="detail-value">([^<]*)<\/span>/gi,
+      /<span\s+class="meta-label">([^<]*)<\/span>\s*<span\s+class="meta-value">([^<]*)<\/span>/gi,
+      /<span\s+class="medal-card__label">([^<]*)<\/span>\s*<span\s+class="medal-card__value">([^<]*)<\/span>/gi,
+      /<div\s+class="meta-label">([^<]*)<\/div>\s*<div\s+class="meta-value">([^<]*)<\/div>/gi,
+      /<span\s+class="stat-label">([^<]*)<\/span>\s*<span\s+class="stat-value">([^<]*)<\/span>/gi
+    ];
+
+    let foundFields = false;
+    for (const pat of labelValuePatterns) {
+      pat.lastIndex = 0;
+      let pair;
+      while ((pair = pat.exec(card)) !== null) {
+        foundFields = true;
+        const label = pair[1].replace(/[：:]/g, '').trim();
+        const val = pair[2].replace(/<[^>]+>/g, '').trim();
+        if (label.includes('价格') || label.includes('價格')) price = val;
+        else if (label.includes('有效期')) duration = val;
+        else if (label.includes('加成')) bonus = val;
+        else if (label.includes('库存') || label.includes('庫存')) stock = val;
+        else if (label.includes('可购买') || label.includes('可購買')) timeRange = val;
+      }
+    }
+
+    if (!foundFields) {
+      const strongPairsOld = card.match(/<strong>([^<]+)<\/strong>([\s\S]*?)<\/div>/g) || [];
+      let hasOldStrongFields = false;
+      for (const pair of strongPairsOld) {
+        const labelMatch = pair.match(/<strong>([^<]+)<\/strong>/);
+        if (!labelMatch) continue;
+        const label = labelMatch[1].replace(/[：:]/g, '').trim();
+        if (!label.includes('价格') && !label.includes('有效期')
+          && !label.includes('加成') && !label.includes('库存')
+          && !label.includes('可购买') && !label.includes('價格')
+          && !label.includes('庫存') && !label.includes('可購買')) continue;
+        hasOldStrongFields = true;
+        const val = pair.replace(/<[^>]+>/g, '').replace(/：/g, ':').replace(/^[^:]*[:：]\s*/, '').trim();
+        if (label.includes('价格') || label.includes('價格')) price = val;
+        else if (label.includes('有效期')) duration = val;
+        else if (label.includes('加成')) bonus = val;
+        else if (label.includes('库存') || label.includes('庫存')) stock = val;
+        else if (label.includes('可购买') || label.includes('可購買')) timeRange = val;
+      }
+
+      if (!hasOldStrongFields) {
+        const strongPairsNew = card.match(/<(?:div|span|td)[^>]*>\s*<span[^>]*>([^<]+)[:：]?\s*<\/span>\s*<strong>([^<]+)<\/strong>/gi) || [];
+        for (const pair of strongPairsNew) {
+          const m = pair.match(/<span[^>]*>([^<]+)[:：]?\s*<\/span>\s*<strong>([^<]+)<\/strong>/i);
+          if (!m) continue;
+          const label = m[1].replace(/[：:]/g, '').trim();
+          const val = m[2].trim();
+          if (label.includes('价格') || label.includes('價格')) price = val;
+          else if (label.includes('时长') || label.includes('有效期')) duration = val;
+          else if (label.includes('加成')) bonus = val;
+          else if (label.includes('库存') || label.includes('庫存')) stock = val;
+          else if (label.includes('可购买') || label.includes('可購買')) timeRange = val;
+        }
+      }
+    }
+
+    medals.push({ name, price, duration, bonus, stock, timeRange, medalId });
   }
   return medals;
 };
@@ -240,7 +310,7 @@ const DEFAULT_SITES = [
   '13city.org|https://13city.org/medal.php',
   '1ptba.com|https://1ptba.com/medal.php',
   '52movie.top|https://www.52movie.top/medal.php',
-  'agsvpt.com|https://www.agsvpt.com/medal.php',
+  'agsvpt.cn|https://pt.agsvpt.cn/medal.php',
   'bilibili.download|https://bilibili.download/medal.php',
   'cangbao.ge|https://cangbao.ge/medal.php',
   'carpt.net|https://carpt.net/medal.php',
@@ -273,7 +343,7 @@ const DEFAULT_SITES = [
   'p.t-baozi.cc|https://p.t-baozi.cc/medal.php',
   'pandapt.net|https://pandapt.net/medal.php',
   'piggo.me|https://piggo.me/medal.php',
-  'playletpt.xyz|https://playletpt.xyz/medal.php',
+  'playlet.cc|https://playlet.cc/medal.php',
   'pt.0ff.cc|https://pt.0ff.cc/medal.php',
   'pt.aling.de|https://pt.aling.de/medal.php',
   'pt.gtkpw.xyz|https://pt.gtkpw.xyz/medal.php',
