@@ -95,9 +95,120 @@ v1.2 及之前只匹配 `<input class="btn buy" ... value="购买">`，但卡片
 - 名称提取时必须取 **最后一个** `<img title>` 而非第一个（因为窗口中可能包含上一个勋章图片）
 - 使用 `matchAll` + 取最后一个元素来正确获取最近的图片
 
-## 代码修改全流程规范
+- 2026-06-19: 新增 medal-item 布局 + hhanclub 网格布局 + SPA 适配（v1.7）
+  - 新增 `extractMedalsFromMedalItems()` 通用提取器，处理 medal-item + medal-details 表格 + buy-btn/gift-btn 按钮模式
+  - 新增 `extractMedalsFromHhanclub()` 特异性提取器，处理 hhanclub.net Tailwind 9 列网格布局
+  - zmpt.cc SPA 站点已通过 chrome.tabs + scripting 注入适配（v1.6+）
+  - 新增 24 个单元测试（86→86，11 medal-item + 9 hhanclub + 4 SPA）
+  - 新增站点：hhanclub.net、hdbao.cc、dstudio.me、musopia.vip、playlet.cc
+  - URL 更新：agsvpt.com → pt.agsvpt.cn、playletpt.xyz → playlet.cc
 
-### 变更影响范围分析
+## medal-item 布局适配指南
+
+### 布局特征
+
+部分站点使用 `medal-item` 卡片布局，不同于标准 NexusPHP 表格和 medal-card 布局：
+
+```html
+<div class="medal-item">
+  <img alt="勋章名称" src="..." />
+  <div class="medal-info">
+    <h2>勋章名称</h2>
+    <p>描述</p>
+    <p>不限~不限</p>
+    <table class="medal-details">
+      <tr><td>加成</td><td>0%</td></tr>
+      <tr><td>有效期</td><td>365</td></tr>
+      <tr><td>价格</td><td>888,888</td></tr>
+      <tr><td>库存</td><td>0</td></tr>
+    </table>
+  </div>
+  <div class="action-container">
+    <input type="button" class="buy-btn" data-id="80" value="库存不足" disabled>
+  </div>
+</div>
+```
+
+### 关键点
+
+1. 容器识别：`class="medal-item"` + `class="medal-details"` 双重检测
+2. 按钮类名变体：`buy-btn`、`gift-btn` 或空 `class=""`（通过 `data-id` 属性识别）
+3. 名称提取：优先从 `<h2>` 提取，回退到 `<img alt>`
+4. 字段提取：从 `medal-details` 表格中按 label 匹配（价格/有效期/加成/库存）
+5. 过滤规则：排除 `disabled`、`仅授予`、`交换`、`赠送` 按钮
+
+### 适用站点
+
+- pt.agsvpt.cn（`buy-btn` 类名）
+- hdkyl.in（空 `class=""`，通过 `data-id` 识别）
+- qingwapt.com（`gift-btn` 类名）
+
+## hhanclub 网格布局适配指南
+
+### 布局特征
+
+hhanclub.net 使用 Tailwind CSS 9 列网格布局，完全自定义：
+
+```html
+<div class="medal-table py-5 bg-[#FFFFFF]">
+  <div class="px-5"><img alt='勋章名称' src='...'></div>
+  <div class="flex flex-col pr-5 gap-y-[15px]">
+    <div>勋章名称</div>
+    <div>描述</div>
+  </div>
+  <div>780,000</div>      <!-- 价格 -->
+  <div>998178</div>         <!-- 库存 -->
+  <div>1</div>              <!-- 限购 -->
+  <div>15%</div>            <!-- 加成 -->
+  <div>365</div>            <!-- 有效期 -->
+  <div>普通</div>           <!-- 类型 -->
+  <div>
+    <input type="button" data-id="5" value="购买" disabled>
+  </div>
+</div>
+```
+
+### 关键点
+
+1. 容器识别：`class="medal-table py-5"`（`py-5` 区分数据行和 header 行）
+2. 深度计数提取：使用 `<div>` 深度计数而非正则，确保正确匹配嵌套 div 边界
+3. 列索引：cells[0]=外层容器, cells[1]=图片, cells[2]=名称描述, cells[3]=价格, cells[4]=库存, cells[5]=限购, cells[6]=加成, cells[7]=有效期, cells[8]=类型, cells[9]=操作
+4. 按钮过滤：仅提取 `value="购买"` 或 `value="購買"` 且非 disabled 的按钮
+
+## SPA 站点适配指南
+
+### 问题描述
+
+zmpt.cc 等站点使用 Vue/Vite 构建的 SPA，静态 HTML 中只有 `<div id="vite-app"></div>` 空壳，勋章完全由 JavaScript 动态渲染。
+
+### 检测方法
+
+```javascript
+const isZmpt = html.includes('id="vite-app"') && html.includes('modulepreload');
+```
+
+### 适配方案
+
+使用 Chrome Extension API 在后台标签页中加载页面，等待 JS 渲染完成后注入脚本获取 DOM：
+
+1. `chrome.tabs.create({ url, active: false })` → 创建后台标签页
+2. 监听 `chrome.tabs.onUpdated` → 等待页面加载完成
+3. `setTimeout(4000ms)` → 等待 JS 渲染完成
+4. `chrome.scripting.executeScript({ target: { tabId }, func: () => document.getElementById('vite-app').innerHTML })` → 获取渲染后 DOM
+5. `chrome.tabs.remove(tabId)` → 清理标签页
+6. 将渲染后 DOM 传给 `extractMedalsFromCards()` 解析
+
+### 注意事项
+
+- 25 秒超时保护，防止标签页永久挂起
+- 非浏览器环境（Node.js 测试）返回空数组
+- manifest.json 需要 `"scripting"` 和 `"tabs"` 权限
+
+### 其他 SPA 站点
+
+- yemapt.org：UmiJS SPA（`id="root"` + `umi.js`），hash 路由 `#/consumer/badge`，尚未适配
+
+## 代码修改全流程规范
 
 每次修改必须识别以下同步点：
 1. 核心逻辑（background.js 中的提取函数）

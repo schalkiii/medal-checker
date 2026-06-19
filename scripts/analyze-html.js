@@ -150,7 +150,38 @@ function analyzeFile(filePath) {
         }
       }
       console.log(`  数据行数: ${dataRowCount}`);
-    } else if (html.includes('medal-container') || html.includes('medal-cards') || html.includes('medal-card ')) {
+    } else if (html.includes('id="vite-app"') && html.includes('modulepreload')) {
+      // SPA site (Vue/Vite rendered)
+      console.log('\n📋 SPA 布局 (Vite/Vue 渲染):');
+      console.log('  ⚠️ 勋章内容由 JavaScript 动态渲染，静态 HTML 中无勋章数据');
+      console.log('  需要 chrome.tabs + scripting 注入获取渲染后 DOM');
+    } else if (html.includes('medal-table') && html.includes('grid-cols')) {
+      // hhanclub Tailwind grid layout
+      console.log('\n📋 hhanclub Tailwind 网格布局:');
+      const medalRows = html.match(/<div class="medal-table py-5[^>]*>/g) || [];
+      const buyButtons = html.match(/<input[^>]*type="button"[^>]*data-id="\d+"[^>]*value="([^"]*)"[^>]*>/gi) || [];
+      const enabledButtons = buyButtons.filter(b => !b.includes('disabled'));
+      console.log(`  勋章数据行: ${medalRows.length}`);
+      console.log(`  购买按钮: ${buyButtons.length}（可用: ${enabledButtons.length}）`);
+      enabledButtons.forEach((btn, i) => {
+        const valMatch = btn.match(/value="([^"]*)"/);
+        const idMatch = btn.match(/data-id="(\d+)"/);
+        console.log(`    [${i}] id=${idMatch ? idMatch[1] : '?'} btn="${valMatch ? valMatch[1] : '?'}"`);
+      });
+    } else if (html.includes('medal-item') && html.includes('medal-details')) {
+      // medal-item card layout
+      console.log('\n📋 medal-item 卡片布局:');
+      const medalItems = html.match(/<div class="medal-item">/g) || [];
+      const buyButtons = html.match(/<input[^>]*type="button"[^>]*class="[^"]*(?:buy-btn|gift-btn)[^"]*"[^>]*>/gi) || [];
+      const enabledButtons = buyButtons.filter(b => !b.includes('disabled'));
+      console.log(`  勋章项目数: ${medalItems.length}`);
+      console.log(`  购买按钮: ${buyButtons.length}（可用: ${enabledButtons.length}）`);
+      enabledButtons.forEach((btn, i) => {
+        const valMatch = btn.match(/value="([^"]*)"/);
+        const idMatch = btn.match(/data-id="(\d+)"/);
+        console.log(`    [${i}] id=${idMatch ? idMatch[1] : '?'} btn="${valMatch ? valMatch[1] : '?'}"`);
+      });
+    } else if (html.includes('medal-container') || html.includes('medal-cards') || /medal-card\b/i.test(html)) {
       // Analyze card layout
       console.log('\n📋 卡片布局分析:');
       const cardTags = html.match(/<div class="medal-card[^"]*"[^>]*>/g) || [];

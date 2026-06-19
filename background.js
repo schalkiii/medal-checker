@@ -75,6 +75,12 @@ const extractMedalsFromHtml = (html) => {
 
     const cardMedals = extractMedalsFromCards(html);
     if (cardMedals.length > 0) return cardMedals;
+
+    const hhanclubMedals = extractMedalsFromHhanclub(html);
+    if (hhanclubMedals.length > 0) return hhanclubMedals;
+
+    const medalItemMedals = extractMedalsFromMedalItems(html);
+    if (medalItemMedals.length > 0) return medalItemMedals;
   }
 
   return medals;
@@ -149,6 +155,193 @@ const extractMedalsFromPterclub = (html) => {
     medals.push({ name, price, medalId: code });
   }
 
+  return medals;
+};
+
+const extractMedalsFromZmpt = async (siteUrl, _cookies) => {
+  if (typeof chrome === 'undefined' || !chrome.tabs) {
+    return [];
+  }
+
+  return new Promise((resolve) => {
+    const timeout = setTimeout(() => { resolve([]); }, 25000);
+
+    chrome.tabs.create({ url: siteUrl, active: false }, (tab) => {
+      if (!tab) { clearTimeout(timeout); resolve([]); return; }
+
+      const tabId = tab.id;
+      const listener = (updatedTabId, changeInfo) => {
+        if (updatedTabId !== tabId || changeInfo.status !== 'complete') return;
+        chrome.tabs.onUpdated.removeListener(listener);
+
+        setTimeout(async () => {
+          try {
+            const results = await chrome.scripting.executeScript({
+              target: { tabId },
+              func: () => {
+                const app = document.getElementById('vite-app');
+                return app ? app.innerHTML : '';
+              }
+            });
+            const renderedHtml = results[0]?.result || '';
+            chrome.tabs.remove(tabId);
+            clearTimeout(timeout);
+            resolve(renderedHtml);
+          } catch (_e) {
+            chrome.tabs.remove(tabId);
+            clearTimeout(timeout);
+            resolve('');
+          }
+        }, 4000);
+      };
+
+      chrome.tabs.onUpdated.addListener(listener);
+    });
+  });
+};
+
+const extractMedalsFromMedalItems = (html) => {
+  const medals = [];
+  const items = [];
+  let pos = 0;
+
+  while (pos < html.length) {
+    const itemStart = html.indexOf('<div class="medal-item">', pos);
+    if (itemStart < 0) break;
+
+    let d = 0;
+    let itemEnd = -1;
+    for (let i = itemStart; i < html.length; i++) {
+      if (html[i] === '<') {
+        const tagEnd = html.indexOf('>', i);
+        if (tagEnd < 0) break;
+        const tag = html.substring(i, tagEnd + 1);
+        if (tag.startsWith('<div ') || tag.startsWith('<div>')) d++;
+        else if (tag.startsWith('</div>')) {
+          d--;
+          if (d === 0) { itemEnd = tagEnd + 1; break; }
+        }
+        i = tagEnd;
+      }
+    }
+
+    if (itemEnd > 0) {
+      items.push(html.substring(itemStart, itemEnd));
+      pos = itemEnd;
+    } else break;
+  }
+
+  for (const item of items) {
+    const btnMatch = item.match(/<input[^>]*type="button"[^>]*class="[^"]*(?:buy-btn|gift-btn)[^"]*"[^>]*>/i)
+                  || item.match(/<input[^>]*type="button"[^>]*data-id="\d+"[^>]*>/i);
+    if (!btnMatch) continue;
+
+    const btnHtml = btnMatch[0];
+    if (btnHtml.includes('disabled')) continue;
+
+    const valMatch = btnHtml.match(/value="([^"]*)"/);
+    const btnValue = valMatch ? valMatch[1] : '';
+    if (btnValue === '仅授予' || btnValue === '交换' || btnValue === '赠送') continue;
+
+    const dataIdMatch = btnHtml.match(/data-id="(\d+)"/);
+    const medalId = dataIdMatch ? dataIdMatch[1] : '';
+
+    const h2Match = item.match(/<h2>([\s\S]*?)<\/h2>/);
+    let name;
+    if (h2Match) {
+      name = h2Match[1].replace(/<[^>]+>/g, '').trim();
+    } else {
+      const imgMatch = item.match(/<img[^>]*alt="([^"]*)"[^>]*>/i);
+      name = imgMatch ? imgMatch[1].trim() : '';
+    }
+
+    let price = '', duration = '', bonus = '', stock = '', timeRange = '';
+    const detailsMatch = item.match(/<table class="medal-details">([\s\S]*?)<\/table>/);
+    if (detailsMatch) {
+      const rows = detailsMatch[1].match(/<tr>[\s\S]*?<\/tr>/g) || [];
+      for (const row of rows) {
+        const tds = row.match(/<td[^>]*>([\s\S]*?)<\/td>/g) || [];
+        if (tds.length >= 2) {
+          const label = tds[0].replace(/<[^>]+>/g, '').trim();
+          const value = tds[1].replace(/<[^>]+>/g, '').trim();
+          if (label.includes('价格') || label.includes('價格')) price = value;
+          else if (label.includes('有效期')) duration = value;
+          else if (label.includes('加成')) bonus = value;
+          else if (label.includes('库存') || label.includes('庫存')) stock = value;
+        }
+      }
+    }
+
+    const pTags = item.match(/<p>([\s\S]*?)<\/p>/g) || [];
+    for (const p of pTags) {
+      const text = p.replace(/<[^>]+>/g, '').trim();
+      if (text.includes('~') && text !== '不限~不限') {
+        timeRange = text;
+        break;
+      }
+    }
+
+    if (name) medals.push({ name, price, duration, bonus, stock, timeRange, medalId });
+  }
+  return medals;
+};
+
+const extractMedalsFromHhanclub = (html) => {
+  const medals = [];
+  const rows = [];
+  let pos = 0;
+
+  while (pos < html.length) {
+    const rowStart = html.indexOf('<div class="medal-table py-5', pos);
+    if (rowStart < 0) break;
+
+    let d = 0;
+    let rowEnd = -1;
+    for (let i = rowStart; i < html.length; i++) {
+      if (html[i] === '<') {
+        const tagEnd = html.indexOf('>', i);
+        if (tagEnd < 0) break;
+        const tag = html.substring(i, tagEnd + 1);
+        if (tag.startsWith('<div ') || tag.startsWith('<div>')) d++;
+        else if (tag.startsWith('</div>')) {
+          d--;
+          if (d === 0) { rowEnd = tagEnd + 1; break; }
+        }
+        i = tagEnd;
+      }
+    }
+
+    if (rowEnd > 0) {
+      rows.push(html.substring(rowStart, rowEnd));
+      pos = rowEnd;
+    } else break;
+  }
+
+  for (const rowContent of rows) {
+    const btnMatch = rowContent.match(/<input[^>]*type="button"[^>]*data-id="(\d+)"[^>]*value="([^"]*)"[^>]*>/);
+    if (!btnMatch) continue;
+
+    const medalId = btnMatch[1];
+    const btnValue = btnMatch[2];
+
+    if (btnMatch[0].includes('disabled')) continue;
+    if (btnValue !== '购买' && btnValue !== '購買') continue;
+
+    const imgMatch = rowContent.match(/<img[^>]*alt='([^']*)'/);
+    const name = imgMatch ? imgMatch[1].trim() : '';
+    if (!name) continue;
+
+    const cells = rowContent.match(/<div[^>]*>([\s\S]*?)<\/div>/g) || [];
+    let price = '', stock = '', bonus = '', duration = '';
+    if (cells.length >= 8) {
+      price = cells[3].replace(/<[^>]+>/g, '').trim();
+      stock = cells[4].replace(/<[^>]+>/g, '').trim();
+      bonus = cells[6].replace(/<[^>]+>/g, '').trim();
+      duration = cells[7].replace(/<[^>]+>/g, '').trim();
+    }
+
+    medals.push({ name, price, duration, bonus, stock, medalId });
+  }
   return medals;
 };
 
@@ -240,7 +433,7 @@ const DEFAULT_SITES = [
   '13city.org|https://13city.org/medal.php',
   '1ptba.com|https://1ptba.com/medal.php',
   '52movie.top|https://www.52movie.top/medal.php',
-  'agsvpt.com|https://www.agsvpt.com/medal.php',
+  'agsvpt.cn|https://pt.agsvpt.cn/medal.php',
   'bilibili.download|https://bilibili.download/medal.php',
   'cangbao.ge|https://cangbao.ge/medal.php',
   'carpt.net|https://carpt.net/medal.php',
@@ -249,15 +442,18 @@ const DEFAULT_SITES = [
   'cspt.top|https://cspt.top/medal.php',
   'cyanbug.net|https://cyanbug.net/medal.php',
   'discfan.net|https://discfan.net/medal.php',
+  'dstudio.me|https://dstudio.me/medal.php',
   'dubhe.site|https://dubhe.site/medal.php',
   'duckboobee.org|https://duckboobee.org/medal.php',
   'gamegamept.com|https://www.gamegamept.com/medal.php',
   'greatposterwall.com|https://greatposterwall.com/medal.php',
+  'hdbao.cc|https://hdbao.cc/medal.php',
   'hdfans.org|http://hdfans.org/medal.php',
   'hdkyl.in|https://www.hdkyl.in/medal.php',
   'hdpt.xyz|https://hdpt.xyz/medal.php',
   'hdtime.org|https://hdtime.org/medal.php',
   'hdvideo.one|https://hdvideo.one/medal.php',
+  'hhanclub.net|https://hhanclub.net/medal.php',
   'hitpt.com|https://www.hitpt.com/medal.php',
   'htpt.cc (buycenter)|https://www.htpt.cc/buycenter.php',
   'hxpt.org|https://www.hxpt.org/medal.php',
@@ -267,13 +463,14 @@ const DEFAULT_SITES = [
   'leaves.red|https://leaves.red/medal.php',
   'lemonhd.net|https://lemonhd.net/medal.php',
   'momentpt.top|https://www.momentpt.top/medal.php',
+  'musopia.vip|https://www.musopia.vip/medal.php',
   'njtupt.top|https://njtupt.top/medal.php',
   'okpt.net|https://www.okpt.net/medal.php',
   'oshen.win|http://www.oshen.win/medal.php',
   'p.t-baozi.cc|https://p.t-baozi.cc/medal.php',
   'pandapt.net|https://pandapt.net/medal.php',
   'piggo.me|https://piggo.me/medal.php',
-  'playletpt.xyz|https://playletpt.xyz/medal.php',
+  'playlet.cc|https://playlet.cc/medal.php',
   'pt.0ff.cc|https://pt.0ff.cc/medal.php',
   'pt.aling.de|https://pt.aling.de/medal.php',
   'pt.gtkpw.xyz|https://pt.gtkpw.xyz/medal.php',
@@ -425,9 +622,22 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
           const pageHtmls = [{ url: siteUrl, html }];
           allPageHtmls.push(...pageHtmls);
           const isPterclub = html.includes('name="medalchosen"');
-          let medals = siteUrl.includes('buycenter.php')
-            ? extractMedalsFromBuyCenter(html)
-            : extractMedalsFromHtml(html);
+          const isZmpt = html.includes('id="vite-app"') && html.includes('modulepreload');
+          let medals;
+
+          if (isZmpt) {
+            const renderedHtml = await extractMedalsFromZmpt(siteUrl, cookies);
+            if (renderedHtml) {
+              pageHtmls[0].html = renderedHtml;
+              medals = extractMedalsFromCards(renderedHtml);
+            } else {
+              medals = [];
+            }
+          } else {
+            medals = siteUrl.includes('buycenter.php')
+              ? extractMedalsFromBuyCenter(html)
+              : extractMedalsFromHtml(html);
+          }
           let all_pages = 1;
 
           for (let i = 1; i < 15; i++) {
@@ -681,5 +891,5 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 });
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { getCookieDomain, fetchWithTimeout, extractMedalsFromHtml, extractTdText, getColumnLayout, extractMedalsFromBuyCenter, extractMedalsFromCards, extractMedalsFromPterclub, sendToFeishu, setupAlarm, performScheduledScan, ALARM_NAME };
+  module.exports = { getCookieDomain, fetchWithTimeout, extractMedalsFromHtml, extractTdText, getColumnLayout, extractMedalsFromBuyCenter, extractMedalsFromCards, extractMedalsFromPterclub, extractMedalsFromZmpt, extractMedalsFromMedalItems, extractMedalsFromHhanclub, sendToFeishu, setupAlarm, performScheduledScan, ALARM_NAME };
 }

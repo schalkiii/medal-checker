@@ -760,6 +760,250 @@ test('卡片布局无容器返回空数组', () => {
 });
 
 // ============================================================
+// zmpt SPA 检测
+// ============================================================
+console.log('\n  ▶ zmpt SPA 检测');
+
+test('zmpt SPA 页面不触发常规表格提取', () => {
+  const html = '<html><head><link rel="modulepreload" href="/build/js/xxx.js"></head><body><div id="vite-app"></div></body></html>';
+  const medals = bg.extractMedalsFromHtml(html);
+  assertEqual(medals.length, 0, 'SPA空壳不应提取到勋章');
+});
+
+test('zmpt 检测条件: vite-app + modulepreload', () => {
+  const zmptHtml = '<html><head><link rel="modulepreload" href="/build/js/xxx.js"></head><body><div id="vite-app"></div></body></html>';
+  const isZmpt = zmptHtml.includes('id="vite-app"') && zmptHtml.includes('modulepreload');
+  assert(isZmpt, '应检测为SPA站点');
+});
+
+test('非SPA站点不被误判', () => {
+  const normalHtml = '<html><body><table><tr><td class="colhead">勋章</td></tr></table></body></html>';
+  const isZmpt = normalHtml.includes('id="vite-app"') && normalHtml.includes('modulepreload');
+  const isNotZmpt = !isZmpt;
+  assert(isNotZmpt, '普通表格页面不应被误判为SPA');
+});
+
+test('extractMedalsFromZmpt 在非浏览器环境返回空数组', async () => {
+  const medals = await bg.extractMedalsFromZmpt('https://zmpt.cc/medal.php', []);
+  assertEqual(medals.length, 0, '无chrome.tabs时应返回空数组');
+});
+
+// ============================================================
+// extractMedalsFromMedalItems — medal-item 卡片布局
+// ============================================================
+console.log('\n  ▶ extractMedalsFromMedalItems - medal-item卡片布局');
+
+function makeMedalItemHtml(medals) {
+  let items = '';
+  for (const m of medals) {
+    const btnClass = m.btnClass || 'buy-btn';
+    items += `<div class="medal-item">
+        <img src="${m.img}.png" alt="${m.name}" />
+        <div class="medal-info">
+            <h2>${m.name}</h2>
+            <p>${m.desc || ''}</p>
+            <p>${m.timeRange || '不限~不限'}</p>
+            <table class="medal-details">
+                <tr><td>加成</td><td>${m.bonus || '0%'}</td></tr>
+                <tr><td>有效期</td><td>${m.duration}</td></tr>
+                <tr><td>价格</td><td>${m.price}</td></tr>
+                <tr><td>库存</td><td>${m.stock || '无限'}</td></tr>
+            </table>
+        </div>
+        <div class="action-container">
+            <input type="button" class="${btnClass}" data-id="${m.id}" value="${m.btnValue}"${m.disabled ? ' disabled' : ''}>
+        </div>
+    </div>`;
+  }
+  return `<div class="medal-type-container"><div class="medal-list">${items}</div></div>`;
+}
+
+const sampleMedalItems = makeMedalItemHtml([
+  { id: 80, img: 'a', name: '测试勋章A', desc: '描述A', duration: '365', bonus: '5%', price: '100,000', stock: '50', btnClass: 'buy-btn', btnValue: '购买', disabled: false },
+  { id: 79, img: 'b', name: '测试勋章B', desc: '描述B', duration: '永久有效', bonus: '0%', price: '50,000', stock: '无限', btnClass: 'buy-btn', btnValue: '购买', disabled: false },
+  { id: 78, img: 'c', name: '已禁用勋章', duration: '30', bonus: '0%', price: '10,000', stock: '无限', btnClass: 'buy-btn', btnValue: '库存不足', disabled: true },
+  { id: 77, img: 'd', name: '仅授予勋章', duration: '永久有效', bonus: '0%', price: '0', stock: '无限', btnClass: 'gift-btn', btnValue: '仅授予', disabled: false },
+  { id: 76, img: 'e', name: '赠送勋章', duration: '30', bonus: '0%', price: '100', stock: '无限', btnClass: 'buy-btn', btnValue: '赠送', disabled: false }
+]);
+
+test('medal-item 提取可购买勋章', () => {
+  const medals = bg.extractMedalsFromMedalItems(sampleMedalItems);
+  assertEqual(medals.length, 2, '应提取2个可购买勋章');
+});
+
+test('medal-item 提取名称', () => {
+  const medals = bg.extractMedalsFromMedalItems(sampleMedalItems);
+  assert(medals[0].name.includes('测试勋章A'), `实际名称: ${medals[0].name}`);
+  assert(medals[1].name.includes('测试勋章B'), `实际名称: ${medals[1].name}`);
+});
+
+test('medal-item 提取价格和有效期', () => {
+  const medals = bg.extractMedalsFromMedalItems(sampleMedalItems);
+  assertEqual(medals[0].price, '100,000');
+  assertEqual(medals[0].duration, '365');
+  assertEqual(medals[1].price, '50,000');
+  assertEqual(medals[1].duration, '永久有效');
+});
+
+test('medal-item 提取加成和库存', () => {
+  const medals = bg.extractMedalsFromMedalItems(sampleMedalItems);
+  assertEqual(medals[0].bonus, '5%');
+  assertEqual(medals[0].stock, '50');
+  assertEqual(medals[1].bonus, '0%');
+  assertEqual(medals[1].stock, '无限');
+});
+
+test('medal-item 提取medalId', () => {
+  const medals = bg.extractMedalsFromMedalItems(sampleMedalItems);
+  assertEqual(medals[0].medalId, '80');
+  assertEqual(medals[1].medalId, '79');
+});
+
+test('medal-item 过滤disabled按钮', () => {
+  const medals = bg.extractMedalsFromMedalItems(sampleMedalItems);
+  const hasDisabled = medals.some(m => m.name.includes('已禁用'));
+  assert(!hasDisabled, 'disabled按钮的勋章不应被提取');
+});
+
+test('medal-item 过滤"仅授予"按钮', () => {
+  const medals = bg.extractMedalsFromMedalItems(sampleMedalItems);
+  const hasAward = medals.some(m => m.name.includes('仅授予'));
+  assert(!hasAward, '仅授予的勋章不应被提取');
+});
+
+test('medal-item 过滤"赠送"按钮', () => {
+  const medals = bg.extractMedalsFromMedalItems(sampleMedalItems);
+  const hasGift = medals.some(m => m.name.includes('赠送'));
+  assert(!hasGift, '赠送的勋章不应被提取');
+});
+
+test('medal-item gift-btn 类名按钮', () => {
+  const html = makeMedalItemHtml([
+    { id: 1, img: 'a', name: 'gift-btn勋章', duration: '30', bonus: '0%', price: '100', stock: '无限', btnClass: 'gift-btn', btnValue: '购买', disabled: false }
+  ]);
+  const medals = bg.extractMedalsFromMedalItems(html);
+  assertEqual(medals.length, 1, 'gift-btn类名的购买按钮应被提取');
+  assert(medals[0].name.includes('gift-btn勋章'));
+});
+
+test('medal-item 空HTML返回空数组', () => {
+  const medals = bg.extractMedalsFromMedalItems('');
+  assertEqual(medals.length, 0);
+});
+
+test('medal-item 无medal-item返回空数组', () => {
+  const medals = bg.extractMedalsFromMedalItems('<div>普通页面</div>');
+  assertEqual(medals.length, 0);
+});
+
+// ============================================================
+// extractMedalsFromHhanclub — hhanclub Tailwind 网格布局
+// ============================================================
+console.log('\n  ▶ extractMedalsFromHhanclub - hhanclub网格布局');
+
+function makeHhanclubHtml(medals) {
+  let rows = '';
+  for (const m of medals) {
+    rows += `<div class="medal-table py-5 bg-[#FFFFFF]">
+                            <div class="px-5">
+                                <img alt='${m.name}' src='${m.img}.svg' class='preview w-[150px] h-[150px] rounded-full'>                            </div>
+                            <div class="flex flex-col pr-5 gap-y-[15px]">
+                                <div>${m.name}</div>
+                                <div>${m.desc || ''}</div>
+                            </div>
+                            <div>${m.price}</div>
+                            <div>${m.stock || '无限'}</div>
+                            <div>${m.limit || '1'}</div>
+                            <div>${m.bonus || '0%'}</div>
+                            <div>${m.duration}</div>
+                            <div>${m.type || '普通'}</div>
+                            <div>
+                                <input type="button" class="" data-id="${m.id}" value="${m.btnValue}"${m.disabled ? ' disabled' : ''}>
+                            </div>
+                        </div>`;
+  }
+  return `<div class="medal-table bg-[#4F5879] opacity-[0.7] text-[#FFFFFF] h-[35px] text-[16px] font-bold leading-6">
+                    <div></div>
+                    <div>说明</div>
+                    <div>购买价格</div>
+                    <div>库存</div>
+                    <div>限购</div>
+                    <div>憨豆加成百分比</div>
+                    <div>加成天数</div>
+                    <div>购买类型</div>
+                    <div>操作</div>
+                </div>
+                <div class="flex flex-col gap-y-[8px]">
+                        ${rows}
+                </div>`;
+}
+
+const sampleHhanclub = makeHhanclubHtml([
+  { id: 5, img: 'a', name: '三周年站庆徽章', desc: '我们三岁啦！', price: '780,000', stock: '998178', limit: '1', bonus: '15%', duration: '365', type: '普通', btnValue: '购买', disabled: false },
+  { id: 4, img: 'b', name: '二周年站庆徽章', desc: '我们两岁啦！', price: '680,000', stock: '998809', limit: '1', bonus: '0%', duration: '永久有效', type: '普通', btnValue: '购买', disabled: false },
+  { id: 3, img: 'c', name: '已过期勋章', desc: 'test', price: '100,000', stock: '999', limit: '1', bonus: '0%', duration: '30', type: '普通', btnValue: '已过可购买时间', disabled: true }
+]);
+
+test('hhanclub 提取可购买勋章', () => {
+  const medals = bg.extractMedalsFromHhanclub(sampleHhanclub);
+  assertEqual(medals.length, 2, '应提取2个可购买勋章');
+});
+
+test('hhanclub 提取名称', () => {
+  const medals = bg.extractMedalsFromHhanclub(sampleHhanclub);
+  assert(medals[0].name.includes('三周年站庆徽章'), `实际名称: ${medals[0].name}`);
+  assert(medals[1].name.includes('二周年站庆徽章'), `实际名称: ${medals[1].name}`);
+});
+
+test('hhanclub 提取价格', () => {
+  const medals = bg.extractMedalsFromHhanclub(sampleHhanclub);
+  assertEqual(medals[0].price, '780,000');
+  assertEqual(medals[1].price, '680,000');
+});
+
+test('hhanclub 提取有效期和加成', () => {
+  const medals = bg.extractMedalsFromHhanclub(sampleHhanclub);
+  assertEqual(medals[0].duration, '365');
+  assertEqual(medals[0].bonus, '15%');
+  assertEqual(medals[1].duration, '永久有效');
+  assertEqual(medals[1].bonus, '0%');
+});
+
+test('hhanclub 提取库存和medalId', () => {
+  const medals = bg.extractMedalsFromHhanclub(sampleHhanclub);
+  assertEqual(medals[0].stock, '998178');
+  assertEqual(medals[0].medalId, '5');
+  assertEqual(medals[1].stock, '998809');
+  assertEqual(medals[1].medalId, '4');
+});
+
+test('hhanclub 过滤disabled按钮', () => {
+  const medals = bg.extractMedalsFromHhanclub(sampleHhanclub);
+  const hasDisabled = medals.some(m => m.name.includes('已过期'));
+  assert(!hasDisabled, 'disabled按钮的勋章不应被提取');
+});
+
+test('hhanclub 过滤非购买文本', () => {
+  const html = makeHhanclubHtml([
+    { id: 1, img: 'a', name: '仅授予', price: '0', stock: '0', bonus: '0%', duration: '永久有效', btnValue: '仅授予', disabled: false },
+    { id: 2, img: 'b', name: '可购买', price: '100', stock: '100', bonus: '0%', duration: '30', btnValue: '购买', disabled: false }
+  ]);
+  const medals = bg.extractMedalsFromHhanclub(html);
+  assertEqual(medals.length, 1, '应只提取"购买"按钮的勋章');
+  assert(medals[0].name.includes('可购买'));
+});
+
+test('hhanclub 空HTML返回空数组', () => {
+  const medals = bg.extractMedalsFromHhanclub('');
+  assertEqual(medals.length, 0);
+});
+
+test('hhanclub 无medal-table返回空数组', () => {
+  const medals = bg.extractMedalsFromHhanclub('<div>普通页面</div>');
+  assertEqual(medals.length, 0);
+});
+
+// ============================================================
 // setupAlarm
 // ============================================================
 console.log('\n  ▶ setupAlarm');

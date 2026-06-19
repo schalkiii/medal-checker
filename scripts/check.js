@@ -187,7 +187,8 @@ try {
     log('ok', 'ESLint: 无问题');
   } else {
     lines.forEach(line => {
-      if (line.includes('error')) log('error', line.trim());
+      // 只统计实际错误行，跳过 summary 行（如 "✖ 1 problem (0 errors, 1 warning)"）
+      if (line.includes(' error ') && !line.startsWith('✖')) log('error', line.trim());
       else log('warn', line.trim());
     });
   }
@@ -198,7 +199,8 @@ try {
     log('ok', 'ESLint: 无问题');
   } else {
     lines.forEach(line => {
-      if (line.includes(' error ') || line.includes('(error)')) log('error', line.trim());
+      // 只统计实际错误行，跳过 summary 行
+      if ((line.includes(' error ') || line.includes('(error)')) && !line.startsWith('✖')) log('error', line.trim());
       else log('warn', line.trim());
     });
   }
