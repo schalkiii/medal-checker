@@ -153,8 +153,8 @@ function analyzeFile(filePath) {
     } else if (html.includes('medal-container') || html.includes('medal-cards') || html.includes('medal-card ')) {
       // Analyze card layout
       console.log('\n📋 卡片布局分析:');
-      const cardTags = html.match(/<div class="medal-card[^"]*"[^>]*>/g) || [];
-      const buyButtons = html.match(/<(?:input|button)[^>]*\bclass="btn buy[^"]*"[^>]*>/gi) || [];
+      const cardTags = html.match(/<div class="medal-card"[^>]*>|<div class="medal-card [^>]*>/g) || [];
+      const buyButtons = html.match(/<(?:input|button)[^>]*\bclass="[^"]*\bbtn\b[^"]*\bbuy[^"]*"[^>]*\/?\s*>/gi) || [];
       const enabledButtons = buyButtons.filter(b => !b.includes('disabled'));
       console.log(`  勋章卡片数: ${cardTags.length}`);
       console.log(`  购买按钮数: ${buyButtons.length}（可用: ${enabledButtons.length}）`);

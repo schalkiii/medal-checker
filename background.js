@@ -158,7 +158,9 @@ const extractMedalsFromCards = (html) => {
   let pos = 0;
 
   while (pos < html.length) {
-    const cardStart = html.indexOf('<div class="medal-card ', pos);
+    // 匹配单个卡片 div：class="medal-card" 或 class="medal-card xxx"，排除 medal-cards 容器
+    let cardStart = html.indexOf('<div class="medal-card"', pos);
+    if (cardStart < 0) cardStart = html.indexOf('<div class="medal-card ', pos);
     if (cardStart < 0) break;
 
     let d = 0;
@@ -184,7 +186,8 @@ const extractMedalsFromCards = (html) => {
   }
 
   for (const card of cards) {
-    const actionMatch = card.match(/<(?:input|button)[^>]*\bclass="btn buy[^"]*"[^>]*\/?\s*>/i);
+    // 灵活匹配：class 中包含 btn 和 buy 两个词即可（如 btn btn-primary buy-btn, btn primary btn-buy）
+    const actionMatch = card.match(/<(?:input|button)[^>]*\bclass="[^"]*\bbtn\b[^"]*\bbuy[^"]*"[^>]*\/?\s*>/i);
     if (!actionMatch) continue;
 
     const actionHtml = actionMatch[0];
@@ -204,21 +207,135 @@ const extractMedalsFromCards = (html) => {
     const dataIdMatch = actionHtml.match(/data-id="(\d+)"/);
     const medalId = dataIdMatch ? dataIdMatch[1] : '';
 
-    const nameMatch = card.match(/<div class="medal-name">([\s\S]*?)<\/div>/);
-    const name = nameMatch ? nameMatch[1].trim() : '';
+    // 名称提取：多层回退
+    let name = '';
+    const nameMatch1 = card.match(/<div class="medal-name">([\s\S]*?)<\/div>/);
+    const nameMatch2 = card.match(/<div class="medal-card__name">([\s\S]*?)<\/div>/);
+    const nameMatch3 = card.match(/<h[2-4] class="medal-name">([\s\S]*?)<\/h[2-4]>/);
+    const nameMatch4 = card.match(/<img[^>]*alt="([^"]*)"[^>]*>/i);
+    if (nameMatch1) name = nameMatch1[1].trim();
+    else if (nameMatch2) name = nameMatch2[1].trim();
+    else if (nameMatch3) name = nameMatch3[1].replace(/<[^>]+>/g, '').trim();
+    else if (nameMatch4) name = nameMatch4[1].trim();
 
     let price = '', duration = '', bonus = '', stock = '', timeRange = '';
-    const fieldPairs = card.match(/<strong>([^<]+)<\/strong>([\s\S]*?)<\/div>/g) || [];
-    for (const pair of fieldPairs) {
-      const labelMatch = pair.match(/<strong>([^<]+)<\/strong>/);
-      const val = pair.replace(/<[^>]+>/g, '').replace(/：/g, ':').replace(/^[^:]*[:：]\s*/, '').trim();
-      if (!labelMatch) continue;
+
+    // 模式 1：meta-item / meta-row（luckpt、ptlgs 等）
+    // meta-row（ptlgs）：无嵌套 div，简单匹配
+    const metaRows = card.match(/<div class="meta-row">([\s\S]*?)<\/div>/g) || [];
+    for (const item of metaRows) {
+      const labelMatch = item.match(/<span class="meta-label">([^<]*)<\/span>/);
+      const valueMatch = item.match(/<span class="meta-value">([^<]*)<\/span>/);
+      if (!labelMatch || !valueMatch) continue;
       const label = labelMatch[1].replace(/[：:]/g, '').trim();
+      const val = valueMatch[1].trim();
       if (label.includes('价格') || label.includes('價格')) price = val;
       else if (label.includes('有效期')) duration = val;
       else if (label.includes('加成')) bonus = val;
       else if (label.includes('库存') || label.includes('庫存')) stock = val;
       else if (label.includes('可购买') || label.includes('可購買')) timeRange = val;
+    }
+
+    // meta-item（luckpt）：有嵌套 div，需匹配两个闭合标签
+    const metaItems = card.match(/<div class="meta-item">([\s\S]*?)<\/div>\s*<\/div>/g) || [];
+    for (const item of metaItems) {
+      const labelMatch = item.match(/<div class="meta-label">([^<]*)<\/div>/);
+      const valueMatch = item.match(/<div class="meta-value">([^<]*)<\/div>/);
+      if (!labelMatch || !valueMatch) continue;
+      const label = labelMatch[1].replace(/[：:]/g, '').trim();
+      const val = valueMatch[1].trim();
+      if (label.includes('价格') || label.includes('價格')) price = val;
+      else if (label.includes('有效期')) duration = val;
+      else if (label.includes('加成')) bonus = val;
+      else if (label.includes('库存') || label.includes('庫存')) stock = val;
+      else if (label.includes('可购买') || label.includes('可購買')) timeRange = val;
+    }
+
+    // ptlgs price-value（价格在单独的 div 中）
+    if (!price) {
+      const priceValMatch = card.match(/<span class="price-value">([^<]*)<\/span>/);
+      if (priceValMatch) price = priceValMatch[1].trim();
+    }
+
+    // 模式 2：detail-item / detail-label / detail-value（longpt 等）
+    if (!price && !duration && !bonus && !stock) {
+      const detailItems = card.match(/<div class="detail-item">[\s\S]*?<\/div>/g) || [];
+      for (const item of detailItems) {
+        const labelMatch = item.match(/<span class="detail-label">([^<]*)<\/span>/);
+        const valueMatch = item.match(/<span class="detail-value">([^<]*)<\/span>/);
+        if (!labelMatch || !valueMatch) continue;
+        const label = labelMatch[1].replace(/[：:]/g, '').trim();
+        const val = valueMatch[1].trim();
+        if (label.includes('价格') || label.includes('價格')) price = val;
+        else if (label.includes('有效期')) duration = val;
+        else if (label.includes('加成')) bonus = val;
+        else if (label.includes('库存') || label.includes('庫存')) stock = val;
+        else if (label.includes('可购买') || label.includes('可購買')) timeRange = val;
+      }
+    }
+
+    // luckpt medal-addition 加成（如 "幸运星加成：1.000%"）
+    if (!bonus) {
+      const additionMatch = card.match(/<span class="medal-addition">([\s\S]*?)<\/span>/);
+      if (additionMatch) {
+        const text = additionMatch[1].replace(/<[^>]+>/g, '').trim();
+        const pctMatch = text.match(/([\d.]+%)\s*$/);
+        if (pctMatch) bonus = pctMatch[1];
+      }
+    }
+
+    // 模式 2：stat-item / stat-value（cspt 等）
+    if (!price && !duration && !bonus && !stock) {
+      const statItems = card.match(/<div class="stat-item">[\s\S]*?<\/div>/g) || [];
+      for (const item of statItems) {
+        const text = item.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+        const valMatch = item.match(/<span class="stat-value[^"]*">([^<]*)<\/span>/);
+        const val = valMatch ? valMatch[1].trim() : '';
+        if (text.includes('价格') && text.includes(':')) price = val;
+        else if (text.includes('有效期')) duration = val;
+        else if (text.includes('加成')) bonus = val;
+        else if (text.includes('库存')) stock = val;
+      }
+    }
+
+    // 模式 3：<strong> 标签模式（经典卡片布局）
+    if (!price && !duration && !bonus && !stock) {
+      const fieldPairs = card.match(/<strong>([^<]+)<\/strong>([\s\S]*?)<\/div>/g) || [];
+      for (const pair of fieldPairs) {
+        const labelMatch = pair.match(/<strong>([^<]+)<\/strong>/);
+        const val = pair.replace(/<[^>]+>/g, '').replace(/：/g, ':').replace(/^[^:]*[:：]\s*/, '').trim();
+        if (!labelMatch) continue;
+        const label = labelMatch[1].replace(/[：:]/g, '').trim();
+        if (label.includes('价格') || label.includes('價格')) price = val;
+        else if (label.includes('有效期')) duration = val;
+        else if (label.includes('加成')) bonus = val;
+        else if (label.includes('库存') || label.includes('庫存')) stock = val;
+        else if (label.includes('可购买') || label.includes('可購買')) timeRange = val;
+      }
+    }
+
+    // 模式 4：cspt 按钮 data 属性回退
+    if (!price) {
+      const dataPrice = actionHtml.match(/data-price="([^"]*)"/);
+      const dataPriceFormatted = actionHtml.match(/data-price-formatted="([^"]*)"/);
+      if (dataPriceFormatted) price = dataPriceFormatted[1];
+      else if (dataPrice) price = dataPrice[1];
+    }
+    if (!duration) {
+      const dataDuration = actionHtml.match(/data-duration="([^"]*)"/);
+      if (dataDuration) duration = dataDuration[1];
+    }
+    if (!bonus) {
+      const dataBonus = actionHtml.match(/data-bonus="([^"]*)"/);
+      if (dataBonus) bonus = dataBonus[1];
+    }
+    if (!stock) {
+      const dataStock = actionHtml.match(/data-stock="([^"]*)"/);
+      if (dataStock) stock = dataStock[1];
+    }
+    if (!name) {
+      const dataName = actionHtml.match(/data-name="([^"]*)"/);
+      if (dataName) name = dataName[1];
     }
 
     if (name) medals.push({ name, price, duration, bonus, stock, timeRange, medalId });

@@ -39,6 +39,21 @@ v1.2 及之前只匹配 `<input class="btn buy" ... value="购买">`，但卡片
 
 **解决方案**（v1.3+）：不依赖容器边界来提取卡片，直接在全局 HTML 中查找每个 `medal-card`。
 
+#### 问题 5：卡片边界检测错误匹配包装容器
+
+`indexOf('<div class="medal-card', ...)` 会同时匹配 `<div class="medal-cards">` 包装容器，因为 `medal-card` 是 `medal-cards` 的子串。这导致整个页面所有卡片被当作一张卡片处理。
+
+**典型站点**：playlet.cc（使用 `<div class="medal-cards">` 包装器）
+
+**解决方案**（v1.8+）：
+```javascript
+// 先匹配 class="medal-card"（单 class，无额外类名）
+let cardStart = html.indexOf('<div class="medal-card"', pos);
+// 再匹配 class="medal-card "（多 class，如 medal-card unpurchased）
+if (cardStart < 0) cardStart = html.indexOf('<div class="medal-card ', pos);
+```
+这样 `medal-card"` 和 `medal-card ` 都不会匹配到 `medal-cards"`。
+
 ### 验证步骤
 
 1. 运行 `node scripts/analyze-html.js PT_Debug_*.json` 确认目标站点正确输出
@@ -60,6 +75,15 @@ v1.2 及之前只匹配 `<input class="btn buy" ... value="购买">`，但卡片
   - 价格提取：从 value 属性中正则提取 `(数字 猫粮)`
   - 分页：pterclub 使用 `?page=page001` 格式，需特殊处理
   - 新增测试：8 个 pterclub 单元测试（62→62，但重新分配了测试）
+
+- 2026-06-19: 卡片布局按钮正则泛化 + 多站点适配（v1.8）
+  - **按钮正则泛化**：`class="btn buy[^"]*"` → `\bclass="[^"]*\bbtn\b[^"]*\bbuy[^"]*"`，分别匹配 `btn` 和 `buy` 为独立单词
+  - **卡片边界修复**：`indexOf('<div class="medal-card', ...)` → 先匹配 `medal-card"` 再匹配 `medal-card `，排除 `medal-cards` 包装容器
+  - **名称提取多层回退**：div.medal-name → div.medal-card__name → h[2-4].medal-name → img alt
+  - **字段提取多层回退**：meta-row(ptlgs) → meta-item(luckpt) → price-value → detail-item(longpt) → medal-addition(luckpt加成) → stat-item(cspt) → strong标签 → data属性
+  - 适配站点：cspt.top(9)、pt.luckpt.de(51)、ptlgs.org(1)、longpt.org(1)、playlet.cc(2)
+  - 总勋章数 45 → 98（+53 新增）
+  - 测试数保持 62/62 全通过
 
 ## pterclub（猫站）布局适配指南
 
