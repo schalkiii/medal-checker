@@ -70,15 +70,24 @@ v1.2 及之前只匹配 `<input class="btn buy" ... value="购买">`，但卡片
 ```html
 <table>
   <!-- 分类头部 -->
-  <tr><td class="colhead" colspan="6"><font class="big">[042] 类别名</font></td></tr>
+  <tr>
+    <td class="colhead" colspan="6"><font class="big">[042] 类别名</font></td>
+  </tr>
   <!-- 勋章行 -->
   <tr>
-    <td colspan="6"><div class="text">
-      <img title="勋章名称" src="..." />
-      <form action="?page=page010&action=buymedal" method="post">
-        <input type="submit" name="medalchosen" value="042-001 (52,099 猫粮)" disabled="disabled" />
-      </form>
-    </div></td>
+    <td colspan="6">
+      <div class="text">
+        <img title="勋章名称" src="..." />
+        <form action="?page=page010&action=buymedal" method="post">
+          <input
+            type="submit"
+            name="medalchosen"
+            value="042-001 (52,099 猫粮)"
+            disabled="disabled"
+          />
+        </form>
+      </div>
+    </td>
   </tr>
 </table>
 ```
@@ -117,14 +126,32 @@ v1.2 及之前只匹配 `<input class="btn buy" ... value="购买">`，但卡片
     <p>描述</p>
     <p>不限~不限</p>
     <table class="medal-details">
-      <tr><td>加成</td><td>0%</td></tr>
-      <tr><td>有效期</td><td>365</td></tr>
-      <tr><td>价格</td><td>888,888</td></tr>
-      <tr><td>库存</td><td>0</td></tr>
+      <tr>
+        <td>加成</td>
+        <td>0%</td>
+      </tr>
+      <tr>
+        <td>有效期</td>
+        <td>365</td>
+      </tr>
+      <tr>
+        <td>价格</td>
+        <td>888,888</td>
+      </tr>
+      <tr>
+        <td>库存</td>
+        <td>0</td>
+      </tr>
     </table>
   </div>
   <div class="action-container">
-    <input type="button" class="buy-btn" data-id="80" value="库存不足" disabled>
+    <input
+      type="button"
+      class="buy-btn"
+      data-id="80"
+      value="库存不足"
+      disabled
+    />
   </div>
 </div>
 ```
@@ -151,19 +178,25 @@ hhanclub.net 使用 Tailwind CSS 9 列网格布局，完全自定义：
 
 ```html
 <div class="medal-table py-5 bg-[#FFFFFF]">
-  <div class="px-5"><img alt='勋章名称' src='...'></div>
+  <div class="px-5"><img alt="勋章名称" src="..." /></div>
   <div class="flex flex-col pr-5 gap-y-[15px]">
     <div>勋章名称</div>
     <div>描述</div>
   </div>
-  <div>780,000</div>      <!-- 价格 -->
-  <div>998178</div>         <!-- 库存 -->
-  <div>1</div>              <!-- 限购 -->
-  <div>15%</div>            <!-- 加成 -->
-  <div>365</div>            <!-- 有效期 -->
-  <div>普通</div>           <!-- 类型 -->
+  <div>780,000</div>
+  <!-- 价格 -->
+  <div>998178</div>
+  <!-- 库存 -->
+  <div>1</div>
+  <!-- 限购 -->
+  <div>15%</div>
+  <!-- 加成 -->
+  <div>365</div>
+  <!-- 有效期 -->
+  <div>普通</div>
+  <!-- 类型 -->
   <div>
-    <input type="button" data-id="5" value="购买" disabled>
+    <input type="button" data-id="5" value="购买" disabled />
   </div>
 </div>
 ```
@@ -184,7 +217,7 @@ zmpt.cc 等站点使用 Vue/Vite 构建的 SPA，静态 HTML 中只有 `<div id=
 ### 检测方法
 
 ```javascript
-const isZmpt = html.includes('id="vite-app"') && html.includes('modulepreload');
+const isZmpt = html.includes('id="vite-app"') && html.includes("modulepreload");
 ```
 
 ### 适配方案
@@ -208,9 +241,80 @@ const isZmpt = html.includes('id="vite-app"') && html.includes('modulepreload');
 
 - yemapt.org：UmiJS SPA（`id="root"` + `umi.js`），hash 路由 `#/consumer/badge`，尚未适配
 
+## si-qi BEM 风格卡片布局适配指南
+
+### 布局特征
+
+si-qi.xyz 使用 BEM 命名风格的卡片布局，与标准 medal-card 布局差异显著：
+
+```html
+<div class="medal-card">
+  <div class="medal-card__image"><img alt="勋章名称" src="..." /></div>
+  <div class="medal-card__body">
+    <div class="medal-card__title"><h2>勋章名称 (#ID)</h2></div>
+    <div class="medal-card__meta">
+      <div>
+        <span class="meta-label">价格</span
+        ><span class="meta-value">100,000</span>
+      </div>
+      <div>
+        <span class="meta-label">有效期</span
+        ><span class="meta-value">永久有效</span>
+      </div>
+      <div>
+        <span class="meta-label">加成</span><span class="meta-value">1%</span>
+      </div>
+      <div>
+        <span class="meta-label">库存</span><span class="meta-value">411</span>
+      </div>
+      <div>
+        <span class="meta-label">可购买</span
+        ><span class="meta-value">不限 ~ 2025-10-12 02:02:00</span>
+      </div>
+    </div>
+    <div class="medal-card__action">
+      <input type="button" class="" data-id="9" value="购买" />
+    </div>
+  </div>
+</div>
+```
+
+### 关键点
+
+1. **结构特征双重检测**：必须同时包含 `medal-card__title` 和 `meta-label`，避免误匹配其他 medal-card 变体（如 13city 的 `medal-card` + `btn buy` 布局）
+2. **容器识别**：`<div class="medal-card">` 或 `<div class="medal-card owned">`（已购变体），需排除 `medal-card__image`/`medal-card__body` 等子元素
+3. **深度计数提取**：使用 `<div>` 深度计数而非正则，确保正确匹配嵌套 div 边界
+4. **按钮特征**：`<input type="button" class="" data-id="X" value="...">`，class 为空字符串（不是 `btn buy`）
+5. **按钮值过滤**：仅提取 `value="购买"` 或 `value="購買"`，过滤 `已经购买`/`赠送`/`已过可购买时间` 等
+6. **名称提取**：从 `medal-card__title` 内的 `<h2>` 提取，回退到 `<img alt>`
+7. **字段提取**：从 `meta-label`/`meta-value` 键值对按 label 关键词匹配（价格/有效期/加成/库存/可购买）
+
+### 适配决策：针对性适配
+
+采用独立提取器 `extractMedalsFromSiqi()`，而非扩展 `extractMedalsFromCards()`，理由：
+
+- BEM 结构（`__title`/`__meta`/`meta-label`/`meta-value`）与现有所有布局差异显著
+- 与 pterclub/hhanclub/zmpt 等站点特异提取器的现有模式一致
+- 零回归风险：通过结构特征双重检测，不会误匹配其他 medal-card 变体
+
+### 验证步骤
+
+1. 运行 `node scripts/analyze-html.js PT_Debug_*.json` 确认 si-qi 站点输出 "si-qi BEM 风格 medal-card 布局"
+2. 运行 `node tests/unit/background.test.js` 确认所有测试通过
+3. 运行 `npm test` 确认全部通过
+
+### 历史参考
+
+- 2026-06-22: 适配 si-qi.xyz BEM 风格卡片布局（v1.8）
+  - 修改文件：`background.js`（新增 `extractMedalsFromSiqi()` 函数 + 回退链接入 + 导出）
+  - 同步更新：`scripts/analyze-html.js`（si-qi BEM 布局检测分支 + 非字符串 HTML 防御）
+  - 新增测试：11 个 si-qi 单元测试（86→97，覆盖可购买/已购/赠送/过期/繁体/回退链/误匹配防护）
+  - 适配决策：针对性适配（独立提取器），零回归风险
+
 ## 代码修改全流程规范
 
 每次修改必须识别以下同步点：
+
 1. 核心逻辑（background.js 中的提取函数）
 2. 分析脚本（scripts/analyze-html.js）
 3. 单元测试（tests/unit/）
@@ -221,8 +325,9 @@ const isZmpt = html.includes('id="vite-app"') && html.includes('modulepreload');
 ### 测试验证清单
 
 修改完成后必须验证：
-- [ ] 核心单元测试全部通过
-- [ ] 集成测试全部通过
-- [ ] `npm test`（25 项检查）全部通过
+
+- [ ] 核心单元测试全部通过（当前 97 项）
+- [ ] 集成测试全部通过（当前 6 项）
+- [ ] `npm test`（含 options 14 项 + check.js 24 项检查）全部通过
 - [ ] 用调试包验证修复结果
-- [ ] 确认其他站点未出现回归
+- [ ] 确认其他站点未出现回归（97 站点快照对比）

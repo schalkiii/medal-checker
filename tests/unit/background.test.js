@@ -1004,6 +1004,147 @@ test('hhanclub 无medal-table返回空数组', () => {
 });
 
 // ============================================================
+// extractMedalsFromSiqi — si-qi BEM 风格 medal-card 布局
+// ============================================================
+console.log('\n  ▶ extractMedalsFromSiqi - si-qi BEM布局');
+
+const sampleSiqi = `<div class="medal-card">
+  <div class="medal-card__image"><img alt="测试勋章" src="x.png"></div>
+  <div class="medal-card__body">
+    <div class="medal-card__title"><h2>测试勋章 (#9)</h2></div>
+    <div class="medal-card__meta">
+      <div><span class="meta-label">价格</span><span class="meta-value">100,000</span></div>
+      <div><span class="meta-label">有效期</span><span class="meta-value">永久有效</span></div>
+      <div><span class="meta-label">加成</span><span class="meta-value">1%</span></div>
+      <div><span class="meta-label">库存</span><span class="meta-value">411</span></div>
+      <div><span class="meta-label">可购买</span><span class="meta-value">不限 ~ 2025-10-12 02:02:00</span></div>
+    </div>
+    <div class="medal-card__action">
+      <input type="button" class="" data-id="9" value="购买">
+    </div>
+  </div>
+</div>`;
+
+const sampleSiqiMixed = `<div class="medal-card">
+  <div class="medal-card__title"><h2>可购买勋章 (#1)</h2></div>
+  <div><span class="meta-label">价格</span><span class="meta-value">50,000</span></div>
+  <div><span class="meta-label">有效期</span><span class="meta-value">365</span></div>
+  <div><span class="meta-label">加成</span><span class="meta-value">5%</span></div>
+  <div><span class="meta-label">库存</span><span class="meta-value">100</span></div>
+  <input type="button" class="" data-id="1" value="购买">
+</div>
+<div class="medal-card owned">
+  <div class="medal-card__title"><h2>已购勋章 (#2)</h2></div>
+  <div><span class="meta-label">价格</span><span class="meta-value">30,000</span></div>
+  <input type="button" class="" data-id="2" value="已经购买" disabled>
+</div>
+<div class="medal-card">
+  <div class="medal-card__title"><h2>赠送勋章 (#3)</h2></div>
+  <div><span class="meta-label">价格</span><span class="meta-value">0</span></div>
+  <input type="button" class="" data-id="3" value="赠送">
+</div>
+<div class="medal-card">
+  <div class="medal-card__title"><h2>过期勋章 (#4)</h2></div>
+  <div><span class="meta-label">价格</span><span class="meta-value">20,000</span></div>
+  <input type="button" class="" data-id="4" value="已过可购买时间" disabled>
+</div>`;
+
+test('si-qi 提取可购买勋章', () => {
+  const medals = bg.extractMedalsFromSiqi(sampleSiqi);
+  assertEqual(medals.length, 1);
+  assertEqual(medals[0].name, '测试勋章 (#9)');
+  assertEqual(medals[0].price, '100,000');
+  assertEqual(medals[0].duration, '永久有效');
+  assertEqual(medals[0].bonus, '1%');
+  assertEqual(medals[0].stock, '411');
+  assertEqual(medals[0].timeRange, '不限 ~ 2025-10-12 02:02:00');
+  assertEqual(medals[0].medalId, '9');
+});
+
+test('si-qi 混合场景仅提取可购买', () => {
+  const medals = bg.extractMedalsFromSiqi(sampleSiqiMixed);
+  assertEqual(medals.length, 1);
+  assertEqual(medals[0].name, '可购买勋章 (#1)');
+  assertEqual(medals[0].medalId, '1');
+  assertEqual(medals[0].price, '50,000');
+});
+
+test('si-qi 繁体購買按钮也识别', () => {
+  const html = `<div class="medal-card">
+    <div class="medal-card__title"><h2>繁体勋章 (#5)</h2></div>
+    <div><span class="meta-label">價格</span><span class="meta-value">88,888</span></div>
+    <input type="button" class="" data-id="5" value="購買">
+  </div>`;
+  const medals = bg.extractMedalsFromSiqi(html);
+  assertEqual(medals.length, 1);
+  assertEqual(medals[0].name, '繁体勋章 (#5)');
+  assertEqual(medals[0].price, '88,888');
+});
+
+test('si-qi disabled按钮被过滤', () => {
+  const html = `<div class="medal-card">
+    <div class="medal-card__title"><h2>禁用勋章 (#6)</h2></div>
+    <input type="button" class="" data-id="6" value="购买" disabled>
+  </div>`;
+  const medals = bg.extractMedalsFromSiqi(html);
+  assertEqual(medals.length, 0);
+});
+
+test('si-qi 赠送按钮被过滤', () => {
+  const html = `<div class="medal-card">
+    <div class="medal-card__title"><h2>赠送勋章 (#7)</h2></div>
+    <input type="button" class="" data-id="7" value="赠送">
+  </div>`;
+  const medals = bg.extractMedalsFromSiqi(html);
+  assertEqual(medals.length, 0);
+});
+
+test('si-qi 无medal-card__title返回空', () => {
+  const html = `<div class="medal-card">
+    <div>普通卡片</div>
+    <input type="button" class="" data-id="8" value="购买">
+  </div>`;
+  const medals = bg.extractMedalsFromSiqi(html);
+  assertEqual(medals.length, 0);
+});
+
+test('si-qi 无meta-label返回空', () => {
+  const html = `<div class="medal-card">
+    <div class="medal-card__title"><h2>无元数据 (#10)</h2></div>
+    <input type="button" class="" data-id="10" value="购买">
+  </div>`;
+  const medals = bg.extractMedalsFromSiqi(html);
+  assertEqual(medals.length, 0);
+});
+
+test('si-qi 空HTML返回空数组', () => {
+  const medals = bg.extractMedalsFromSiqi('');
+  assertEqual(medals.length, 0);
+});
+
+test('si-qi 普通页面返回空数组', () => {
+  const medals = bg.extractMedalsFromSiqi('<div>普通页面</div>');
+  assertEqual(medals.length, 0);
+});
+
+test('si-qi 不误匹配普通 medal-card 布局', () => {
+  // 13city 等普通 medal-card 布局不应触发 si-qi 提取器
+  const html = `<div class="medal-cards">
+    <div class="medal-card ">
+      <input class="btn buy " type="button" value="购买" data-id="100">
+    </div>
+  </div>`;
+  const medals = bg.extractMedalsFromSiqi(html);
+  assertEqual(medals.length, 0);
+});
+
+test('si-qi 通过 extractMedalsFromHtml 回退链调用', () => {
+  const medals = bg.extractMedalsFromHtml(sampleSiqi);
+  assertEqual(medals.length, 1);
+  assertEqual(medals[0].name, '测试勋章 (#9)');
+});
+
+// ============================================================
 // setupAlarm
 // ============================================================
 console.log('\n  ▶ setupAlarm');

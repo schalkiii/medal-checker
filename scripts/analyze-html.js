@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 
-const fs = require('fs');
-const path = require('path');
+const fs = require("fs");
+const path = require("path");
 
-const ROOT = path.resolve(__dirname, '..');
+const ROOT = path.resolve(__dirname, "..");
 
 if (process.argv.length < 3) {
-  console.error('用法: node scripts/analyze-html.js <debug-file.json>');
-  console.error('       node scripts/analyze-html.js <raw.html>');
+  console.error("用法: node scripts/analyze-html.js <debug-file.json>");
+  console.error("       node scripts/analyze-html.js <raw.html>");
   process.exit(1);
 }
 
@@ -26,7 +26,9 @@ global.chrome = {
       get(keys, cb) {
         const result = {};
         const kArr = Array.isArray(keys) ? keys : [keys];
-        kArr.forEach(k => { if (mockStorage.has(k)) result[k] = mockStorage.get(k); });
+        kArr.forEach((k) => {
+          if (mockStorage.has(k)) result[k] = mockStorage.get(k);
+        });
         if (cb) setTimeout(() => cb(result), 0);
         return Promise.resolve(result);
       },
@@ -34,42 +36,50 @@ global.chrome = {
         Object.entries(items).forEach(([k, v]) => mockStorage.set(k, v));
         if (cb) setTimeout(cb, 0);
         return Promise.resolve();
-      }
-    }
+      },
+    },
   },
-  cookies: { getAll(_details, cb) { if (cb) setTimeout(() => cb([]), 0); return Promise.resolve([]); } },
+  cookies: {
+    getAll(_details, cb) {
+      if (cb) setTimeout(() => cb([]), 0);
+      return Promise.resolve([]);
+    },
+  },
   runtime: {
     sendMessage() {},
     onMessage: { addListener() {} },
     onStartup: { addListener() {} },
-    onInstalled: { addListener() {} }
+    onInstalled: { addListener() {} },
   },
   action: { onClicked: { addListener() {} } },
   tabs: { create() {} },
   alarms: {
     create() {},
-    clear(_name, cb) { if (cb) cb(); },
-    onAlarm: { addListener() {} }
-  }
+    clear(_name, cb) {
+      if (cb) cb();
+    },
+    onAlarm: { addListener() {} },
+  },
 };
 global.AbortController = AbortController;
-global.navigator = { userAgent: 'Mozilla/5.0 Analyzer' };
+global.navigator = { userAgent: "Mozilla/5.0 Analyzer" };
 global.fetch = () => Promise.resolve({ ok: false });
 
-delete require.cache[require.resolve(path.join(ROOT, 'background.js'))];
-const bg = require(path.join(ROOT, 'background.js'));
+delete require.cache[require.resolve(path.join(ROOT, "background.js"))];
+const bg = require(path.join(ROOT, "background.js"));
 
 function stripTags(html) {
   return html
-    .replace(/<script[\s\S]*?<\/script>/gi, '')
-    .replace(/<style[\s\S]*?<\/style>/gi, '')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/\s+/g, ' ')
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
     .trim();
 }
 
 function findPurchaseInputs(html) {
-  const regex = /<input[^>]*?value\s*=\s*"[^"]*(?:购买|購買|交换)[^"]*"[^>]*>/gi;
+  const regex =
+    /<input[^>]*?value\s*=\s*"[^"]*(?:购买|購買|交换)[^"]*"[^>]*>/gi;
   const matches = [];
   let m;
   while ((m = regex.exec(html)) !== null) {
@@ -83,37 +93,39 @@ function analyzeRow(tds, layout) {
   const groups = [];
   for (let i = 0; i + stride - 1 < tds.length; i += stride) {
     const group = tds.slice(i, i + stride);
-    const actionTd = group[layout.actionIdx] || '';
+    const actionTd = group[layout.actionIdx] || "";
     const actionInputs = actionTd.match(/value\s*=\s*"([^"]*)"/i);
-    const actionValue = actionInputs ? actionInputs[1] : '(no input)';
-    const nameText = bg.extractTdText(group[layout.nameIdx] || '');
+    const actionValue = actionInputs ? actionInputs[1] : "(no input)";
+    const nameText = bg.extractTdText(group[layout.nameIdx] || "");
     const nameH1 = nameText.match(/^(.+?)(?:\n|$)/);
-    const name = nameH1 ? nameH1[1].trim() : '(no h1)';
-    const price = bg.extractTdText(group[layout.priceIdx] || '').trim();
-    const duration = bg.extractTdText(group[layout.durationIdx] || '').trim();
+    const name = nameH1 ? nameH1[1].trim() : "(no h1)";
+    const price = bg.extractTdText(group[layout.priceIdx] || "").trim();
+    const duration = bg.extractTdText(group[layout.durationIdx] || "").trim();
     groups.push({ name, price, duration, actionValue });
   }
   return groups;
 }
 
 function analyzeFile(filePath) {
-  const content = fs.readFileSync(filePath, 'utf-8');
+  const content = fs.readFileSync(filePath, "utf-8");
   let pages;
 
-  if (filePath.endsWith('.json')) {
+  if (filePath.endsWith(".json")) {
     try {
       const data = JSON.parse(content);
       if (data.pages && Array.isArray(data.pages)) {
         pages = data.pages;
-        console.log(`📦 调试包: ${data.dateStr || '未知日期'}, ${pages.length} 个页面\n`);
+        console.log(
+          `📦 调试包: ${data.dateStr || "未知日期"}, ${pages.length} 个页面\n`,
+        );
       } else if (data.html) {
-        pages = [{ url: data.url || 'single-page', html: data.html }];
+        pages = [{ url: data.url || "single-page", html: data.html }];
       } else {
-        console.error('JSON 格式无法识别，需要包含 pages 数组');
+        console.error("JSON 格式无法识别，需要包含 pages 数组");
         process.exit(1);
       }
     } catch (e) {
-      console.error('JSON 解析失败:', e.message);
+      console.error("JSON 解析失败:", e.message);
       process.exit(1);
     }
   } else {
@@ -124,88 +136,162 @@ function analyzeFile(filePath) {
 
   for (const page of pages) {
     const { url, html } = page;
-    console.log('═══════════════════════════════════════════════════════');
+    console.log("═══════════════════════════════════════════════════════");
     console.log(`🔗 ${url}`);
+    // 跳过非字符串 HTML（如 SPA 站点未渲染的空壳）
+    if (typeof html !== "string") {
+      console.log("⚠️  非字符串 HTML（可能为 SPA 站点未渲染内容），跳过分析");
+      console.log("");
+      continue;
+    }
     console.log(`📐 HTML 大小: ${(html.length / 1024).toFixed(1)} KB`);
-    console.log('───────────────────────────────────────────────────────');
+    console.log("───────────────────────────────────────────────────────");
 
-    const isBuyCenter = url.includes('buycenter.php');
+    const isBuyCenter = url.includes("buycenter.php");
 
     if (isBuyCenter) {
       // Analyze buycenter structure
-      console.log('\n📋 BuyCenter 分析:');
+      console.log("\n📋 BuyCenter 分析:");
       const rows = html.match(/<tr[\s\S]*?(?=<tr|$)/gi) || [];
       let dataRowCount = 0;
       for (const row of rows) {
         const tds = row.match(/<td[^>]*>[\s\S]*?<\/td>/gi) || [];
         if (tds.length >= 6) {
-          const nameText = bg.extractTdText(tds[1] || '');
-          const actionTd = tds[5] || '';
+          const nameText = bg.extractTdText(tds[1] || "");
+          const actionTd = tds[5] || "";
           const actionInputs = actionTd.match(/value\s*=\s*"([^"]*)"/i);
-          const actionValue = actionInputs ? actionInputs[1] : '(none)';
-          const isDisabled = actionTd.includes('disabled');
-          const price = bg.extractTdText(tds[4] || '');
-          console.log(`  行 ${dataRowCount}: price=${price} action="${actionValue}"${isDisabled ? ' [disabled]' : ''} name="${nameText.substring(0, 50)}"`);
+          const actionValue = actionInputs ? actionInputs[1] : "(none)";
+          const isDisabled = actionTd.includes("disabled");
+          const price = bg.extractTdText(tds[4] || "");
+          console.log(
+            `  行 ${dataRowCount}: price=${price} action="${actionValue}"${isDisabled ? " [disabled]" : ""} name="${nameText.substring(0, 50)}"`,
+          );
           dataRowCount++;
         }
       }
       console.log(`  数据行数: ${dataRowCount}`);
-    } else if (html.includes('id="vite-app"') && html.includes('modulepreload')) {
+    } else if (
+      html.includes('id="vite-app"') &&
+      html.includes("modulepreload")
+    ) {
       // SPA site (Vue/Vite rendered)
-      console.log('\n📋 SPA 布局 (Vite/Vue 渲染):');
-      console.log('  ⚠️ 勋章内容由 JavaScript 动态渲染，静态 HTML 中无勋章数据');
-      console.log('  需要 chrome.tabs + scripting 注入获取渲染后 DOM');
-    } else if (html.includes('medal-table') && html.includes('grid-cols')) {
+      console.log("\n📋 SPA 布局 (Vite/Vue 渲染):");
+      console.log(
+        "  ⚠️ 勋章内容由 JavaScript 动态渲染，静态 HTML 中无勋章数据",
+      );
+      console.log("  需要 chrome.tabs + scripting 注入获取渲染后 DOM");
+    } else if (html.includes("medal-table") && html.includes("grid-cols")) {
       // hhanclub Tailwind grid layout
-      console.log('\n📋 hhanclub Tailwind 网格布局:');
+      console.log("\n📋 hhanclub Tailwind 网格布局:");
       const medalRows = html.match(/<div class="medal-table py-5[^>]*>/g) || [];
-      const buyButtons = html.match(/<input[^>]*type="button"[^>]*data-id="\d+"[^>]*value="([^"]*)"[^>]*>/gi) || [];
-      const enabledButtons = buyButtons.filter(b => !b.includes('disabled'));
+      const buyButtons =
+        html.match(
+          /<input[^>]*type="button"[^>]*data-id="\d+"[^>]*value="([^"]*)"[^>]*>/gi,
+        ) || [];
+      const enabledButtons = buyButtons.filter((b) => !b.includes("disabled"));
       console.log(`  勋章数据行: ${medalRows.length}`);
-      console.log(`  购买按钮: ${buyButtons.length}（可用: ${enabledButtons.length}）`);
+      console.log(
+        `  购买按钮: ${buyButtons.length}（可用: ${enabledButtons.length}）`,
+      );
       enabledButtons.forEach((btn, i) => {
         const valMatch = btn.match(/value="([^"]*)"/);
         const idMatch = btn.match(/data-id="(\d+)"/);
-        console.log(`    [${i}] id=${idMatch ? idMatch[1] : '?'} btn="${valMatch ? valMatch[1] : '?'}"`);
+        console.log(
+          `    [${i}] id=${idMatch ? idMatch[1] : "?"} btn="${valMatch ? valMatch[1] : "?"}"`,
+        );
       });
-    } else if (html.includes('medal-item') && html.includes('medal-details')) {
+    } else if (html.includes("medal-item") && html.includes("medal-details")) {
       // medal-item card layout
-      console.log('\n📋 medal-item 卡片布局:');
+      console.log("\n📋 medal-item 卡片布局:");
       const medalItems = html.match(/<div class="medal-item">/g) || [];
-      const buyButtons = html.match(/<input[^>]*type="button"[^>]*class="[^"]*(?:buy-btn|gift-btn)[^"]*"[^>]*>/gi) || [];
-      const enabledButtons = buyButtons.filter(b => !b.includes('disabled'));
+      const buyButtons =
+        html.match(
+          /<input[^>]*type="button"[^>]*class="[^"]*(?:buy-btn|gift-btn)[^"]*"[^>]*>/gi,
+        ) || [];
+      const enabledButtons = buyButtons.filter((b) => !b.includes("disabled"));
       console.log(`  勋章项目数: ${medalItems.length}`);
-      console.log(`  购买按钮: ${buyButtons.length}（可用: ${enabledButtons.length}）`);
+      console.log(
+        `  购买按钮: ${buyButtons.length}（可用: ${enabledButtons.length}）`,
+      );
       enabledButtons.forEach((btn, i) => {
         const valMatch = btn.match(/value="([^"]*)"/);
         const idMatch = btn.match(/data-id="(\d+)"/);
-        console.log(`    [${i}] id=${idMatch ? idMatch[1] : '?'} btn="${valMatch ? valMatch[1] : '?'}"`);
+        console.log(
+          `    [${i}] id=${idMatch ? idMatch[1] : "?"} btn="${valMatch ? valMatch[1] : "?"}"`,
+        );
       });
-    } else if (html.includes('medal-container') || html.includes('medal-cards') || /medal-card\b/i.test(html)) {
-      // Analyze card layout
-      console.log('\n📋 卡片布局分析:');
-      const cardTags = html.match(/<div class="medal-card[^"]*"[^>]*>/g) || [];
-      const buyButtons = html.match(/<(?:input|button)[^>]*\bclass="btn buy[^"]*"[^>]*>/gi) || [];
-      const enabledButtons = buyButtons.filter(b => !b.includes('disabled'));
-      console.log(`  勋章卡片数: ${cardTags.length}`);
-      console.log(`  购买按钮数: ${buyButtons.length}（可用: ${enabledButtons.length}）`);
+    } else if (
+      html.includes("medal-card__title") &&
+      html.includes("meta-label")
+    ) {
+      // si-qi BEM 风格 medal-card 布局
+      console.log("\n📋 si-qi BEM 风格 medal-card 布局:");
+      const cardTags = html.match(/<div class="medal-card[^"]*"/g) || [];
+      // 仅统计容器（排除 medal-card__ 子元素）
+      const containerCount = cardTags.filter(
+        (t) => !t.includes("medal-card__"),
+      ).length;
+      const buyButtons =
+        html.match(/<input[^>]*type="button"[^>]*data-id="\d+"[^>]*>/gi) || [];
+      const enabledButtons = buyButtons.filter((b) => !b.includes("disabled"));
+      console.log(`  勋章卡片数: ${containerCount}`);
+      console.log(
+        `  购买按钮数: ${buyButtons.length}（可用: ${enabledButtons.length}）`,
+      );
+      // 按钮类型分布
+      const valueSet = {};
+      buyButtons.forEach((b) => {
+        const v = b.match(/value="([^"]*)"/);
+        const val = v ? v[1] : "(none)";
+        valueSet[val] = (valueSet[val] || 0) + 1;
+      });
+      console.log(`  按钮类型分布: ${JSON.stringify(valueSet)}`);
       enabledButtons.forEach((btn, i) => {
-        const isButton = btn.startsWith('<button');
+        const valMatch = btn.match(/value="([^"]*)"/);
+        const idMatch = btn.match(/data-id="(\d+)"/);
+        console.log(
+          `    [${i}] id=${idMatch ? idMatch[1] : "?"} btn="${valMatch ? valMatch[1] : "?"}"`,
+        );
+      });
+    } else if (
+      html.includes("medal-container") ||
+      html.includes("medal-cards") ||
+      /medal-card\b/i.test(html)
+    ) {
+      // Analyze card layout
+      console.log("\n📋 卡片布局分析:");
+      const cardTags = html.match(/<div class="medal-card[^"]*"[^>]*>/g) || [];
+      const buyButtons =
+        html.match(/<(?:input|button)[^>]*\bclass="btn buy[^"]*"[^>]*>/gi) ||
+        [];
+      const enabledButtons = buyButtons.filter((b) => !b.includes("disabled"));
+      console.log(`  勋章卡片数: ${cardTags.length}`);
+      console.log(
+        `  购买按钮数: ${buyButtons.length}（可用: ${enabledButtons.length}）`,
+      );
+      enabledButtons.forEach((btn, i) => {
+        const isButton = btn.startsWith("<button");
         let btnText;
         if (isButton) {
-          const btnMatch = html.match(new RegExp(btn.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '([\\s\\S]*?)<\\/button>', 'i'));
-          btnText = btnMatch ? btnMatch[1].trim() : '(unknown)';
+          const btnMatch = html.match(
+            new RegExp(
+              btn.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") +
+                "([\\s\\S]*?)<\\/button>",
+              "i",
+            ),
+          );
+          btnText = btnMatch ? btnMatch[1].trim() : "(unknown)";
         } else {
           const valMatch = btn.match(/value\s*=\s*"([^"]*)"/i);
-          btnText = valMatch ? valMatch[1] : '(unknown)';
+          btnText = valMatch ? valMatch[1] : "(unknown)";
         }
         const idMatch = btn.match(/data-id="(\d+)"/);
-        const medalId = idMatch ? idMatch[1] : '?';
+        const medalId = idMatch ? idMatch[1] : "?";
         console.log(`    [${i}] id=${medalId} btn="${btnText}"`);
       });
     } else {
       // Analyze table structure
-      console.log('\n📋 表格结构分析:');
+      console.log("\n📋 表格结构分析:");
       const rows = html.match(/<tr[\s\S]*?(?=<tr|$)/gi) || [];
       const colCounts = {};
       let dataRows = 0;
@@ -214,7 +300,7 @@ function analyzeFile(filePath) {
         const tds = row.match(/<td[^>]*>[\s\S]*?<\/td>/gi) || [];
         if (tds.length >= 5) {
           colCounts[tds.length] = (colCounts[tds.length] || 0) + 1;
-          if (!row.includes('colhead') && !row.includes('thead')) {
+          if (!row.includes("colhead") && !row.includes("thead")) {
             dataRows++;
             const layout = bg.getColumnLayout(tds.length);
             if (layout) {
@@ -222,8 +308,14 @@ function analyzeFile(filePath) {
               if (groups.length > 0) {
                 console.log(`  ${tds.length}列数据行 (${groups.length}组):`);
                 groups.forEach((g, gi) => {
-                  const purchasable = g.actionValue.includes('购买') || g.actionValue.includes('購買') ? '✅' : '❌';
-                  console.log(`    [${gi}] ${purchasable} name="${g.name.substring(0, 40)}" price=${g.price} duration=${g.duration} action="${g.actionValue}"`);
+                  const purchasable =
+                    g.actionValue.includes("购买") ||
+                    g.actionValue.includes("購買")
+                      ? "✅"
+                      : "❌";
+                  console.log(
+                    `    [${gi}] ${purchasable} name="${g.name.substring(0, 40)}" price=${g.price} duration=${g.duration} action="${g.actionValue}"`,
+                  );
                 });
               }
             }
@@ -238,11 +330,11 @@ function analyzeFile(filePath) {
       const inputs = findPurchaseInputs(html);
       console.log(`\n📥 购买/交换按钮: ${inputs.length} 个`);
       const uniqueActions = new Set();
-      inputs.forEach(inp => {
+      inputs.forEach((inp) => {
         const valMatch = inp.text.match(/value\s*=\s*"([^"]*)"/i);
         if (valMatch) uniqueActions.add(valMatch[1]);
       });
-      console.log(`  按钮类型: ${[...uniqueActions].join(', ')}`);
+      console.log(`  按钮类型: ${[...uniqueActions].join(", ")}`);
     }
 
     // Run actual extraction
@@ -251,16 +343,18 @@ function analyzeFile(filePath) {
       : bg.extractMedalsFromHtml(html);
     console.log(`\n🏅 实际提取结果: ${medals.length} 个`);
     medals.forEach((m, i) => {
-      console.log(`  [${i + 1}] 「${m.name}」 价格=${m.price} 有效期=${m.duration}`);
+      console.log(
+        `  [${i + 1}] 「${m.name}」 价格=${m.price} 有效期=${m.duration}`,
+      );
     });
 
     totalFound += medals.length;
-    console.log('');
+    console.log("");
   }
 
-  console.log('═══════════════════════════════════════════════════════');
+  console.log("═══════════════════════════════════════════════════════");
   console.log(`📊 汇总: 共 ${pages.length} 个页面，提取 ${totalFound} 个勋章`);
-  console.log('');
+  console.log("");
 }
 
 analyzeFile(inputPath);
