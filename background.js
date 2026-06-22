@@ -615,6 +615,146 @@ const extractMedalsFromSiqi = (html) => {
   return medals;
 };
 
+// zmpt.cc 新版 CSS Modules 布局（Vue/Vite SPA 渲染后 DOM）
+// 特征：<div class="index-module__card___XXX"> + <div class="index-module__title___XXX">
+// + <div class="index-module__label___XXX">LABEL</div><div class="index-module__content___XXX">VALUE</div>
+// + <div class="index-module__control___XXX"><button>购买</button></div>
+// CSS Modules 类名带 hash 后缀（如 ___90vxo），不能硬编码完整类名
+const extractMedalsFromZmptNew = (html) => {
+  // 结构特征双重检测，避免误匹配
+  if (
+    !html.includes("index-module__card") ||
+    !html.includes("index-module__label")
+  ) {
+    return [];
+  }
+
+  const medals = [];
+  const cards = [];
+  let pos = 0;
+
+  // 提取所有 card-wrap 容器（包含 card 内部结构）
+  // card-wrap 是卡片的最外层，card 是内部容器
+  while (pos < html.length) {
+    const cardStart = html.indexOf('<div class="index-module__card-wrap', pos);
+    if (cardStart < 0) break;
+
+    // 深度计数找到容器闭合
+    let d = 0;
+    let cardEnd = -1;
+    for (let i = cardStart; i < html.length; i++) {
+      if (html[i] === "<") {
+        const tEnd = html.indexOf(">", i);
+        if (tEnd < 0) break;
+        const tag = html.substring(i, tEnd + 1);
+        if (tag.startsWith("<div ") || tag.startsWith("<div>")) d++;
+        else if (tag.startsWith("</div>")) {
+          d--;
+          if (d === 0) {
+            cardEnd = tEnd + 1;
+            break;
+          }
+        }
+        i = tEnd;
+      }
+    }
+
+    if (cardEnd > 0) {
+      cards.push(html.substring(cardStart, cardEnd));
+      pos = cardEnd;
+    } else break;
+  }
+
+  for (const card of cards) {
+    // 查找 control 区域内的按钮
+    const controlMatch = card.match(
+      /<div class="index-module__control[^"]*">([\s\S]*?)<\/div>/,
+    );
+    if (!controlMatch) continue;
+
+    const controlHtml = controlMatch[1];
+    // 提取所有 button 元素
+    const buttons = controlHtml.match(/<button[^>]*>[\s\S]*?<\/button>/g) || [];
+
+    // 查找可用的购买按钮（非 disabled，文本为"购买"或"購買"）
+    let hasBuyButton = false;
+    for (const btn of buttons) {
+      if (btn.includes("disabled")) continue;
+      const btnText = btn.replace(/<[^>]+>/g, "").trim();
+      if (btnText === "购买" || btnText === "購買") {
+        hasBuyButton = true;
+        break;
+      }
+    }
+    if (!hasBuyButton) continue;
+
+    // 名称从 title 区域的第一个 <div> 提取
+    let name = "";
+    const titleMatch = card.match(
+      /<div class="index-module__title[^"]*"><div>([^<]*)<\/div>/,
+    );
+    if (titleMatch) {
+      name = titleMatch[1].trim();
+    } else {
+      // 回退到 img alt
+      const imgMatch = card.match(/<img[^>]*alt="([^"]*)"[^>]*>/i);
+      name = imgMatch ? imgMatch[1].trim() : "";
+    }
+    if (!name) continue;
+
+    // 时间范围从 time-limit 区域提取
+    let timeRange = "";
+    const timeMatch = card.match(
+      /<div class="index-module__time-limit[^"]*"><div>([^<]*)<\/div>/,
+    );
+    if (timeMatch) {
+      timeRange = timeMatch[1].trim();
+    }
+
+    // 字段从 label/content 键值对提取
+    let price = "",
+      duration = "",
+      bonus = "",
+      stock = "";
+    // 匹配所有 item 中的 label/content 对
+    const itemPairs =
+      card.match(
+        /<div class="index-module__label[^"]*">([^<]*)<\/div>\s*<div class="index-module__content[^"]*">([\s\S]*?)<\/div>/g,
+      ) || [];
+    for (const pair of itemPairs) {
+      const labelMatch = pair.match(
+        /<div class="index-module__label[^"]*">([^<]*)<\/div>/,
+      );
+      // content 可能包含嵌套元素（如优先级 input），取纯文本
+      const contentMatch = pair.match(
+        /<div class="index-module__content[^"]*">([\s\S]*?)<\/div>/,
+      );
+      if (!labelMatch || !contentMatch) continue;
+      const label = labelMatch[1].trim();
+      // content 取纯文本，去除嵌套标签和内部多余空白
+      const value = contentMatch[1]
+        .replace(/<[^>]+>/g, "")
+        .replace(/\s+/g, "")
+        .trim();
+      if (label.includes("价格") || label.includes("價格")) price = value;
+      else if (label.includes("有效期")) duration = value;
+      else if (label.includes("加成")) bonus = value;
+      else if (label.includes("库存") || label.includes("庫存")) stock = value;
+    }
+
+    medals.push({
+      name,
+      price,
+      duration,
+      bonus,
+      stock,
+      timeRange,
+      medalId: "",
+    });
+  }
+  return medals;
+};
+
 const extractTdText = (tdHtml) => {
   return tdHtml
     .replace(/<h1[^>]*>/gi, "\n")
@@ -845,7 +985,8 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
             const renderedHtml = await extractMedalsFromZmpt(siteUrl, cookies);
             if (renderedHtml) {
               pageHtmls[0].html = renderedHtml;
-              medals = extractMedalsFromCards(renderedHtml);
+              // zmpt.cc 新版使用 CSS Modules 布局，调用专用提取器
+              medals = extractMedalsFromZmptNew(renderedHtml);
             } else {
               medals = [];
             }
@@ -1156,6 +1297,7 @@ if (typeof module !== "undefined" && module.exports) {
     extractMedalsFromMedalItems,
     extractMedalsFromHhanclub,
     extractMedalsFromSiqi,
+    extractMedalsFromZmptNew,
     sendToFeishu,
     setupAlarm,
     performScheduledScan,

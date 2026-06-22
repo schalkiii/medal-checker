@@ -254,6 +254,37 @@ function analyzeFile(filePath) {
         );
       });
     } else if (
+      html.includes("index-module__card") &&
+      html.includes("index-module__label")
+    ) {
+      // zmpt.cc 新版 CSS Modules 布局（Vue/Vite SPA 渲染后 DOM）
+      console.log("\n📋 zmpt 新版 CSS Modules 布局:");
+      const cardWraps =
+        html.match(/<div class="index-module__card-wrap[^"]*"/g) || [];
+      const labels =
+        html.match(/<div class="index-module__label[^"]*">([^<]*)<\/div>/g) ||
+        [];
+      // 统计所有按钮文本
+      const buttons = html.match(/<button[^>]*>[\s\S]*?<\/button>/g) || [];
+      const btnTexts = buttons.map((b) => b.replace(/<[^>]+>/g, "").trim());
+      const valueSet = {};
+      btnTexts.forEach((v) => {
+        valueSet[v] = (valueSet[v] || 0) + 1;
+      });
+      // 可用购买按钮（非 disabled，文本为"购买"或"購買"）
+      const buyButtons = buttons.filter((b) => {
+        if (b.includes("disabled")) return false;
+        const t = b.replace(/<[^>]+>/g, "").trim();
+        return t === "购买" || t === "購買";
+      });
+      console.log(`  card-wrap 容器数: ${cardWraps.length}`);
+      console.log(`  label 字段数: ${labels.length}`);
+      console.log(`  按钮总数: ${buttons.length}`);
+      console.log(`  按钮类型分布: ${JSON.stringify(valueSet, null, 2)}`);
+      console.log(
+        `  可用购买按钮数: ${buyButtons.length}（文本为"购买"或"購買"且非 disabled）`,
+      );
+    } else if (
       html.includes("medal-container") ||
       html.includes("medal-cards") ||
       /medal-card\b/i.test(html)
