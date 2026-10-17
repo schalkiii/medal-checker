@@ -79,7 +79,8 @@
 4. **页面请求**：`background.js` 使用 `fetch()` 携带 Cookie 请求 `medal.php` 页面
 5. **HTML 解析**：Service Worker 无 DOM API，用纯正则多布局提取（表格/卡片/medal-item/hhanclub/si-qi/zmpt 新版），按 `value="购买"` 等精确匹配筛出可购买勋章
 6. **SPA 回退**：常规提取为 0 且页面为 SPA 壳（`isSpaShell()`）时，用后台标签页渲染页面后再次提取
-7. **分页处理**：`collectPageNumbers()` 收集分页条全部页码（含省略号折叠页，翻页逐步发现），工作流式抓取，上限 20 页
+7. **API 直抓分支**：sunnypt.top 等「页面空壳 + 独立 JSON API」站点，走会话 JWT → API 直抓（不开标签页）
+8. **分页处理**：`collectPageNumbers()` 收集分页条全部页码（含省略号折叠页，翻页逐步发现），工作流式抓取，上限 20 页
 8. **结果回传**：扫描结果通过 `chrome.runtime.sendMessage` 回传给 `options.js`，勋章带页码与分页 URL 打标
 9. **结果展示**：`options.js` 更新 UI，显示站点名称、URL 和勋章列表，勋章链接跳转到其所在分页
 
@@ -117,7 +118,9 @@ Service Worker，负责核心的勋章扫描逻辑。不直接操作 DOM，通�
 | `extractMedalsFromCards(html)` | 通用卡片解析：正则匹配 `medal-card` 容器 + buy 类/文本双重按钮判定 + 7 种字段模式 |
 | `isSpaShell(html)` | SPA 壳检测（外部脚本 + 几乎无可见文本） |
 | `extractMedalsFromZmpt(siteUrl)` | SPA 渲染提取：后台标签页 + 轮询等待挂载点内容，超时也关标签 |
-| `scanSiteMedals(siteName, siteUrl, cookies, sendLog)` | 单站扫描流程（首页 + 全部分页 + SPA 回退），手动/定时扫描共用 |
+| `scanSiteMedals(siteName, siteUrl, cookies, sendLog)` | 单站扫描流程（首页 + 全部分页 + SPA 回退 + sunnypt API 分支），手动/定时扫描共用 |
+| `scanSunnyptBounty(siteUrl, cookies, sendLog)` | sunnypt.top API 直抓：会话取 JWT → medals/list + medals/my + seed-bonus |
+| `parseSunnyptMedals(listData, myData, nowSec)` | sunnypt 勋章映射与过滤（售卖窗内 + 未拥有 + 有库存） |
 | `collectPageNumbers(html, isPterclub)` / `buildPageUrl(siteUrl, n, isPterclub)` | 分页页码收集（含省略号折叠页）/ 分页 URL 拼接（`?`/`&` 自适应） |
 | `chrome.action.onClicked` 监听器 | 点击扩展图标时打开选项页 |
 | `chrome.runtime.onMessage` 监听器 | 接收 `startScan` / `detectSites` / `updateScheduleConfig` 消息 |
@@ -152,15 +155,29 @@ Service Worker，负责核心的勋章扫描逻辑。不直接操作 DOM，通�
 2. 遍历每个站点：
    a. 解析站点名称和 URL（格式：name|url）
    b. 获取域名对应的 Cookie（主域名 + 子域名）并去重
-   c. 发送主请求（带 Cookie 头 + 10秒超时）
-   d. 常规多布局提取；为 0 且命中 SPA 壳特征时转后台标签页渲染提取
-   e. 收集分页条页码，工作流式抓取全部页面（含省略号折叠页，上限 20 页）
-   f. 0 索引站点页码显示 N+1，1 索引站点显示 N（?page=1 与首页重复时去重并翻转假设）
-   g. 勋章打标 page/pageUrl（前端链接直达所在分页）
-   h. 记录日志并推送到前端
+   c. API 站点分支（sunnypt.top/bounty）：转 scanSunnyptBounty 后返回
+   d. 发送主请求（带 Cookie 头 + 10秒超时）
+   e. 常规多布局提取；为 0 且命中 SPA 壳特征时转后台标签页渲染提取
+   f. 收集分页条页码，工作流式抓取全部页面（含省略号折叠页，上限 20 页）
+   g. 0 索引站点页码显示 N+1，1 索引站点显示 N（?page=1 与首页重复时去重并翻转假设）
+   h. 勋章打标 page/pageUrl（前端链接直达所在分页）
+   i. 记录日志并推送到前端
 3. 保存扫描结果到 chrome.storage.local（scanResults）与调试页面（debugData）
 4. 追加到扫描历史（scanHistory，最多 60 条）
 5. 发送 scanResult 消息给前端
+```
+
+#### sunnypt.top API 直抓流程（`scanSunnyptBounty`）
+
+```
+1. GET https://sunnypt.top/api/auth/session（带 Cookie 头）
+   → data.accessToken（NextAuth 下发的 JWT）
+2. 并行请求（Authorization: Bearer <JWT>，无需 Cookie）：
+   - api.sunnypt.top/api/v1/medals/list      勋章列表（价格/有效期/加成/库存/售卖窗）
+   - api.sunnypt.top/api/v1/medals/my        已拥有勋章 [{medal_id, expire_at}]
+   - api.sunnypt.top/api/v1/user/seed-bonus  贝利余额（seed_bonus）
+3. parseSunnyptMedals 过滤：售卖时间窗内 + 未拥有 + 有库存（-1=无限，0=售罄）
+4. 余额不足不排除——前端「魔力不足」筛选按 balance 过滤
 ```
 
 #### 分页抓取算法

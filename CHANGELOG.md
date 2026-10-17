@@ -2,6 +2,23 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)，所有显著变更均记录于此。
 
+## [1.11] - 2026-10-18
+
+### 新增
+
+- 新增站点 sunnypt.top（赏金公会-荣誉勋章 `https://sunnypt.top/bounty?tab=renown`，内置站点 73 → 74）
+- sunnypt.top 为 Next.js SPA：静态 HTML 是无数据空壳，勋章数据来自独立 API（`api.sunnypt.top`）。采用 API 直抓方案，不开标签页：
+  - `GET https://sunnypt.top/api/auth/session`（带 Cookie）→ `data.accessToken`（JWT）
+  - `GET api.sunnypt.top/api/v1/medals/list`（`Authorization: Bearer`，无需 Cookie）→ 勋章列表
+  - `GET api.sunnypt.top/api/v1/medals/my` → 已拥有勋章；`GET api.sunnypt.top/api/v1/user/seed-bonus` → 贝利余额
+- 新增 `scanSunnyptBounty()` / `parseSunnyptMedals()`：「可购买」判定复刻 Web 端按钮逻辑（售卖时间窗内 + 未拥有 + 有库存）；余额不足不排除（前端「魔力不足」筛选处理）；时间按 UTC+8 格式化与站点展示一致
+- 新增 9 个 sunnypt 单元测试（background 152 → 161，全套 185 项）
+
+### 技术决策
+
+- SPA 站点接入优先级：先找数据 API（Network 面板 / performance API）→ 解决认证（Cookie / 会话 JWT / 页面令牌）→ 最后才开标签页渲染
+- 经 Kimi WebBridge 读取用户登录态页面实证：页面无 XHR 数据请求外的其它通道，API 认证为 NextAuth JWT，Bearer 头充分（无 Cookie 返回 401）
+
 ## [1.10] - 2026-10-17
 
 ### 修复

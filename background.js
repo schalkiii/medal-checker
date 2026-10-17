@@ -1136,6 +1136,7 @@ const DEFAULT_SITES = [
   "sewerpt.com|https://sewerpt.com/medal.php",
   "si-qi.xyz|https://si-qi.xyz/medal.php",
   "springsunday.net (badges)|https://springsunday.net/badges.php",
+  "sunnypt.top|https://sunnypt.top/bounty?tab=renown",
   "tangpt.top|https://www.tangpt.top/medal.php",
   "tokyo-manga.top|https://www.tokyo-manga.top/medal.php",
   "totheglory.im (mall)|https://totheglory.im/mall.php",
@@ -1183,11 +1184,125 @@ const isSameMedalSet = (pageA, pageB) => {
   return pageB.every((m) => names.has(m.name));
 };
 
+// ===== sunnypt.top（Next.js SPA + 独立 API）=====
+// 页面 HTML 只是客户端渲染的空壳（约 30KB，无勋章数据），数据来自
+// api.sunnypt.top 的 JSON 接口，认证方式为 NextAuth 会话中的 JWT：
+//   1) GET https://sunnypt.top/api/auth/session（带 Cookie）→ data.accessToken
+//   2) GET https://api.sunnypt.top/api/v1/medals/list（Authorization: Bearer <JWT>）
+// 因此无需像 zmpt 那样开标签页渲染，纯 HTTP 即可直抓。
+const SUNNYPT_API_BASE = "https://api.sunnypt.top";
+
+// Unix 秒 → "YYYY-MM-DD HH:mm"（按 UTC+8 格式化，与站点自身展示一致；
+// 加 8 小时后用 UTC getter 取值，避免依赖运行机器的时区）
+const formatSunnyptTime = (unixSec) => {
+  if (!unixSec || unixSec <= 0) return "不限";
+  const d = new Date((unixSec + 8 * 3600) * 1000);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+};
+
+// 数字去尾零：1 → "1"、0.5 → "0.5"（用于加成百分比展示）
+const trimNumber = (num) => String(Number(num.toFixed(4)));
+
+// 将 medals/list 接口数据映射为标准勋章对象。
+// 「可购买」判定复刻 Web 端按钮逻辑：售卖时间窗内 + 未拥有 + 有库存；
+// 余额不足不在此排除——前端「魔力不足」筛选按 balance 过滤，与其它站点语义一致。
+const parseSunnyptMedals = (listData, myData, nowSec) => {
+  if (!Array.isArray(listData)) return [];
+  const ownedIds = new Set(
+    (Array.isArray(myData) ? myData : [])
+      .map((m) => m && m.medal_id)
+      .filter((id) => id != null),
+  );
+  const now = typeof nowSec === "number" ? nowSec : Math.floor(Date.now() / 1000);
+  const medals = [];
+
+  for (const item of listData) {
+    if (!item || typeof item !== "object") continue;
+    const begin = Number(item.sale_begin_time) || 0;
+    const end = Number(item.sale_end_time) || 0;
+    // 未开始或已结束的售卖窗口
+    if (begin > 0 && now < begin) continue;
+    if (end > 0 && now > end) continue;
+    // 已拥有（medals/my 返回 [{ medal_id, expire_at }]）
+    if (ownedIds.has(item.id)) continue;
+    // 库存：-1 为无限，0 为售罄
+    const inventory = Number(item.inventory);
+    if (inventory === 0) continue;
+
+    const bonus = Number(item.bonus_addition_factor);
+    medals.push({
+      name: String(item.name || "未知勋章"),
+      price: Number(item.price || 0).toLocaleString("en-US"),
+      // duration 单位按天理解（当前在架勋章均为 0，即永久）
+      duration: item.duration > 0 ? `${item.duration} 天` : "永久",
+      // bonus_addition_factor 为加成比率（0.01 = 1%）
+      bonus: bonus > 0 ? `${trimNumber(bonus * 100)}%` : "0%",
+      stock: inventory < 0 ? "无限" : String(inventory),
+      timeRange: `${formatSunnyptTime(begin)} ~ ${formatSunnyptTime(end)}`,
+      medalId: String(item.id ?? ""),
+    });
+  }
+  return medals;
+};
+
+// sunnypt 赏金页扫描：会话取 JWT → 并行拉取勋章列表/已拥有/贝利余额 → 映射过滤。
+// 出错时抛异常，由调用方的 try/catch 统一记录日志。
+async function scanSunnyptBounty(siteUrl, cookies) {
+  const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ");
+  const ua = { "User-Agent": navigator.userAgent };
+
+  // 1. NextAuth 会话端点取 JWT（HttpOnly Cookie 由扩展的 chrome.cookies 读取）
+  const sessionUrl = new URL("/api/auth/session", siteUrl).href;
+  const sessionRes = await fetchWithTimeout(
+    sessionUrl,
+    { headers: { Cookie: cookieHeader, ...ua } },
+    10000,
+  );
+  if (!sessionRes.ok) {
+    throw new Error(`会话获取失败 (HTTP ${sessionRes.status})`);
+  }
+  const sessionJson = await sessionRes.json();
+  const token = sessionJson && sessionJson.data && sessionJson.data.accessToken;
+  if (!token) {
+    throw new Error("未获取到访问令牌（可能未登录或会话已过期）");
+  }
+
+  // 2. 勋章列表 / 已拥有 / 贝利余额并行拉取（API 只需 Bearer 头，不带 Cookie）
+  const authHeaders = { Authorization: `Bearer ${token}`, ...ua };
+  const [listRes, myRes, bonusRes] = await Promise.all([
+    fetchWithTimeout(`${SUNNYPT_API_BASE}/api/v1/medals/list`, { headers: authHeaders }, 10000),
+    fetchWithTimeout(`${SUNNYPT_API_BASE}/api/v1/medals/my`, { headers: authHeaders }, 10000),
+    fetchWithTimeout(`${SUNNYPT_API_BASE}/api/v1/user/seed-bonus`, { headers: authHeaders }, 10000),
+  ]);
+  if (!listRes.ok) {
+    throw new Error(`勋章列表获取失败 (HTTP ${listRes.status})`);
+  }
+  const listJson = await listRes.json();
+  const myJson = myRes.ok ? await myRes.json() : { data: [] };
+  let balance = null;
+  if (bonusRes.ok) {
+    const bonusJson = await bonusRes.json();
+    const seedBonus = bonusJson && bonusJson.data && bonusJson.data.seed_bonus;
+    if (typeof seedBonus === "number" && seedBonus > 0) balance = seedBonus;
+  }
+
+  const medals = parseSunnyptMedals(listJson && listJson.data, myJson && myJson.data);
+  // 调试包保存 API 原始响应（JSON 比渲染后 HTML 更有利于排查字段变化）
+  const pageHtmls = [{ url: siteUrl, html: JSON.stringify(listJson) }];
+  return { medals, balance, pageHtmls, pageCount: 1 };
+}
+
 // 扫描单个站点：抓取首页与全部分页，返回勋章列表（含页码/分页 URL 打标，
 // 供前端点击跳转到勋章所在的具体分页）、魔力值与调试用页面 HTML。
 // startScan（手动扫描）与 performScheduledScan（定时扫描）共用本函数，
 // 保证两条路径的站点适配能力一致（卡片布局 / SPA / 分页全量抓取）。
 async function scanSiteMedals(siteName, siteUrl, cookies, sendLog) {
+  // sunnypt.top 是 Next.js SPA：静态 HTML 无勋章数据，改走 API 直抓（不开标签页）
+  if (siteUrl.includes("sunnypt.top/bounty")) {
+    return await scanSunnyptBounty(siteUrl, cookies);
+  }
+
   const pageHtmls = [{ url: siteUrl, html: "" }];
   const fetchPage = (url) =>
     fetchWithTimeout(
@@ -1665,6 +1780,9 @@ if (typeof module !== "undefined" && module.exports) {
     collectPageNumbers,
     buildPageUrl,
     scanSiteMedals,
+    scanSunnyptBounty,
+    parseSunnyptMedals,
+    formatSunnyptTime,
     sendToFeishu,
     setupAlarm,
     performScheduledScan,

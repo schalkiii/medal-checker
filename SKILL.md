@@ -215,6 +215,13 @@ Chrome 扩展前后端通信通过 `chrome.runtime.sendMessage`：
 - 所有退出路径（含总超时）都必须 `chrome.tabs.remove`，否则每次扫描残留一个空标签页
 - 定时扫描与手动扫描必须共用同一扫描函数，否则适配能力会 drifting（v1.10 前定时扫描不走卡片/SPA 分支）
 
+**SPA 站点接入优先级（v1.11 教训，按代价从低到高）**：
+1. **先找数据 API**：DevTools Network 面板过滤 XHR/Fetch，或读 `performance.getEntriesByType('resource')`。SPA 的数据几乎总来自某个 JSON 接口——直连 API 比开标签页渲染更稳、更快、无副作用
+2. **解决 API 认证**：常见三种——① Cookie 即可（扩展现有链路直接能用）；② Bearer JWT 且令牌能从同源会话端点获取（如 NextAuth `/api/auth/session` 返回 `data.accessToken`，sunnypt 即此模式：会话端点带 Cookie 取 JWT → API 只带 Bearer 头）；③ 令牌只在页面内存/localStorage（拿不到就走渲染路线）。用页面上下文 `fetch(url,{credentials:'omit'})` + Bearer 验证「是否真的不需要 Cookie」
+3. **找不到干净 API 才开标签页渲染**（复用 `extractMedalsFromZmpt` 模式）
+4. **状态规则复刻 Web 端按钮逻辑**：UI 按钮文本（已结束/已拥有/余额不足）是业务规则的最终体现，从接口字段反推规则时逐一与 UI 状态核对（sunnypt：售卖窗 + medals/my 去重 + 库存；余额不足不排除，交前端筛选）
+5. **登录态页面结构获取**：Kimi WebBridge（skill 在 `~/.codebuddy/skills/kimi-webbridge`，daemon `http://127.0.0.1:10086/command`，动作 `navigate`/`evaluate`/`snapshot`）可驱动用户已登录的浏览器；JS 代码写文件再传给 `evaluate`，避免 shell 引号损坏
+
 **分页抓取原则（v1.10 教训）**：
 - 分页条可能带省略号（`1 2 … 12 13 14`），只匹配相邻页码会漏掉折叠页；解法是工作流式抓取：每抓一页就从该页分页条发现新页码
 - 分页索引约定不统一：0 索引站点（base=第0页，`?page=1` 是第二页）与 1 索引站点并存；以「首页分页条是否链接 ?page=1」判定，并用「?page=1 内容与首页勋章名集合相同」去重兜底

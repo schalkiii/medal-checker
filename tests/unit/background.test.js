@@ -1839,6 +1839,148 @@ testAsync('scanSiteMedals: 请求失败时返回空结果', async () => {
 });
 
 // ============================================================
+// sunnypt.top — Next.js SPA API 直抓（不开标签页）
+// ============================================================
+console.log('\n  ▶ parseSunnyptMedals - sunnypt API 勋章映射');
+
+// 真实 medals/list 响应样本（2026-10-18 抓取）
+const sunnyptList = [
+  { id: 1, name: 'Sunny 启航！', price: 50000, get_type: 1, description: '', image_large: 'pic/a.png', image_small: 'pic/a-s.png', display_on_medal_page: 1, duration: 0, bonus_addition_factor: 0, gift_fee_factor: 0, sale_begin_time: 1733932800, sale_end_time: 1738252800, inventory: -1 },
+  { id: 2, name: '蛇年大吉！', price: 88888, get_type: 1, description: '', image_large: 'pic/b.png', image_small: 'pic/b-s.png', display_on_medal_page: 1, duration: 0, bonus_addition_factor: 0.01, gift_fee_factor: 0.1, sale_begin_time: 1738080000, sale_end_time: 1741968000, inventory: -1 },
+  // 在售但未拥有（应保留，余额不足不排除）
+  { id: 5, name: '测试在售勋章', price: 280000, get_type: 1, description: '', image_large: 'pic/c.png', image_small: 'pic/c-s.png', display_on_medal_page: 1, duration: 30, bonus_addition_factor: 0.005, gift_fee_factor: 0.1, sale_begin_time: 1792166400, sale_end_time: 1794758400, inventory: 50 },
+  // 未开始售卖
+  { id: 6, name: '未来勋章', price: 1000, get_type: 1, duration: 0, bonus_addition_factor: 0, sale_begin_time: 1892166400, sale_end_time: 1894758400, inventory: -1 },
+  // 售罄
+  { id: 7, name: '售罄勋章', price: 2000, get_type: 1, duration: 0, bonus_addition_factor: 0, sale_begin_time: 1792166400, sale_end_time: 1794758400, inventory: 0 },
+];
+
+const sunnyptNow = 1792254997; // 2026-10-18
+
+test('sunnypt: 过滤已结束/未开始/售罄，保留在售', () => {
+  const medals = bg.parseSunnyptMedals(sunnyptList, [], null, sunnyptNow);
+  const names = medals.map((m) => m.name);
+  assertEqual(medals.length, 1);
+  assert(names.includes('测试在售勋章'), '在售勋章应保留');
+  assert(!names.includes('Sunny 启航！'), '已结束应排除');
+  assert(!names.includes('未来勋章'), '未开始应排除');
+  assert(!names.includes('售罄勋章'), '售罄应排除');
+});
+
+test('sunnypt: 已拥有勋章排除', () => {
+  const medals = bg.parseSunnyptMedals(sunnyptList, [{ medal_id: 5, expire_at: 0 }], null, sunnyptNow);
+  assertEqual(medals.length, 0, 'medals/my 中的勋章应排除');
+});
+
+test('sunnypt: 余额不足不排除（前端魔力不足筛选负责）', () => {
+  const medals = bg.parseSunnyptMedals(sunnyptList, [], sunnyptNow);
+  assertEqual(medals.length, 1, '余额不足的在售勋章仍应保留');
+  assertEqual(medals[0].price, '280,000');
+});
+
+test('sunnypt: 字段映射（价格/有效期/加成/库存/时间/ID）', () => {
+  const medals = bg.parseSunnyptMedals(sunnyptList, [], null, sunnyptNow);
+  const m = medals[0];
+  assertEqual(m.name, '测试在售勋章');
+  assertEqual(m.price, '280,000');
+  assertEqual(m.duration, '30 天');
+  assertEqual(m.bonus, '0.5%');
+  assertEqual(m.stock, '50');
+  assertEqual(m.timeRange, '2026-10-17 00:00 ~ 2026-11-16 00:00');
+  assertEqual(m.medalId, '5');
+});
+
+test('sunnypt: 库存 -1 映射为无限', () => {
+  const list = [{ id: 9, name: '无限库存', price: 100, duration: 0, bonus_addition_factor: 0.01, sale_begin_time: 1792166400, sale_end_time: 1794758400, inventory: -1 }];
+  const medals = bg.parseSunnyptMedals(list, [], null, sunnyptNow);
+  assertEqual(medals[0].stock, '无限');
+  assertEqual(medals[0].bonus, '1%');
+  assertEqual(medals[0].duration, '永久');
+});
+
+test('sunnypt: 非法输入返回空数组', () => {
+  assertEqual(bg.parseSunnyptMedals(null, [], null, sunnyptNow).length, 0);
+  assertEqual(bg.parseSunnyptMedals('not-array', [], null, sunnyptNow).length, 0);
+  assertEqual(bg.parseSunnyptMedals([null, undefined, 'x'], [], null, sunnyptNow).length, 0);
+});
+
+test('formatSunnyptTime Unix 秒转 UTC 字符串', () => {
+  assertEqual(bg.formatSunnyptTime(1733932800), '2024-12-12 00:00');
+  assertEqual(bg.formatSunnyptTime(0), '不限');
+  assertEqual(bg.formatSunnyptTime(null), '不限');
+});
+
+testAsync('scanSunnyptBounty: 会话取 JWT → API 直抓全流程', async () => {
+  const savedFetch = global.fetch;
+  const cookieHeader = [];
+  const seenUrls = [];
+  const seenAuth = [];
+  global.fetch = (url, options = {}) => {
+    seenUrls.push(url);
+    seenAuth.push(options.headers && options.headers.Authorization);
+    if (url.endsWith('/api/auth/session')) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ data: { accessToken: 'fake-jwt-token' } }),
+      });
+    }
+    if (url.includes('/api/v1/medals/list')) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ code: 0, data: sunnyptList }) });
+    }
+    if (url.includes('/api/v1/medals/my')) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ code: 0, data: [{ medal_id: 5, expire_at: 0 }] }) });
+    }
+    if (url.includes('/api/v1/user/seed-bonus')) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ code: 0, data: { seed_bonus: 177519.86 } }) });
+    }
+    return Promise.resolve({ ok: false, status: 404 });
+  };
+
+  const logs = [];
+  const { medals, balance, pageHtmls, pageCount } = await bg.scanSunnyptBounty(
+    'https://sunnypt.top/bounty?tab=renown',
+    [{ name: 'session', value: 'x', domain: '.sunnypt.top' }],
+  );
+
+  // 会话请求带 Cookie，API 请求带 Bearer 头
+  assert(seenUrls[0].endsWith('/api/auth/session'), '首先应请求会话端点');
+  assert(
+    seenUrls.some((u) => u.includes('api.sunnypt.top/api/v1/medals/list')),
+    '应请求勋章列表 API',
+  );
+  assert(
+    seenAuth.some((a) => a === 'Bearer fake-jwt-token'),
+    'API 请求应带 Bearer 令牌',
+  );
+  // 已拥有的 id=5 被排除，其余在售过滤后为 0 条
+  assertEqual(medals.length, 0, '唯一在售勋章已被拥有，应为空');
+  assertEqual(balance, 177519.86);
+  assertEqual(pageCount, 1);
+  assert(pageHtmls[0].html.includes('测试在售勋章'), '调试包应保存 API 原始响应');
+  global.fetch = savedFetch;
+});
+
+testAsync('scanSunnyptBounty: 未登录（无令牌）抛出异常', async () => {
+  const savedFetch = global.fetch;
+  global.fetch = (url) =>
+    url.endsWith('/api/auth/session')
+      ? Promise.resolve({ ok: true, json: () => Promise.resolve({ data: {} }) })
+      : Promise.resolve({ ok: false, status: 404 });
+  let threw = false;
+  try {
+    await bg.scanSunnyptBounty(
+      'https://sunnypt.top/bounty?tab=renown',
+      [{ name: 'c', value: '1' }],
+    );
+  } catch (e) {
+    threw = true;
+    assert(e.message.includes('访问令牌'), '错误信息应提示令牌问题: ' + e.message);
+  }
+  assert(threw, '无令牌应抛出异常');
+  global.fetch = savedFetch;
+});
+
+// ============================================================
 // 汇总（先执行异步用例，再统一判定）
 // ============================================================
 (async () => {

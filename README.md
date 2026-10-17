@@ -11,7 +11,7 @@
 | 勋章识别   | 简单正则计数 `value="购买"` | 智能列式解析引擎，自动适配 9/10 列表格 + buycenter + 卡片布局 + pterclub 猫站 + medal-item 布局 + hhanclub 网格布局 + si-qi BEM 布局 + zmpt CSS Modules 布局 + 通用 SPA 渲染（zmpt/yemapt） |
 | 展示信息   | 仅显示勋章数量              | 名称、价格、有效期、加成、库存、限时购买窗口                                                                                                                 |
 | 跳转精度   | 仅能打开勋章页第一页        | 勋章链接直达其所在具体分页（`?page=N`），0/1 索引分页约定自适应，省略号折叠页全量抓取                                          |
-| 站点配置   | 手动逐条输入                | 一键检测已登录站点，73 个内置站点自动匹配                                                                                                                    |
+| 站点配置   | 手动逐条输入                | 一键检测已登录站点，74 个内置站点自动匹配                                                                                                                    |
 | 检测体验   | 按钮卡住无反馈              | 实时进度条 + 百分比 + 当前站点 + 调试日志                                                                                                                    |
 | 扫描历史   | 无                          | 60 次历史持久化，Diff 模式高亮新增勋章                                                                                                                       |
 | 调试能力   | 无                          | 一键导出原始 HTML 调试包 + 本地分析脚本 + 实时调试信息                                                                                                       |
@@ -31,10 +31,11 @@
 - 支持 si-qi BEM 风格卡片布局（`medal-card` + `medal-card__title` + `meta-label`/`meta-value` 键值对）
 - 支持 zmpt.cc 新版 CSS Modules 布局（`index-module__card-wrap` + `index-module__label`/`index-module__content` 键值对，Vue/Vite SPA 渲染后 DOM）
 - 支持 SPA 站点（通用壳检测 + 后台标签页渲染提取，覆盖 zmpt.cc 的 Vite 应用与 yemapt.org 的 umi 应用）
+- 支持 API 站点（sunnypt.top 为 Next.js SPA + 独立 JSON API，通过会话 JWT 直接调 `api.sunnypt.top` 抓取，无需开标签页）
 - 勋章链接直达其所在具体分页；分页 URL 拼接自动处理站点 URL 已带查询参数的场景
 - 支持繁体中文站点（`購買`）
 - 智能站点检测：点击按钮自动识别已登录的 PT 站点，实时进度条 + 调试日志显示
-- 内置 73 个常见 PT 站点配置（隐藏式，仅显示已登录的）
+- 内置 74 个常见 PT 站点配置（隐藏式，仅显示已登录的）
 - Diff 模式：对比历史扫描结果，高亮新增勋章
 - 智能过滤：只看永久勋章 / 只看限时售卖 / 只看正收益勋章，可任意组合并与 Diff 模式叠加
 - 一键打开所有有可购买勋章站点
@@ -129,7 +130,7 @@ npm test
 
 测试包括：
 
-- 单元测试（152 项）：background.js 核心函数（勋章提取、卡片布局、列布局检测、SPA 渲染、分页工具、单站扫描等）
+- 单元测试（161 项）：background.js 核心函数（勋章提取、卡片布局、列布局检测、SPA 渲染、分页工具、单站扫描等）
 - DOM 测试（18 项）：options 页面元素和交互
 - 集成测试（6 项）：消息传递协议和 storage 数据流
 - 回归测试（97 项）：基于真实调试包的 97 站点快照对比，覆盖 5 种布局类型
@@ -179,13 +180,22 @@ tests/fixtures/        回归测试快照（基于真实调试包的 97 站点�
 - `extractMedalsFromZmpt()` - SPA 站点渲染提取：后台标签页打开页面，轮询等待挂载点渲染出内容后读取，所有退出路径（含超时）均关闭标签页
 - `extractMedalsFromZmptNew()` - zmpt.cc 新版 CSS Modules 布局解析（Vue/Vite SPA 渲染后 DOM，`index-module__card-wrap` + `index-module__label`/`index-module__content` 键值对）
 - `scanSiteMedals()` - 单站扫描流程（首页 + 全部分页 + SPA 回退），手动扫描与定时扫描共用
+- `scanSunnyptBounty()` - sunnypt.top API 直抓：NextAuth 会话取 JWT → `api.sunnypt.top` 并行拉取勋章列表/已拥有/贝利余额（Bearer 认证，不开标签页）
+- `parseSunnyptMedals()` - sunnypt `medals/list` 数据映射与「可购买」过滤（售卖窗内 + 未拥有 + 有库存）
 - `collectPageNumbers()` / `buildPageUrl()` - 分页页码收集（含省略号折叠页）与分页 URL 拼接（自动处理 `?`/`&`）
 - `getColumnLayout()` - 列布局检测，返回正确的列索引映射
 - `extractTdText()` - HTML 表格单元格文本提取，保留 h1/br 结构
 
 ## 更新日志
 
-### v1.10（当前版本）
+### v1.11（当前版本）
+
+- 新增站点 sunnypt.top（赏金公会-荣誉勋章，74 个内置站点）
+- sunnypt.top 为 Next.js SPA：页面 HTML 是无数据空壳，且勋章数据来自独立 API（`api.sunnypt.top`）。经浏览器实证（Kimi WebBridge 读取登录态页面 + Network 分析）后采用 **API 直抓**：`GET /api/auth/session` 取 JWT → `Authorization: Bearer` 调 `/api/v1/medals/list`、`/api/v1/medals/my`、`/api/v1/user/seed-bonus`，**无需开标签页渲染**
+- 新增 `scanSunnyptBounty()` / `parseSunnyptMedals()`：「可购买」判定复刻 Web 端按钮逻辑（售卖时间窗内 + 未拥有 + 有库存；余额不足不排除，由前端「魔力不足」筛选处理）；贝利余额映射为站点 balance；时间按 UTC+8 格式化与站点展示一致
+- 新增 9 个 sunnypt 单元测试（总计 161 个 background + 18 options + 6 集成）
+
+### v1.10（历史版本）
 
 - 修复 zmpt.cc SPA 渲染失败导致漏扫：渲染器改为「轮询等待挂载点内容」替代固定 4 秒延时，总超时 25s → 45s，所有退出路径（含超时）均关闭后台标签页（此前超时会残留空标签）
 - 新增 `isSpaShell()` 通用 SPA 壳检测，yemapt.org（umi 应用）等非 Vite 壳 SPA 站点不再漏扫；常规提取为 0 且命中壳特征时才触发标签页渲染
