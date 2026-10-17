@@ -108,6 +108,10 @@ const extractMedalsFromHtml = (html) => {
 
     const siqiMedals = extractMedalsFromSiqi(html);
     if (siqiMedals.length > 0) return siqiMedals;
+
+    // zmpt.cc 新版 CSS Modules 布局（经 SPA 渲染后的 DOM）
+    const zmptNewMedals = extractMedalsFromZmptNew(html);
+    if (zmptNewMedals.length > 0) return zmptNewMedals;
   }
 
   return medals;
@@ -188,47 +192,136 @@ const extractMedalsFromPterclub = (html) => {
   return medals;
 };
 
+// SPA 壳页面判定：zmpt.cc（Vite）、yemapt.org（umi）等站点的勋章由 JS 渲染，
+// 静态 HTML 只有一个空挂载点。特征：含外部脚本引用，且剥离 script/style 后
+// 几乎没有任何可见文本。普通 NexusPHP 页面文本量巨大，不会误判；
+// "Redirecting..." 类跳转页没有外部脚本，同样不会误判。
+const isSpaShell = (html) => {
+  if (!html || typeof html !== "string") return false;
+  if (!/<script[^>]*\ssrc\s*=/i.test(html)) return false;
+  const text = html
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .trim();
+  return text.length < 200;
+};
+
+// SPA 渲染相关常量：总超时需覆盖慢网络下的页面加载 + SPA hydrate；
+// complete 之后 JS 渲染耗时不稳定（固定延时不可靠），改为轮询等待内容出现。
+// 注意：挂载点内容的"已渲染"判定在页面上下文执行，阈值需内联在注入函数中
+// （Service Worker 的常量无法被页面上下文引用）。
+const SPA_RENDER_TIMEOUT_MS = 45000;
+const SPA_POLL_DEADLINE_MS = 20000;
+const SPA_POLL_INTERVAL_MS = 800;
+
+// 在后台标签页中渲染 SPA 站点并取回渲染后的 HTML。
+// 之所以必须开标签页：Service Worker 没有 DOM 环境，无法执行页面 JS；
+// 标签页继承浏览器登录态，可直接拿到需要登录的勋章数据。
+// 所有退出路径（含超时）都必须关闭标签页，否则每次扫描都会残留一个空标签。
 const extractMedalsFromZmpt = async (siteUrl, _cookies) => {
-  if (typeof chrome === "undefined" || !chrome.tabs) {
-    return [];
+  if (
+    typeof chrome === "undefined" ||
+    !chrome.tabs ||
+    !chrome.tabs.onUpdated ||
+    !chrome.scripting
+  ) {
+    return "";
   }
 
   return new Promise((resolve) => {
-    const timeout = setTimeout(() => {
-      resolve([]);
-    }, 25000);
+    let settled = false;
+    let tabId = null;
+    let timeoutId = null;
+
+    const finish = (result) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutId);
+      if (tabId != null) {
+        try {
+          chrome.tabs.remove(tabId, () => {
+            // 标签页可能已自行关闭，忽略 lastError
+            if (chrome.runtime && chrome.runtime.lastError) {
+              /* noop */
+            }
+          });
+        } catch {
+          /* 标签页已关闭时 remove 会抛错，忽略 */
+        }
+      }
+      resolve(result);
+    };
+
+    timeoutId = setTimeout(() => finish(""), SPA_RENDER_TIMEOUT_MS);
 
     chrome.tabs.create({ url: siteUrl, active: false }, (tab) => {
-      if (!tab) {
-        clearTimeout(timeout);
-        resolve([]);
+      if (!tab || settled) {
+        finish("");
         return;
       }
+      tabId = tab.id;
 
-      const tabId = tab.id;
       const listener = (updatedTabId, changeInfo) => {
-        if (updatedTabId !== tabId || changeInfo.status !== "complete") return;
+        if (settled || updatedTabId !== tabId) return;
+        if (changeInfo.status !== "complete") return;
         chrome.tabs.onUpdated.removeListener(listener);
 
-        setTimeout(async () => {
-          try {
-            const results = await chrome.scripting.executeScript({
+        const readMountContent = () =>
+          chrome.scripting
+            .executeScript({
               target: { tabId },
               func: () => {
-                const app = document.getElementById("vite-app");
-                return app ? app.innerHTML : "";
+                const mount =
+                  document.getElementById("vite-app") ||
+                  document.getElementById("root") ||
+                  document.getElementById("app");
+                const mountHtml = mount ? mount.innerHTML : "";
+                return mountHtml.trim().length > 200 ? mountHtml : "";
               },
-            });
-            const renderedHtml = results[0]?.result || "";
-            chrome.tabs.remove(tabId);
-            clearTimeout(timeout);
-            resolve(renderedHtml);
-          } catch (_e) {
-            chrome.tabs.remove(tabId);
-            clearTimeout(timeout);
-            resolve("");
+            })
+            .then((results) =>
+              results && results[0] && results[0].result
+                ? results[0].result
+                : "",
+            );
+
+        const poll = async () => {
+          const deadline = Date.now() + SPA_POLL_DEADLINE_MS;
+          while (!settled && Date.now() < deadline) {
+            await new Promise((r) => setTimeout(r, SPA_POLL_INTERVAL_MS));
+            try {
+              const rendered = await readMountContent();
+              if (rendered) {
+                finish(rendered);
+                return;
+              }
+            } catch {
+              // 页面仍在导航或注入被拒绝，继续轮询
+            }
           }
-        }, 4000);
+          // 轮询超时：兜底读取整页 HTML（SPA 可能渲染在挂载点之外）
+          if (!settled) {
+            try {
+              const results = await chrome.scripting.executeScript({
+                target: { tabId },
+                func: () =>
+                  document.documentElement
+                    ? document.documentElement.outerHTML
+                    : "",
+              });
+              const rendered =
+                results && results[0] && results[0].result
+                  ? results[0].result
+                  : "";
+              finish(rendered);
+            } catch {
+              finish("");
+            }
+          }
+        };
+        poll();
       };
 
       chrome.tabs.onUpdated.addListener(listener);
@@ -403,15 +496,221 @@ const extractMedalsFromHhanclub = (html) => {
   return medals;
 };
 
+// 判断标签是否为可用的购买按钮：
+// <button> 要求文本恰为 购买/購買，<input> 要求 value 恰为 购买/購買，
+// 避免误匹配"已经购买""已过可购买时间""需要更多魔力值"等状态按钮
+const isEnabledBuyButton = (card, tag) => {
+  if (!tag || tag.includes("disabled")) return false;
+  if (tag.startsWith("<button")) {
+    const after = card.substring(card.indexOf(tag) + tag.length);
+    const closeIdx = after.indexOf("</button>");
+    const text = (closeIdx >= 0 ? after.substring(0, closeIdx) : "")
+      .replace(/<[^>]+>/g, "")
+      .trim();
+    return text === "购买" || text === "購買";
+  }
+  return tag.includes('value="购买"') || tag.includes('value="購買"');
+};
+
+// 查找卡片中的购买按钮标签。
+// ① 优先匹配 class 含独立单词 buy 的 input/button——覆盖
+// hxpt(action-btn btn-primary buy)、longpt(medal-action-btn-unified buy)、
+// luckpt(btn buy-action primary btn-buy)、cspt(btn btn-primary buy-btn) 等变体；
+// ② 回退匹配文本恰为 购买/購買 的 <button>（class 无 buy 的站点兜底）。
+const findBuyButtonTag = (card) => {
+  const classBuyMatch = card.match(
+    /<(?:input|button)[^>]*\bclass="[^"]*\bbuy\b[^"]*"[^>]*>/i,
+  );
+  if (classBuyMatch && isEnabledBuyButton(card, classBuyMatch[0])) {
+    return classBuyMatch[0];
+  }
+  const buttons = card.match(/<button[^>]*>[\s\S]*?<\/button>/gi) || [];
+  for (const btn of buttons) {
+    if (btn.includes("disabled")) continue;
+    const text = btn.replace(/<[^>]+>/g, "").trim();
+    if (text === "购买" || text === "購買") return btn;
+  }
+  return null;
+};
+
+// 勋章名称提取：专用 class 容器 → 购买按钮 data-name → img alt → 首个 h1-h4
+const extractCardMedalName = (card, buyTag) => {
+  const nameMatch = card.match(
+    /<(?:h[1-4]|div|span)\s+class="(?:medal-name|medal-title|medal-card__name|cread-name)"[^>]*>([\s\S]*?)<\/(?:h[1-4]|div|span)>/i,
+  );
+  if (nameMatch) {
+    const name = nameMatch[1].replace(/<[^>]+>/g, "").trim();
+    if (name) return name;
+  }
+  const dataName = buyTag.match(/data-name="([^"]*)"/i);
+  if (dataName && dataName[1].trim()) return dataName[1].trim();
+  const imgMatch = card.match(/<img[^>]*\balt="([^"]*)"[^>]*>/i);
+  if (imgMatch && imgMatch[1].trim()) return imgMatch[1].trim();
+  const fallbackH = card.match(/<h([1-4])[^>]*>([\s\S]*?)<\/h\1>/i);
+  if (fallbackH) {
+    return fallbackH[2]
+      .replace(/<[^>]+>/g, "")
+      .trim()
+      .replace(/\s*\(#\d+\)\s*$/, "");
+  }
+  return "";
+};
+
+const normalizeFieldValue = (raw) =>
+  raw
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+// 各站点"标签-值"容器组合差异很大，用模式清单统一覆盖：
+// detail-label/value(longpt)、meta-label/value(luckpt/si-qi，div 与 span 两种)、
+// medal-card__label/value、stat-label/value、stat-item 内文 + stat-value(cspt)、
+// medal-detail-item 的 span + strong(hxpt)
+const CARD_FIELD_PATTERNS = [
+  /<span\s+class="detail-label"[^>]*>([\s\S]*?)<\/span>\s*<span\s+class="detail-value"[^>]*>([\s\S]*?)<\/span>/gi,
+  /<div\s+class="meta-label"[^>]*>([\s\S]*?)<\/div>\s*<div\s+class="meta-value"[^>]*>([\s\S]*?)<\/div>/gi,
+  /<span\s+class="meta-label"[^>]*>([\s\S]*?)<\/span>\s*<span\s+class="meta-value"[^>]*>([\s\S]*?)<\/span>/gi,
+  /<span\s+class="medal-card__label"[^>]*>([\s\S]*?)<\/span>\s*<span\s+class="medal-card__value"[^>]*>([\s\S]*?)<\/span>/gi,
+  /<span\s+class="stat-label"[^>]*>([\s\S]*?)<\/span>\s*<span\s+class="stat-value"[^>]*>([\s\S]*?)<\/span>/gi,
+  /<div\s+class="stat-item"[^>]*>([^<]*?)\s*[：:]?\s*<span\s+class="stat-value[^"]*"[^>]*>([\s\S]*?)<\/span>/gi,
+  /<div\s+class="medal-detail-item"[^>]*>\s*<span[^>]*>([\s\S]*?)<\/span>\s*<strong[^>]*>([\s\S]*?)<\/strong>/gi,
+];
+
+// 标签 → 字段映射；同一卡片内后者覆盖前者（如 hxpt"定价"之后的"购买价(过期+50%)"
+// 才是实际扣费价，应覆盖列表价）
+const assignCardField = (fields, rawLabel, rawValue) => {
+  const label = rawLabel.replace(/<[^>]+>/g, "").replace(/[：:]/g, "").trim();
+  const value = normalizeFieldValue(rawValue);
+  if (!label || !value) return;
+  if (
+    label.includes("价格") ||
+    label.includes("價格") ||
+    label.includes("定价") ||
+    label.includes("售价") ||
+    label.includes("购买价")
+  )
+    fields.price = value;
+  else if (label.includes("有效期") || label.includes("时长"))
+    fields.duration = value;
+  else if (label.includes("加成")) fields.bonus = value;
+  else if (label.includes("库存") || label.includes("庫存"))
+    fields.stock = value;
+  else if (
+    label.includes("可购买") ||
+    label.includes("可購買") ||
+    label.includes("销售时间") ||
+    label.includes("售卖时间")
+  )
+    fields.timeRange = value;
+};
+
+// 从卡片提取价格/有效期/加成/库存/可购买时间；标签模式缺失时回退旧式
+// <strong>标签:</strong>值 结构（13city/playlet 等），再用购买按钮的
+// data-* 结构化属性兜底
+const extractCardMedalFields = (card, buyTag) => {
+  const fields = { price: "", duration: "", bonus: "", stock: "", timeRange: "" };
+  let matched = false;
+
+  for (const pattern of CARD_FIELD_PATTERNS) {
+    pattern.lastIndex = 0;
+    let pair;
+    while ((pair = pattern.exec(card)) !== null) {
+      matched = true;
+      assignCardField(fields, pair[1], pair[2]);
+    }
+  }
+
+  if (!matched) {
+    // 旧式：<div><strong>价格：</strong>24,000</div>
+    const strongPairsOld = card.match(/<strong>([^<]+)<\/strong>([\s\S]*?)<\/div>/g) || [];
+    for (const pair of strongPairsOld) {
+      const labelMatch = pair.match(/<strong>([^<]+)<\/strong>/);
+      if (!labelMatch) continue;
+      const val = pair
+        .replace(/<[^>]+>/g, " ")
+        .replace(/：/g, ":")
+        .replace(/^[^:]*[:：]\s*/, "")
+        .trim();
+      assignCardField(fields, labelMatch[1], val);
+    }
+    // 新式：<div><span>定价:</span><strong>188,888</strong></div>
+    if (!fields.price && !fields.duration) {
+      const strongPairsNew =
+        card.match(
+          /<(?:div|span|td)[^>]*>\s*<span[^>]*>([^<]+)[:：]?\s*<\/span>\s*<strong[^>]*>([^<]+)<\/strong>/gi,
+        ) || [];
+      for (const pair of strongPairsNew) {
+        const m = pair.match(
+          /<span[^>]*>([^<]+)[:：]?\s*<\/span>\s*<strong[^>]*>([^<]+)<\/strong>/i,
+        );
+        if (m) assignCardField(fields, m[1], m[2]);
+      }
+    }
+  }
+
+  // cspt 可购买时间独立容器：<div class="sale-time">📅 2026-10-01 00:00:00 ~ 不限</div>
+  if (!fields.timeRange) {
+    const saleTimeMatch = card.match(/<div\s+class="sale-time"[^>]*>([\s\S]*?)<\/div>/i);
+    if (saleTimeMatch) {
+      fields.timeRange = normalizeFieldValue(saleTimeMatch[1]).replace(/^[^0-9不]+/, "");
+    }
+  }
+
+  if (!fields.price) {
+    const m = buyTag.match(/data-(?:price-formatted|buy-price|price)="([^"]*)"/i);
+    if (m) fields.price = m[1].trim();
+  }
+  if (!fields.duration) {
+    const m = buyTag.match(/data-duration="([^"]*)"/i);
+    if (m) fields.duration = m[1].trim();
+  }
+  if (!fields.bonus) {
+    const m = buyTag.match(/data-bonus="([^"]*)"/i);
+    if (m) fields.bonus = m[1].trim();
+  }
+  if (!fields.timeRange) {
+    const begin = buyTag.match(/data-sale-begin="([^"]*)"/i);
+    const end = buyTag.match(/data-sale-end="([^"]*)"/i);
+    if (begin && end) fields.timeRange = `${begin[1].trim()} ~ ${end[1].trim()}`;
+  }
+  // 库存/可购买时间可能挂在卡片内其他按钮上（如 hxpt 的"详情"按钮带
+  // data-inventory / data-sale-begin），购买按钮上没有时回退查整卡
+  if (!fields.stock) {
+    const m = card.match(/data-inventory="([^"]*)"/i);
+    if (m) fields.stock = m[1].trim();
+  }
+  if (!fields.timeRange) {
+    const begin = card.match(/data-sale-begin="([^"]*)"/i);
+    const end = card.match(/data-sale-end="([^"]*)"/i);
+    if (begin && end) fields.timeRange = `${begin[1].trim()} ~ ${end[1].trim()}`;
+  }
+  // 行内"XX加成：值"文本兜底（如 luckpt 头部的 幸运星加成：1.000%）
+  if (!fields.bonus) {
+    const m = card.match(/加成[：:]\s*([+\d][\d.]*%?)/);
+    if (m) fields.bonus = m[1];
+  }
+  return fields;
+};
+
+// 通用勋章卡片提取器：覆盖各站点自定义的 medal-card 卡片布局
+// （13city、playlet、hxpt、luckpt、cspt、longpt 等）。
+// 容器匹配必须用正则：兼容 class="medal-card"、class="medal-card locked"、
+// class="medal-card" data-id= 等变体；若退化为硬编码 '<div class="medal-card '
+// （要求 class 后带空格），longpt/hxpt/luckpt 等站点会整体漏扫。
+// 正则同时排除 medal-card__xxx 子元素与 medal-card-list 等派生容器。
 const extractMedalsFromCards = (html) => {
   const medals = [];
   const cards = [];
   let pos = 0;
+  const cardTagRegex = /<div[^>]*\bclass=["']medal-card(?![-\w])[^>]*>/gi;
 
-  while (pos < html.length) {
-    const cardStart = html.indexOf('<div class="medal-card ', pos);
-    if (cardStart < 0) break;
+  let cardMatch;
+  while ((cardMatch = cardTagRegex.exec(html)) !== null) {
+    const cardStart = cardMatch.index;
+    if (cardStart < pos) continue;
 
+    // 深度计数找到容器闭合
     let d = 0;
     let cardEnd = -1;
     for (let i = cardStart; i < html.length; i++) {
@@ -438,63 +737,23 @@ const extractMedalsFromCards = (html) => {
   }
 
   for (const card of cards) {
-    const actionMatch = card.match(
-      /<(?:input|button)[^>]*\bclass="btn buy[^"]*"[^>]*\/?\s*>/i,
-    );
-    if (!actionMatch) continue;
+    // si-qi 的 medal-card__title BEM 布局由 extractMedalsFromSiqi 专用处理，此处跳过
+    if (card.includes("medal-card__title")) continue;
 
-    const actionHtml = actionMatch[0];
-    const isButton = actionHtml.startsWith("<button");
+    const buyTag = findBuyButtonTag(card);
+    if (!buyTag) continue;
 
-    if (isButton) {
-      const btnClose = card.indexOf("</button>", actionMatch.index);
-      if (btnClose < 0) continue;
-      const btnText = card
-        .substring(actionMatch.index + actionHtml.length, btnClose)
-        .trim();
-      if (!btnText.includes("购买") && !btnText.includes("購買")) continue;
-    } else {
-      if (
-        !actionHtml.includes('value="购买"') &&
-        !actionHtml.includes('value="購買"')
-      )
-        continue;
-    }
-
-    if (actionHtml.includes("disabled")) continue;
-
-    const dataIdMatch = actionHtml.match(/data-id="(\d+)"/);
+    const dataIdMatch = buyTag.match(/data-id="(\d+)"/);
     const medalId = dataIdMatch ? dataIdMatch[1] : "";
 
-    const nameMatch = card.match(/<div class="medal-name">([\s\S]*?)<\/div>/);
-    const name = nameMatch ? nameMatch[1].trim() : "";
+    const name = extractCardMedalName(card, buyTag);
+    if (!name) continue;
 
-    let price = "",
-      duration = "",
-      bonus = "",
-      stock = "",
-      timeRange = "";
-    const fieldPairs =
-      card.match(/<strong>([^<]+)<\/strong>([\s\S]*?)<\/div>/g) || [];
-    for (const pair of fieldPairs) {
-      const labelMatch = pair.match(/<strong>([^<]+)<\/strong>/);
-      const val = pair
-        .replace(/<[^>]+>/g, "")
-        .replace(/：/g, ":")
-        .replace(/^[^:]*[:：]\s*/, "")
-        .trim();
-      if (!labelMatch) continue;
-      const label = labelMatch[1].replace(/[：:]/g, "").trim();
-      if (label.includes("价格") || label.includes("價格")) price = val;
-      else if (label.includes("有效期")) duration = val;
-      else if (label.includes("加成")) bonus = val;
-      else if (label.includes("库存") || label.includes("庫存")) stock = val;
-      else if (label.includes("可购买") || label.includes("可購買"))
-        timeRange = val;
-    }
-
-    if (name)
-      medals.push({ name, price, duration, bonus, stock, timeRange, medalId });
+    medals.push({
+      name,
+      ...extractCardMedalFields(card, buyTag),
+      medalId,
+    });
   }
   return medals;
 };
@@ -573,7 +832,7 @@ const extractMedalsFromSiqi = (html) => {
     const medalId = dataIdMatch ? dataIdMatch[1] : "";
 
     // 名称从 medal-card__title 内的 <h2> 提取
-    let name = "";
+    let name;
     const titleMatch = card.match(
       /<div class="medal-card__title">[\s\S]*?<h2>([\s\S]*?)<\/h2>/i,
     );
@@ -689,7 +948,7 @@ const extractMedalsFromZmptNew = (html) => {
     if (!hasBuyButton) continue;
 
     // 名称从 title 区域的第一个 <div> 提取
-    let name = "";
+    let name;
     const titleMatch = card.match(
       /<div class="index-module__title[^"]*"><div>([^<]*)<\/div>/,
     );
@@ -763,6 +1022,55 @@ const extractTdText = (tdHtml) => {
     .replace(/&nbsp;/gi, " ")
     .replace(/\s+/g, " ")
     .trim();
+};
+
+// 提取用户当前可用「魔力值」（Magic Points）
+// 各 PT 站点表头通常带有 魔力/魔法/麦力/余额 等余额信息，这里做尽力而为的提取。
+// 返回数字；提取不到时返回 null。
+// 注意：JS 正则中 \b 对 CJK 字符无效（CJK 不属于 \w），因此这里不使用 \b。
+const MAGIC_KEYWORDS = ["魔力", "魔法", "麦力", "麦粒", "magic", "余额"];
+const extractMagicBalance = (html) => {
+  if (!html) return null;
+  const patterns = [
+    // 关键字 + 可选冒号 + 标签包裹的数字，例如 魔力: <b>12345</b>
+    new RegExp(
+      `(?:${MAGIC_KEYWORDS.join("|")})\\s*[:：]?\\s*<[^>]*>\\s*([\\d,]{2,})(?!\\s*%)`,
+      "i",
+    ),
+    // 关键字 + 冒号/空格 + 数字，例如 魔法 99,999 / 麦力：12,345
+    new RegExp(
+      `(?:${MAGIC_KEYWORDS.join("|")})[\\s:：]*([\\d,]{2,})(?!\\s*%)`,
+      "i",
+    ),
+    // 关键字后 50 字符内的 2 位以上数字（兜底，排除百分比加成）
+    new RegExp(
+      `(?:${MAGIC_KEYWORDS.join("|")})[\\s\\S]{0,50}?([\\d,]{2,})(?!\\s*%)`,
+      "i",
+    ),
+  ];
+  for (const re of patterns) {
+    const m = html.match(re);
+    if (m) {
+      const num = parseFloat(String(m[1]).replace(/,/g, ""));
+      if (!isNaN(num) && num > 0) return num;
+    }
+  }
+  return null;
+};
+
+// 将勋章价格字符串解析为数字。支持 "1,000"、"1000 魔力"、"2000猫粮"、"免费"。
+const parsePriceNumber = (price) => {
+  if (price == null) return null;
+  const cleaned = String(price).replace(/[^\d.]/g, "");
+  if (cleaned === "") return null;
+  const num = parseFloat(cleaned);
+  return isNaN(num) ? null : num;
+};
+
+// 为某个分页提取出的勋章批量打上页码与分页 URL，供前端跳转使用。
+const tagMedalsWithPage = (medals, page, pageUrl) => {
+  if (!Array.isArray(medals)) return medals;
+  return medals.map((m) => ({ ...m, page, pageUrl }));
 };
 
 const DEFAULT_SITES = [
@@ -839,6 +1147,159 @@ const DEFAULT_SITES = [
   "zmpt.cc|https://zmpt.cc/medal.php",
   "zrpt.cc|https://zrpt.cc/medal.php",
 ];
+
+// 分页抓取上限：防止个别站点分页条链出过多页面导致扫描时间失控
+const MAX_PAGE_FETCHES = 20;
+
+// 从 HTML 分页条中收集所有 ?page=N 页码。
+// 省略号折叠的中间页（如 "1 2 … 12 13 14" 中的 3-11）在首页没有链接，
+// 只有翻到相邻页才会在其分页条中暴露，因此抓取循环需要逐步发现。
+// pterclub 使用 ?page=page001 形式，单独处理。
+const collectPageNumbers = (html, isPterclub) => {
+  const nums = new Set();
+  const re = isPterclub ? /page=page(\d+)/gi : /[?&]page=(\d+)/gi;
+  let m;
+  while ((m = re.exec(html)) !== null) {
+    const n = parseInt(m[1], 10);
+    if (Number.isFinite(n) && n > 0) nums.add(n);
+  }
+  return [...nums].sort((a, b) => a - b);
+};
+
+// 拼接分页 URL：站点 URL 已带查询参数时用 & 而非 ?
+// （如 totheglory 的 mall.php?cid=5，拼成 ?page=1 会得到非法 URL）
+const buildPageUrl = (siteUrl, pageNum, isPterclub) => {
+  const separator = siteUrl.includes("?") ? "&" : "?";
+  return isPterclub
+    ? siteUrl + separator + "page=page" + String(pageNum).padStart(3, "0")
+    : siteUrl + separator + "page=" + pageNum;
+};
+
+// 判断两页勋章是否完全相同（按名称集合），用于 1 索引站点的重复页去重
+const isSameMedalSet = (pageA, pageB) => {
+  if (pageA.length === 0 || pageB.length === 0) return false;
+  if (pageA.length !== pageB.length) return false;
+  const names = new Set(pageA.map((m) => m.name));
+  return pageB.every((m) => names.has(m.name));
+};
+
+// 扫描单个站点：抓取首页与全部分页，返回勋章列表（含页码/分页 URL 打标，
+// 供前端点击跳转到勋章所在的具体分页）、魔力值与调试用页面 HTML。
+// startScan（手动扫描）与 performScheduledScan（定时扫描）共用本函数，
+// 保证两条路径的站点适配能力一致（卡片布局 / SPA / 分页全量抓取）。
+async function scanSiteMedals(siteName, siteUrl, cookies, sendLog) {
+  const pageHtmls = [{ url: siteUrl, html: "" }];
+  const fetchPage = (url) =>
+    fetchWithTimeout(
+      url,
+      {
+        headers: {
+          Cookie: cookies.map((c) => `${c.name}=${c.value}`).join("; "),
+          "User-Agent": navigator.userAgent,
+        },
+      },
+      10000,
+    ).then((response) => response.text());
+
+  const response = await fetchWithTimeout(
+    siteUrl,
+    {
+      headers: {
+        Cookie: cookies.map((c) => `${c.name}=${c.value}`).join("; "),
+        "User-Agent": navigator.userAgent,
+      },
+    },
+    10000,
+  );
+  if (!response.ok) {
+    sendLog(`请求失败：${siteName} (HTTP ${response.status})`, true);
+    return { medals: [], balance: null, pageHtmls, pageCount: 0 };
+  }
+
+  const html = await response.text();
+  pageHtmls[0].html = html;
+
+  const isPterclub = html.includes('name="medalchosen"');
+  const isBuyCenter = siteUrl.includes("buycenter.php");
+  let medals = isBuyCenter
+    ? extractMedalsFromBuyCenter(html)
+    : extractMedalsFromHtml(html);
+
+  // SPA 壳页面（zmpt.cc 的 Vite 应用、yemapt.org 的 umi 应用）：
+  // 静态 HTML 只有一个空挂载点，必须在后台标签页渲染后再提取
+  if (medals.length === 0 && isSpaShell(html)) {
+    sendLog(`${siteName}: 检测到 SPA 页面，正在后台渲染提取...`);
+    const renderedHtml = await extractMedalsFromZmpt(siteUrl, cookies);
+    if (renderedHtml) {
+      pageHtmls[0].html = renderedHtml;
+      medals = isBuyCenter
+        ? extractMedalsFromBuyCenter(renderedHtml)
+        : extractMedalsFromHtml(renderedHtml);
+    }
+  }
+
+  // 第 1 页勋章打标（用于前端跳转具体分页）
+  medals = tagMedalsWithPage(medals, 1, siteUrl);
+  // 尝试提取用户当前魔力值，用于「魔力不足」筛选
+  const balance = extractMagicBalance(html);
+
+  // 分页索引约定自适应：0 索引站点（base 即第 0 页）的分页条一定链接
+  // ?page=1；1 索引站点（base 即第 1 页）通常从 ?page=2 起链。
+  // 据此决定页码显示用 N+1 还是 N（URL 始终使用实际抓取的分页地址）。
+  const basePageNumbers = collectPageNumbers(html, isPterclub);
+  let zeroIndexed = basePageNumbers.includes(1);
+  const pending = new Set(basePageNumbers);
+  const fetched = new Set();
+  let pageCount = 0;
+
+  // 工作流式抓取：每抓一页就从该页分页条发现新页码，始终优先抓取
+  // 最小待抓页码，保证勋章列表按分页顺序排列
+  while (pending.size > 0 && pageCount < MAX_PAGE_FETCHES) {
+    const pageNum = Math.min(...pending);
+    pending.delete(pageNum);
+    if (fetched.has(pageNum)) continue;
+    fetched.add(pageNum);
+
+    const pageUrl = buildPageUrl(siteUrl, pageNum, isPterclub);
+    let pageHtml;
+    try {
+      pageHtml = await fetchPage(pageUrl);
+    } catch (error) {
+      if (error.name === "AbortError") {
+        sendLog(`分页请求超时：${siteName} 第${pageNum}页`, true);
+      } else {
+        sendLog(
+          `分页请求失败：${siteName} 第${pageNum}页 (${error.message})`,
+          true,
+        );
+      }
+      break;
+    }
+
+    pageHtmls.push({ url: pageUrl, html: pageHtml });
+    for (const discovered of collectPageNumbers(pageHtml, isPterclub)) {
+      if (!fetched.has(discovered)) pending.add(discovered);
+    }
+
+    const pageMedals = extractMedalsFromHtml(pageHtml);
+    // 1 索引站点把当前页也链进分页条时，?page=1 会与首页重复：按名称集合
+    // 去重，同时翻转索引假设，让后续分页按 1 索引约定显示页码
+    if (pageNum === 1 && zeroIndexed && isSameMedalSet(medals, pageMedals)) {
+      zeroIndexed = false;
+      continue;
+    }
+    medals = medals.concat(
+      tagMedalsWithPage(
+        pageMedals,
+        zeroIndexed ? pageNum + 1 : pageNum,
+        pageUrl,
+      ),
+    );
+    pageCount++;
+  }
+
+  return { medals, balance, pageHtmls, pageCount: pageCount + 1 };
+}
 
 chrome.action.onClicked.addListener(() => {
   chrome.runtime.openOptionsPage();
@@ -957,102 +1418,23 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
             continue;
           }
 
-          const response = await fetchWithTimeout(
-            siteUrl,
-            {
-              headers: {
-                Cookie: cookies.map((c) => `${c.name}=${c.value}`).join("; "),
-                "User-Agent": navigator.userAgent,
-              },
-            },
-            10000,
-          );
-
-          if (!response.ok) {
-            sendLog(`请求失败：${siteName} (HTTP ${response.status})`, true);
-            continue;
-          }
-
-          const html = await response.text();
-          const pageHtmls = [{ url: siteUrl, html }];
+          const { medals, balance, pageHtmls, pageCount } =
+            await scanSiteMedals(siteName, siteUrl, cookies, sendLog);
           allPageHtmls.push(...pageHtmls);
-          const isPterclub = html.includes('name="medalchosen"');
-          const isZmpt =
-            html.includes('id="vite-app"') && html.includes("modulepreload");
-          let medals;
 
-          if (isZmpt) {
-            const renderedHtml = await extractMedalsFromZmpt(siteUrl, cookies);
-            if (renderedHtml) {
-              pageHtmls[0].html = renderedHtml;
-              // zmpt.cc 新版使用 CSS Modules 布局，调用专用提取器
-              medals = extractMedalsFromZmptNew(renderedHtml);
-            } else {
-              medals = [];
-            }
-          } else {
-            medals = siteUrl.includes("buycenter.php")
-              ? extractMedalsFromBuyCenter(html)
-              : extractMedalsFromHtml(html);
-          }
-          let all_pages = 1;
-
-          for (let i = 1; i < 15; i++) {
-            const pageNum = isPterclub ? String(i).padStart(3, "0") : i;
-            const query_str = isPterclub
-              ? `page=page${pageNum}`
-              : `href\\s*=\\s*["']\\?page=${i}["']`;
-            const re = new RegExp(query_str, "g");
-            const has_next_page = (html.match(re) || []).length;
-
-            if (has_next_page > 0) {
-              try {
-                const new_url = isPterclub
-                  ? siteUrl + "?page=page" + pageNum
-                  : siteUrl + "?page=" + i;
-                const response2 = await fetchWithTimeout(
-                  new_url,
-                  {
-                    headers: {
-                      Cookie: cookies
-                        .map((c) => `${c.name}=${c.value}`)
-                        .join("; "),
-                      "User-Agent": navigator.userAgent,
-                    },
-                  },
-                  10000,
-                );
-
-                const html2 = await response2.text();
-                pageHtmls.push({ url: new_url, html: html2 });
-                allPageHtmls.push({ url: new_url, html: html2 });
-                const pageMedals = extractMedalsFromHtml(html2);
-                medals = medals.concat(pageMedals);
-                all_pages++;
-              } catch (error) {
-                if (error.name === "AbortError") {
-                  sendLog(`分页请求超时：${siteName} 第${i}页`, true);
-                } else {
-                  sendLog(
-                    `分页请求失败：${siteName} 第${i}页 (${error.message})`,
-                    true,
-                  );
-                }
-                break;
-              }
-            } else {
-              break;
-            }
-          }
+          if (pageCount === 0) continue;
 
           results.push({
             siteName,
             count: medals.length,
             url: siteUrl,
             medals,
+            balance: balance != null ? balance : null,
           });
           sendLog(
-            `${siteName}: 共${all_pages}页，发现 ${medals.length} 个可购买勋章`,
+            `${siteName}: 共${pageCount}页，发现 ${medals.length} 个可购买勋章${
+              balance != null ? `，魔力值 ${balance}` : ""
+            }`,
           );
         } catch (error) {
           if (error.name === "AbortError") {
@@ -1072,14 +1454,19 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
       const debugData = { timestamp: Date.now(), dateStr, pages: allPageHtmls };
       chrome.storage.local.set({ debugData });
 
+      // 差异基准：取「本次扫描之前」最近一次扫描结果，
+      // 随 scanResult 消息返回给前端，避免连续多次扫描时把上一次已出现过的勋章再次误标为 NEW。
       chrome.storage.local.get(["scanHistory"], ({ scanHistory }) => {
         const history = scanHistory || [];
+        const prevEntry = history.length > 0 ? history[history.length - 1] : null;
+        const previousResults = prevEntry ? prevEntry.results : null;
+
         history.push(scanEntry);
         if (history.length > 60) history.shift();
         chrome.storage.local.set({ scanHistory: history });
-      });
 
-      chrome.runtime.sendMessage({ type: "scanResult", data: results });
+        chrome.runtime.sendMessage({ type: "scanResult", data: results, previousResults });
+      });
     });
   }
   if (request.action === "updateScheduleConfig") {
@@ -1181,6 +1568,8 @@ async function performScheduledScan() {
   if (!webhookUrl) return;
 
   const results = [];
+  // 定时扫描静默执行：sendLog 为空操作，避免向选项页发送消息
+  const sendLog = () => {};
 
   for (const site of sites) {
     const [siteName, siteUrl] = site.split("|");
@@ -1194,50 +1583,21 @@ async function performScheduledScan() {
 
       if (cookies.length === 0) continue;
 
-      const response = await fetchWithTimeout(
+      const { medals, balance, pageCount } = await scanSiteMedals(
+        siteName,
         siteUrl,
-        {
-          headers: {
-            Cookie: cookies.map((c) => `${c.name}=${c.value}`).join("; "),
-            "User-Agent": navigator.userAgent,
-          },
-        },
-        10000,
+        cookies,
+        sendLog,
       );
+      if (pageCount === 0) continue;
 
-      if (!response.ok) continue;
-
-      const html = await response.text();
-      let medals = siteUrl.includes("buycenter.php")
-        ? extractMedalsFromBuyCenter(html)
-        : extractMedalsFromHtml(html);
-
-      for (let i = 1; i < 15; i++) {
-        const re = new RegExp(`href\\s*=\\s*["']\\?page=${i}["']`, "g");
-        if ((html.match(re) || []).length > 0) {
-          try {
-            const newUrl = siteUrl + "?page=" + i;
-            const r2 = await fetchWithTimeout(
-              newUrl,
-              {
-                headers: {
-                  Cookie: cookies.map((c) => `${c.name}=${c.value}`).join("; "),
-                  "User-Agent": navigator.userAgent,
-                },
-              },
-              10000,
-            );
-            const h2 = await r2.text();
-            medals = medals.concat(extractMedalsFromHtml(h2));
-          } catch {
-            break;
-          }
-        } else {
-          break;
-        }
-      }
-
-      results.push({ siteName, count: medals.length, url: siteUrl, medals });
+      results.push({
+        siteName,
+        count: medals.length,
+        url: siteUrl,
+        medals,
+        balance: balance != null ? balance : null,
+      });
     } catch {
       // skip failed sites silently
     }
@@ -1298,6 +1658,13 @@ if (typeof module !== "undefined" && module.exports) {
     extractMedalsFromHhanclub,
     extractMedalsFromSiqi,
     extractMedalsFromZmptNew,
+    extractMagicBalance,
+    parsePriceNumber,
+    tagMedalsWithPage,
+    isSpaShell,
+    collectPageNumbers,
+    buildPageUrl,
+    scanSiteMedals,
     sendToFeishu,
     setupAlarm,
     performScheduledScan,

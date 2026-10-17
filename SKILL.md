@@ -203,6 +203,23 @@ Chrome 扩展前后端通信通过 `chrome.runtime.sendMessage`：
 - 部分站点省略 `</tr>` 闭合标签，用前瞻断言 `(?=<tr|$)` 处理
 - 部分站点多个勋章放在同一个 `<tr>` 中，按 stride 分组
 
+**卡片布局泛化原则（v1.10 教训）**：
+- 容器匹配必须用正则且允许 class 后无空格：`<div class="medal-card">`、`class="medal-card locked"`、`class="medal-card" data-id=` 都是合法变体；硬编码 `'<div class="medal-card '`（带尾空格）会静默漏掉整个站点（v1.7 曾把 v1.6 的泛化正则改回硬编码，导致 hxpt/luckpt/cspt/longpt 四个站点集体漏扫一个版本周期）
+- 正则同时排除派生容器：`medal-card(?![-\w])` 排除 `medal-card__title`（si-qi 专用）、`medal-card-list`、`medal-cards`
+- 购买按钮双重判定：class 含独立单词 `\bbuy\b`（覆盖 buy-btn/buy-action/...-buy 变体）或文本恰为购买/購買；disabled 与"已经购买/已过可购买时间/需要更多魔力值"等状态按钮必须排除——注意"需要更多魔力值"是买不起而非不可买，按产品口径不计入
+- 字段标签-值容器各站差异极大（detail-label/meta-label/stat-item/medal-detail-item/strong），用模式清单覆盖 + data-\* 属性兜底；同一字段后者覆盖前者（如 hxpt"定价"之后的"购买价(过期+50%)"才是实扣价）
+
+**SPA 站点渲染原则（v1.10 教训）**：
+- Service Worker 无 DOM，SPA 站点（Vite/umi 壳）必须借后台标签页渲染；壳检测用「含外部脚本 + 剥离 script/style 后几乎无文本」，比硬编码 `id="vite-app"` 更通用（yemapt 用 `id="root"`）
+- complete 之后 JS 渲染耗时不稳定：固定延时（如 4s）不可靠，必须轮询挂载点内容直到非空
+- 所有退出路径（含总超时）都必须 `chrome.tabs.remove`，否则每次扫描残留一个空标签页
+- 定时扫描与手动扫描必须共用同一扫描函数，否则适配能力会 drifting（v1.10 前定时扫描不走卡片/SPA 分支）
+
+**分页抓取原则（v1.10 教训）**：
+- 分页条可能带省略号（`1 2 … 12 13 14`），只匹配相邻页码会漏掉折叠页；解法是工作流式抓取：每抓一页就从该页分页条发现新页码
+- 分页索引约定不统一：0 索引站点（base=第0页，`?page=1` 是第二页）与 1 索引站点并存；以「首页分页条是否链接 ?page=1」判定，并用「?page=1 内容与首页勋章名集合相同」去重兜底
+- 拼接分页 URL 时站点可能已带查询参数（`mall.php?cid=5`），必须用 `&` 而非 `?`
+
 ## 常见陷阱
 
 | 问题 | 原因 | 解决 |
@@ -212,4 +229,9 @@ Chrome 扩展前后端通信通过 `chrome.runtime.sendMessage`：
 | `</tr>` 缺失导致行截断 | NexusPHP HTML 不规范 | 前瞻断言 `(?=<tr\|$)` |
 | `0 % 10 === 0` 为 true | JS 中 0 能被任何非零数整除 | 添加 `tdsLength <= 0` 检查 |
 | 不同站点列数不同 | NexusPHP 版本差异 | `getColumnLayout()` 自动检测 |
+| 整站漏扫但无报错 | 容器匹配硬编码尾空格，正则写死 | 正则匹配 + 调试包按钮信号核对 |
+| SPA 站点抓回空数组 | 固定延时短于渲染耗时 / 超时未关标签 | 轮询等待 + 超时也 remove |
+| 异步测试假通过 | 同步 `test()` 包裹 async fn，断言永不执行 | `testAsync` 入队 + 末尾统一 await |
+| 测试进程 45s 不退出 | 未被 await 的渲染调用留下兜底定时器 | 异步用例必须真正 await |
+| mock 与实现不同步 | mock 缺 tabs.onUpdated/scripting 导致流程走不通 | 扩展 mock 并驱动事件 |
 | 测试间状态污染 | 共享全局 chrome mock | `spawnSync` 进程隔离 |

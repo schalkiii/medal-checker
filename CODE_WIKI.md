@@ -8,9 +8,9 @@
 
 | 功能 | 说明 |
 |------|------|
-| 多站点批量扫描 | 同时扫描多个 PT 站点的勋章页面，支持分页（最多 15 页） |
-| 勋章详情提取 | 自动提取勋章名称、价格、有效期等信息 |
-| 可点击跳转链接 | 扫描结果中的站点 URL 可直接点击在新标签页打开 |
+| 多站点批量扫描 | 同时扫描多个 PT 站点的勋章页面，支持分页全量抓取（含省略号折叠页，上限 20 页，0/1 索引约定自适应） |
+| 勋章详情提取 | 自动提取勋章名称、价格、有效期等信息，覆盖表格/卡片/SPA 等 10+ 种布局 |
+| 可点击跳转链接 | 扫描结果中的站点 URL 可直接点击在新标签页打开；勋章链接直达其所在具体分页 |
 | 差异模式 (Diff) | 对比历史扫描记录，高亮显示本次新增的勋章 |
 | 持久化存储 | 扫描历史自动保存（最近 60 次），支持跨会话对比 |
 | 配置导入/导出 | 支持标准 JSON 和 PTPP 备份文件格式 |
@@ -77,10 +77,11 @@
 2. **扫描触发**：用户点击"开始扫描" → `options.js` 发送 `startScan` 消息给 `background.js`
 3. **Cookie 获取**：`background.js` 通过 `chrome.cookies.getAll()` 获取目标站点的 Cookie
 4. **页面请求**：`background.js` 使用 `fetch()` 携带 Cookie 请求 `medal.php` 页面
-5. **HTML 解析**：通过正则表达式匹配 `value="购买..."` 统计可购买勋章数量
-6. **分页处理**：检测分页链接，遍历最多 15 页
-7. **结果回传**：扫描结果通过 `chrome.runtime.sendMessage` 回传给 `options.js`
-8. **结果展示**：`options.js` 更新 UI，显示站点名称、URL 和勋章数量
+5. **HTML 解析**：Service Worker 无 DOM API，用纯正则多布局提取（表格/卡片/medal-item/hhanclub/si-qi/zmpt 新版），按 `value="购买"` 等精确匹配筛出可购买勋章
+6. **SPA 回退**：常规提取为 0 且页面为 SPA 壳（`isSpaShell()`）时，用后台标签页渲染页面后再次提取
+7. **分页处理**：`collectPageNumbers()` 收集分页条全部页码（含省略号折叠页，翻页逐步发现），工作流式抓取，上限 20 页
+8. **结果回传**：扫描结果通过 `chrome.runtime.sendMessage` 回传给 `options.js`，勋章带页码与分页 URL 打标
+9. **结果展示**：`options.js` 更新 UI，显示站点名称、URL 和勋章列表，勋章链接跳转到其所在分页
 
 ---
 
@@ -106,15 +107,20 @@
 
 Service Worker，负责核心的勋章扫描逻辑。不直接操作 DOM，通过消息机制与前端通信。
 
-#### 关键函数
+#### 关键函数（v1.10，行号为大致区间）
 
-| 函数 | 行号 | 职责 |
-|------|------|------|
-| `getCookieDomain(url)` | L1-L9 | 从 URL 中提取 Cookie 适用的域名（取最后两级） |
-| `fetchWithTimeout(url, options, timeout)` | L12-L20 | 带超时控制的 `fetch` 封装，默认 10 秒超时，使用 `AbortController` |
-| `extractMedalsFromHtml(html)` | L21-L77 | 使用 DOMParser 解析 HTML，提取勋章名称、价格、有效期 |
-| `chrome.action.onClicked` 监听器 | L79-L81 | 点击扩展图标时打开选项页 |
-| `chrome.runtime.onMessage` 监听器 | L83-L191 | 接收 `startScan` 消息，执行扫描流程并存储历史 |
+| 函数 | 职责 |
+|------|------|
+| `getCookieDomain(url)` | 从 URL 中提取 Cookie 适用的域名（取最后两级） |
+| `fetchWithTimeout(url, options, timeout)` | 带超时控制的 `fetch` 封装，默认 10 秒超时，使用 `AbortController` |
+| `extractMedalsFromHtml(html)` | 多布局提取入口：表格解析 + 卡片/medal-item/hhanclub/si-qi/zmpt 新版回退链 |
+| `extractMedalsFromCards(html)` | 通用卡片解析：正则匹配 `medal-card` 容器 + buy 类/文本双重按钮判定 + 7 种字段模式 |
+| `isSpaShell(html)` | SPA 壳检测（外部脚本 + 几乎无可见文本） |
+| `extractMedalsFromZmpt(siteUrl)` | SPA 渲染提取：后台标签页 + 轮询等待挂载点内容，超时也关标签 |
+| `scanSiteMedals(siteName, siteUrl, cookies, sendLog)` | 单站扫描流程（首页 + 全部分页 + SPA 回退），手动/定时扫描共用 |
+| `collectPageNumbers(html, isPterclub)` / `buildPageUrl(siteUrl, n, isPterclub)` | 分页页码收集（含省略号折叠页）/ 分页 URL 拼接（`?`/`&` 自适应） |
+| `chrome.action.onClicked` 监听器 | 点击扩展图标时打开选项页 |
+| `chrome.runtime.onMessage` 监听器 | 接收 `startScan` / `detectSites` / `updateScheduleConfig` 消息 |
 
 #### `extractMedalsFromHtml` 详解（L21-L77）
 
@@ -139,30 +145,36 @@ Service Worker，负责核心的勋章扫描逻辑。不直接操作 DOM，通�
 - 数据结构: `[{ timestamp, dateStr, results }, ...]`
 - 保留最近 60 次扫描记录（超出自动淘汰最旧的）
 
-#### 扫描流程详解（`startScan` 处理函数，L83-L191）
+#### 扫描流程详解（`startScan` 处理函数 → `scanSiteMedals()`）
 
 ```
 1. 从 chrome.storage.local 读取 sites 配置
 2. 遍历每个站点：
    a. 解析站点名称和 URL（格式：name|url）
-   b. 获取域名对应的 Cookie（主域名 + 子域名）
-   c. 去重 Cookie 列表
-   d. 发送主请求（带 Cookie 头 + 10秒超时）
-   e. 调用 extractMedalsFromHtml() 解析勋章详情
-   f. 检测分页（href="?page=N"），遍历最多 15 页
-   g. 聚合所有页面的勋章数据
+   b. 获取域名对应的 Cookie（主域名 + 子域名）并去重
+   c. 发送主请求（带 Cookie 头 + 10秒超时）
+   d. 常规多布局提取；为 0 且命中 SPA 壳特征时转后台标签页渲染提取
+   e. 收集分页条页码，工作流式抓取全部页面（含省略号折叠页，上限 20 页）
+   f. 0 索引站点页码显示 N+1，1 索引站点显示 N（?page=1 与首页重复时去重并翻转假设）
+   g. 勋章打标 page/pageUrl（前端链接直达所在分页）
    h. 记录日志并推送到前端
-3. 保存扫描结果到 chrome.storage.local（scanResults）
+3. 保存扫描结果到 chrome.storage.local（scanResults）与调试页面（debugData）
 4. 追加到扫描历史（scanHistory，最多 60 条）
 5. 发送 scanResult 消息给前端
 ```
 
-#### 分页检测正则
+#### 分页抓取算法
 
 ```javascript
-/href\s*=\s*["']\?page=N["']/g
+// 从 HTML 收集分页条页码（省略号折叠页在翻到相邻页后才会暴露链接）
+const collectPageNumbers = (html, isPterclub) => { /* [?&]page=(\d+) 或 page=page(\d+) */ };
+
+// 工作流式抓取：始终优先抓取最小待抓页码，保证列表有序
+while (pending.size > 0 && pageCount < MAX_PAGE_FETCHES) {
+  const pageNum = Math.min(...pending);
+  /* 抓取 ?page=pageNum → 从该页分页条发现新页码并入待抓集合 */
+}
 ```
-检测页面中是否存在指向第 N 页的链接。
 
 ### 4.3 `options/options.html` — 主界面
 
@@ -482,7 +494,7 @@ check.sh (Shell入口)
 | Cookie 安全 | Cookie 仅在 Service Worker 内部使用，不暴露给第三方 |
 | 请求范围 | `<all_urls>` 权限允许请求任意 URL，但仅对用户配置的站点发起请求 |
 | 超时控制 | 所有 fetch 请求均有 10 秒超时，防止长时间挂起 |
-| 分页限制 | 最多扫描 15 页，防止无限循环 |
+| 分页限制 | 最多扫描 20 页，防止无限循环 |
 | 数据存储 | 所有数据存储在 `chrome.storage.local`，不上传到任何服务器 |
 
 ---

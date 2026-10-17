@@ -324,6 +324,24 @@
       font-weight: 600;
     }
 
+    .medal-page-badge {
+      display: inline-block;
+      background: #e3f2fd;
+      color: #1565C0;
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 8px;
+      margin-left: 6px;
+      font-weight: 500;
+    }
+
+    .result-site-balance {
+      font-size: 12px;
+      color: #e65100;
+      margin-left: 8px;
+      font-weight: 500;
+    }
+
     #resultStats {
       background: linear-gradient(135deg, rgba(76,175,80,0.06), rgba(102,126,234,0.04));
       padding: 14px 16px;
@@ -576,9 +594,317 @@
       color: #4CAF50;
       font-weight: 500;
     }
+
+    /* ==================== Dark Mode ==================== */
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) body {
+        background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
+        color: #e6edf3;
+      }
+      :root:not([data-theme="light"]) .header h2 { color: #e6edf3; }
+      :root:not([data-theme="light"]) .header .subtitle { color: #8b949e; }
+      :root:not([data-theme="light"]) .header { border-bottom-color: rgba(255,255,255,0.08); }
+
+      :root:not([data-theme="light"]) .card {
+        background: #161b22;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+        border-color: rgba(255,255,255,0.06);
+      }
+      :root:not([data-theme="light"]) .card h3 { color: #e6edf3; }
+
+      :root:not([data-theme="light"]) textarea {
+        background: #0d1117;
+        border-color: #30363d;
+        color: #c9d1d9;
+      }
+      :root:not([data-theme="light"]) textarea:focus {
+        border-color: #58a6ff;
+        box-shadow: 0 0 0 3px rgba(88,166,255,0.15);
+      }
+
+      :root:not([data-theme="light"]) #scanLog {
+        background: #0d1117;
+        border-color: #30363d;
+      }
+      :root:not([data-theme="light"]) .log-entry {
+        background: #161b22;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        color: #c9d1d9;
+      }
+      :root:not([data-theme="light"]) .timestamp { color: #8b949e; }
+
+      :root:not([data-theme="light"]) #resultBox {
+        border-color: #30363d;
+      }
+      :root:not([data-theme="light"]) #resultList { background: transparent; }
+
+      :root:not([data-theme="light"]) .result-site {
+        border-color: #30363d;
+      }
+      :root:not([data-theme="light"]) .result-site-header {
+        background: linear-gradient(135deg, #161b22, #21262d);
+        border-bottom-color: #30363d;
+      }
+      :root:not([data-theme="light"]) .result-site-name { color: #e6edf3; }
+      :root:not([data-theme="light"]) .result-site-link { color: #58a6ff; }
+      :root:not([data-theme="light"]) .result-site-link:hover { color: #79c0ff; }
+
+      :root:not([data-theme="light"]) .medal-item {
+        background: #0d1117;
+        border-left-color: #30363d;
+      }
+      :root:not([data-theme="light"]) .medal-item:hover { background: #161b22; }
+      :root:not([data-theme="light"]) .medal-item.new-medal {
+        border-left-color: #FF9800;
+        background: rgba(255,152,0,0.08);
+      }
+      :root:not([data-theme="light"]) .medal-name { color: #e6edf3; }
+      :root:not([data-theme="light"]) .medal-name-link { color: #e6edf3; }
+      :root:not([data-theme="light"]) .medal-name-link:hover { color: #58a6ff; }
+      :root:not([data-theme="light"]) .medal-time { color: #8b949e; }
+
+      :root:not([data-theme="light"]) #resultStats {
+        background: linear-gradient(135deg, rgba(63,185,80,0.06), rgba(88,166,255,0.04));
+        border-top-color: #30363d;
+        color: #c9d1d9;
+      }
+
+      :root:not([data-theme="light"]) .detect-summary {
+        background: linear-gradient(135deg, rgba(88,166,255,0.06), rgba(118,75,162,0.04));
+        border-color: rgba(88,166,255,0.1);
+        color: #c9d1d9;
+      }
+      :root:not([data-theme="light"]) .detect-summary strong { color: #58a6ff; }
+
+      :root:not([data-theme="light"]) .empty-result { color: #6e7681; }
+
+      :root:not([data-theme="light"]) .config-tip {
+        background: #0d1117;
+        border-color: #30363d;
+        color: #8b949e;
+      }
+      :root:not([data-theme="light"]) .config-tip code {
+        background: #21262d;
+        color: #c9d1d9;
+      }
+
+      :root:not([data-theme="light"]) .detect-progress {
+        background: linear-gradient(135deg, rgba(88,166,255,0.06), rgba(118,75,162,0.04));
+        border-color: rgba(88,166,255,0.1);
+      }
+      :root:not([data-theme="light"]) .progress-header { color: #c9d1d9; }
+      :root:not([data-theme="light"]) .progress-header #progressPercent { color: #58a6ff; }
+      :root:not([data-theme="light"]) .progress-track { background: #21262d; }
+      :root:not([data-theme="light"]) .progress-detail { color: #8b949e; }
+
+      :root:not([data-theme="light"]) .debug-info {
+        color: #6e7681;
+        border-top-color: #30363d;
+      }
+      :root:not([data-theme="light"]) .debug-info .debug-line:hover { background: #161b22; }
+      :root:not([data-theme="light"]) .debug-info .debug-line.found { color: #3fb950; }
+      :root:not([data-theme="light"]) .debug-info .debug-line.notfound { color: #6e7681; }
+      :root:not([data-theme="light"]) .debug-info .debug-line.error { color: #f85149; }
+
+      :root:not([data-theme="light"]) .schedule-row label { color: #c9d1d9; }
+      :root:not([data-theme="light"]) .schedule-row input[type="time"],
+      :root:not([data-theme="light"]) .schedule-row input[type="url"] {
+        background: #0d1117;
+        border-color: #30363d;
+        color: #c9d1d9;
+      }
+      :root:not([data-theme="light"]) .schedule-row input[type="time"]:focus,
+      :root:not([data-theme="light"]) .schedule-row input[type="url"]:focus {
+        border-color: #58a6ff;
+        box-shadow: 0 0 0 3px rgba(88,166,255,0.15);
+      }
+      :root:not([data-theme="light"]) .schedule-row .hint { color: #6e7681; }
+      :root:not([data-theme="light"]) .schedule-status { color: #8b949e; }
+      :root:not([data-theme="light"]) .schedule-status.active { color: #3fb950; }
+
+      :root:not([data-theme="light"]) .toggle-slider { background: #30363d; }
+
+      :root:not([data-theme="light"]) .meta-price { color: #ffa726; }
+      :root:not([data-theme="light"]) .meta-duration { color: #64b5f6; }
+      :root:not([data-theme="light"]) .meta-bonus { color: #66bb6a; }
+      :root:not([data-theme="light"]) .meta-stock { color: #ba68c8; }
+
+      :root:not([data-theme="light"]) .medal-page-badge {
+        background: rgba(88,166,255,0.15);
+        color: #58a6ff;
+      }
+      :root:not([data-theme="light"]) .result-site-balance { color: #ffa726; }
+    }
+
+    /* ---- Manual Dark Theme ---- */
+    :root[data-theme="dark"] body {
+      background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
+      color: #e6edf3;
+    }
+    :root[data-theme="dark"] .header h2 { color: #e6edf3; }
+    :root[data-theme="dark"] .header .subtitle { color: #8b949e; }
+    :root[data-theme="dark"] .header { border-bottom-color: rgba(255,255,255,0.08); }
+
+    :root[data-theme="dark"] .card {
+      background: #161b22;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+      border-color: rgba(255,255,255,0.06);
+    }
+    :root[data-theme="dark"] .card h3 { color: #e6edf3; }
+
+    :root[data-theme="dark"] textarea {
+      background: #0d1117;
+      border-color: #30363d;
+      color: #c9d1d9;
+    }
+    :root[data-theme="dark"] textarea:focus {
+      border-color: #58a6ff;
+      box-shadow: 0 0 0 3px rgba(88,166,255,0.15);
+    }
+
+    :root[data-theme="dark"] #scanLog {
+      background: #0d1117;
+      border-color: #30363d;
+    }
+    :root[data-theme="dark"] .log-entry {
+      background: #161b22;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      color: #c9d1d9;
+    }
+    :root[data-theme="dark"] .timestamp { color: #8b949e; }
+
+    :root[data-theme="dark"] #resultBox { border-color: #30363d; }
+    :root[data-theme="dark"] #resultList { background: transparent; }
+
+    :root[data-theme="dark"] .result-site { border-color: #30363d; }
+    :root[data-theme="dark"] .result-site-header {
+      background: linear-gradient(135deg, #161b22, #21262d);
+      border-bottom-color: #30363d;
+    }
+    :root[data-theme="dark"] .result-site-name { color: #e6edf3; }
+    :root[data-theme="dark"] .result-site-link { color: #58a6ff; }
+    :root[data-theme="dark"] .result-site-link:hover { color: #79c0ff; }
+
+    :root[data-theme="dark"] .medal-item {
+      background: #0d1117;
+      border-left-color: #30363d;
+    }
+    :root[data-theme="dark"] .medal-item:hover { background: #161b22; }
+    :root[data-theme="dark"] .medal-item.new-medal {
+      border-left-color: #FF9800;
+      background: rgba(255,152,0,0.08);
+    }
+    :root[data-theme="dark"] .medal-name { color: #e6edf3; }
+    :root[data-theme="dark"] .medal-name-link { color: #e6edf3; }
+    :root[data-theme="dark"] .medal-name-link:hover { color: #58a6ff; }
+    :root[data-theme="dark"] .medal-time { color: #8b949e; }
+
+    :root[data-theme="dark"] #resultStats {
+      background: linear-gradient(135deg, rgba(63,185,80,0.06), rgba(88,166,255,0.04));
+      border-top-color: #30363d;
+      color: #c9d1d9;
+    }
+
+    :root[data-theme="dark"] .detect-summary {
+      background: linear-gradient(135deg, rgba(88,166,255,0.06), rgba(118,75,162,0.04));
+      border-color: rgba(88,166,255,0.1);
+      color: #c9d1d9;
+    }
+    :root[data-theme="dark"] .detect-summary strong { color: #58a6ff; }
+
+    :root[data-theme="dark"] .empty-result { color: #6e7681; }
+
+    :root[data-theme="dark"] .config-tip {
+      background: #0d1117;
+      border-color: #30363d;
+      color: #8b949e;
+    }
+    :root[data-theme="dark"] .config-tip code {
+      background: #21262d;
+      color: #c9d1d9;
+    }
+
+    :root[data-theme="dark"] .detect-progress {
+      background: linear-gradient(135deg, rgba(88,166,255,0.06), rgba(118,75,162,0.04));
+      border-color: rgba(88,166,255,0.1);
+    }
+    :root[data-theme="dark"] .progress-header { color: #c9d1d9; }
+    :root[data-theme="dark"] .progress-header #progressPercent { color: #58a6ff; }
+    :root[data-theme="dark"] .progress-track { background: #21262d; }
+    :root[data-theme="dark"] .progress-detail { color: #8b949e; }
+
+    :root[data-theme="dark"] .debug-info {
+      color: #6e7681;
+      border-top-color: #30363d;
+    }
+    :root[data-theme="dark"] .debug-info .debug-line:hover { background: #161b22; }
+    :root[data-theme="dark"] .debug-info .debug-line.found { color: #3fb950; }
+    :root[data-theme="dark"] .debug-info .debug-line.notfound { color: #6e7681; }
+    :root[data-theme="dark"] .debug-info .debug-line.error { color: #f85149; }
+
+    :root[data-theme="dark"] .schedule-row label { color: #c9d1d9; }
+    :root[data-theme="dark"] .schedule-row input[type="time"],
+    :root[data-theme="dark"] .schedule-row input[type="url"] {
+      background: #0d1117;
+      border-color: #30363d;
+      color: #c9d1d9;
+    }
+    :root[data-theme="dark"] .schedule-row input[type="time"]:focus,
+    :root[data-theme="dark"] .schedule-row input[type="url"]:focus {
+      border-color: #58a6ff;
+      box-shadow: 0 0 0 3px rgba(88,166,255,0.15);
+    }
+    :root[data-theme="dark"] .schedule-row .hint { color: #6e7681; }
+    :root[data-theme="dark"] .schedule-status { color: #8b949e; }
+    :root[data-theme="dark"] .schedule-status.active { color: #3fb950; }
+
+    :root[data-theme="dark"] .toggle-slider { background: #30363d; }
+
+    :root[data-theme="dark"] .meta-price { color: #ffa726; }
+    :root[data-theme="dark"] .meta-duration { color: #64b5f6; }
+    :root[data-theme="dark"] .meta-bonus { color: #66bb6a; }
+    :root[data-theme="dark"] .meta-stock { color: #ba68c8; }
+
+    :root[data-theme="dark"] .medal-page-badge {
+      background: rgba(88,166,255,0.15);
+      color: #58a6ff;
+    }
+    :root[data-theme="dark"] .result-site-balance { color: #ffa726; }
+
+    .theme-toggle {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 1px solid rgba(0,0,0,0.1);
+      background: white;
+      cursor: pointer;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      z-index: 9999;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .theme-toggle:hover {
+      transform: scale(1.1);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    :root[data-theme="dark"] .theme-toggle,
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) .theme-toggle {
+        background: #21262d;
+        border-color: #30363d;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      }
+    }
   </style>
 </head>
 <body>
+  <button class="theme-toggle" id="themeToggle" title="切换深色/浅色模式">🌙</button>
   <div class="header">
     <div class="header-icon">🏅</div>
     <h2>PT 勋章扫描器</h2>
@@ -639,6 +965,7 @@
         <button id="filterPermanentBtn" class="btn-filter">♾️ 永久勋章</button>
         <button id="filterLimitedBtn" class="btn-filter">⏳ 限时售卖</button>
         <button id="filterPositiveBtn" class="btn-filter">📈 正收益</button>
+        <button id="filterMagicBtn" class="btn-filter">💸 魔力不足</button>
         <button id="debugExportBtn" class="btn-debug">🐛 导出调试包</button>
       </div>
 
@@ -689,5 +1016,32 @@
   </div>
 
   <script src="options.js"></script>
+  <script>
+    (function() {
+      const saved = localStorage.getItem('theme') || 'auto';
+      if (saved !== 'auto') {
+        document.documentElement.setAttribute('data-theme', saved);
+      }
+      function updateIcon() {
+        const btn = document.getElementById('themeToggle');
+        const current = document.documentElement.getAttribute('data-theme');
+        const isDark = current === 'dark' || (!current && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        btn.textContent = isDark ? '☀️' : '🌙';
+      }
+      updateIcon();
+      document.getElementById('themeToggle').addEventListener('click', function() {
+        const current = document.documentElement.getAttribute('data-theme');
+        const isDark = current === 'dark' || (!current && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        const next = isDark ? 'light' : 'dark';
+        if (next === 'auto') {
+          document.documentElement.removeAttribute('data-theme');
+        } else {
+          document.documentElement.setAttribute('data-theme', next);
+        }
+        localStorage.setItem('theme', next);
+        updateIcon();
+      });
+    })();
+  </script>
 </body>
 </html>

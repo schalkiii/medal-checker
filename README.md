@@ -8,8 +8,9 @@
 
 | 维度       | 原版                        | 现版                                                                                                                                                         |
 | ---------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 勋章识别   | 简单正则计数 `value="购买"` | 智能列式解析引擎，自动适配 9/10 列表格 + buycenter + 卡片布局 + pterclub 猫站 + medal-item 布局 + hhanclub 网格布局 + si-qi BEM 布局 + zmpt CSS Modules 布局 |
+| 勋章识别   | 简单正则计数 `value="购买"` | 智能列式解析引擎，自动适配 9/10 列表格 + buycenter + 卡片布局 + pterclub 猫站 + medal-item 布局 + hhanclub 网格布局 + si-qi BEM 布局 + zmpt CSS Modules 布局 + 通用 SPA 渲染（zmpt/yemapt） |
 | 展示信息   | 仅显示勋章数量              | 名称、价格、有效期、加成、库存、限时购买窗口                                                                                                                 |
+| 跳转精度   | 仅能打开勋章页第一页        | 勋章链接直达其所在具体分页（`?page=N`），0/1 索引分页约定自适应，省略号折叠页全量抓取                                          |
 | 站点配置   | 手动逐条输入                | 一键检测已登录站点，73 个内置站点自动匹配                                                                                                                    |
 | 检测体验   | 按钮卡住无反馈              | 实时进度条 + 百分比 + 当前站点 + 调试日志                                                                                                                    |
 | 扫描历史   | 无                          | 60 次历史持久化，Diff 模式高亮新增勋章                                                                                                                       |
@@ -21,15 +22,16 @@
 ## 功能
 
 - 批量扫描多个 PT 站点的勋章页面，检测可购买的勋章
-- 自动翻页检测（支持 `?page=N` 和 pterclub `?page=page001` 分页）
+- 自动翻页检测（支持 `?page=N` 和 pterclub `?page=page001` 分页，含省略号折叠的中间页，0/1 索引约定自适应）
 - 支持 NexusPHP 10列/9列标准勋章表格
 - 支持 `buycenter.php` 特殊勋章系统
-- 支持卡片式勋章布局（`medal-card` + `<button>` / `<input>` 按钮）
+- 支持卡片式勋章布局（`medal-card` + `<button>` / `<input>` 按钮，容器/按钮/字段三重泛化匹配）
 - 支持 medal-item 卡片布局（`medal-item` + `buy-btn` / `gift-btn` 按钮）
 - 支持 hhanclub Tailwind 网格布局（`medal-table` + 9 列网格）
 - 支持 si-qi BEM 风格卡片布局（`medal-card` + `medal-card__title` + `meta-label`/`meta-value` 键值对）
 - 支持 zmpt.cc 新版 CSS Modules 布局（`index-module__card-wrap` + `index-module__label`/`index-module__content` 键值对，Vue/Vite SPA 渲染后 DOM）
-- 支持 SPA 站点（Vue/Vite 渲染，如 zmpt.cc）
+- 支持 SPA 站点（通用壳检测 + 后台标签页渲染提取，覆盖 zmpt.cc 的 Vite 应用与 yemapt.org 的 umi 应用）
+- 勋章链接直达其所在具体分页；分页 URL 拼接自动处理站点 URL 已带查询参数的场景
 - 支持繁体中文站点（`購買`）
 - 智能站点检测：点击按钮自动识别已登录的 PT 站点，实时进度条 + 调试日志显示
 - 内置 73 个常见 PT 站点配置（隐藏式，仅显示已登录的）
@@ -127,8 +129,8 @@ npm test
 
 测试包括：
 
-- 单元测试（86 项）：background.js 核心函数（勋章提取、卡片布局、列布局检测、SPA 检测等）
-- DOM 测试（14 项）：options 页面元素和交互
+- 单元测试（152 项）：background.js 核心函数（勋章提取、卡片布局、列布局检测、SPA 渲染、分页工具、单站扫描等）
+- DOM 测试（18 项）：options 页面元素和交互
 - 集成测试（6 项）：消息传递协议和 storage 数据流
 - 回归测试（97 项）：基于真实调试包的 97 站点快照对比，覆盖 5 种布局类型
 
@@ -166,21 +168,35 @@ tests/fixtures/        回归测试快照（基于真实调试包的 97 站点�
 
 ### 勋章提取引擎
 
-- `extractMedalsFromHtml()` - 标准 NexusPHP 勋章解析，自动检测 9列/10列表格布局，提取名称/价格/有效期/加成/库存/可购买时间；同时支持卡片式/medal-item/hhanclub/si-qi 多种布局回退
-- `extractMedalsFromCards()` - 卡片式勋章布局解析，自动查找页面中所有 `medal-card` 元素，支持 `<input>` 和 `<button>` 两种购买按钮格式
+- `extractMedalsFromHtml()` - 标准 NexusPHP 勋章解析，自动检测 9列/10列表格布局，提取名称/价格/有效期/加成/库存/可购买时间；同时支持卡片式/medal-item/hhanclub/si-qi/zmpt 新版多种布局回退
+- `extractMedalsFromCards()` - 通用卡片勋章解析：正则匹配 class 以 `medal-card` 开头的容器（兼容无属性/带属性/带附加 class 变体，排除 `medal-card__xxx` 子元素与派生容器）；购买按钮按「class 含独立单词 buy」+「文本恰为购买/購買」双重判定；字段覆盖 detail-label/meta-label/stat-item/medal-detail-item 等 7 种标签-值模式与 data-\* 属性兜底
 - `extractMedalsFromMedalItems()` - medal-item 卡片布局解析，处理 `medal-item` + `medal-details` 表格 + `buy-btn`/`gift-btn` 按钮模式
 - `extractMedalsFromHhanclub()` - hhanclub Tailwind 网格布局解析，9 列 CSS Grid 自动提取
 - `extractMedalsFromSiqi()` - si-qi.xyz BEM 风格卡片布局解析，处理 `medal-card` + `medal-card__title` + `meta-label`/`meta-value` 键值对结构
 - `extractMedalsFromBuyCenter()` - 特殊 buycenter.php 勋章系统解析
 - `extractMedalsFromPterclub()` - pterclub.net（猫站）自定义表格布局解析
-- `extractMedalsFromZmpt()` - zmpt.cc SPA 站点解析（chrome.tabs + scripting 注入）
+- `isSpaShell()` - SPA 壳页面检测：含外部脚本且剥离 script/style 后几乎无可见文本（zmpt 的 Vite 壳、yemapt 的 umi 壳；普通页面与 Meta 跳转页不会误判）
+- `extractMedalsFromZmpt()` - SPA 站点渲染提取：后台标签页打开页面，轮询等待挂载点渲染出内容后读取，所有退出路径（含超时）均关闭标签页
 - `extractMedalsFromZmptNew()` - zmpt.cc 新版 CSS Modules 布局解析（Vue/Vite SPA 渲染后 DOM，`index-module__card-wrap` + `index-module__label`/`index-module__content` 键值对）
+- `scanSiteMedals()` - 单站扫描流程（首页 + 全部分页 + SPA 回退），手动扫描与定时扫描共用
+- `collectPageNumbers()` / `buildPageUrl()` - 分页页码收集（含省略号折叠页）与分页 URL 拼接（自动处理 `?`/`&`）
 - `getColumnLayout()` - 列布局检测，返回正确的列索引映射
 - `extractTdText()` - HTML 表格单元格文本提取，保留 h1/br 结构
 
 ## 更新日志
 
-### v1.9（当前版本）
+### v1.10（当前版本）
+
+- 修复 zmpt.cc SPA 渲染失败导致漏扫：渲染器改为「轮询等待挂载点内容」替代固定 4 秒延时，总超时 25s → 45s，所有退出路径（含超时）均关闭后台标签页（此前超时会残留空标签）
+- 新增 `isSpaShell()` 通用 SPA 壳检测，yemapt.org（umi 应用）等非 Vite 壳 SPA 站点不再漏扫；常规提取为 0 且命中壳特征时才触发标签页渲染
+- 修复 `extractMedalsFromCards()` 容器匹配退化（v1.7 起误将泛化正则改回硬编码 `<div class="medal-card `），恢复正则匹配并扩展：hxpt.org（60 个）、luckpt.de（87 个）、cspt.top（10 个）、longpt.org（3 个）勋章恢复扫描
+- 购买按钮判定泛化：class 含独立单词 `buy`（`action-btn btn-primary buy`、`medal-action-btn-unified buy`、`btn buy-action primary btn-buy`、`btn btn-primary buy-btn` 等变体）+ 文本恰为「购买/購買」兜底；字段提取覆盖 detail-label/meta-label/stat-item/medal-detail-item/sale-time 与 data-\* 属性兜底
+- 分页抓取重做：收集分页条全部页码（含省略号折叠的中间页，翻页逐步发现），0/1 索引约定自适应（`?page=1` 与首页重复时自动去重并纠正页码），分页 URL 拼接自动处理站点已带查询参数（`&` 替代 `?`），抓取上限 20 页
+- 勋章链接直达所在具体分页：`tagMedalsWithPage()` 打标 + options 页 `getMedalUrl()`；`extractMedalsFromZmptNew()` 并入 `extractMedalsFromHtml()` 统一回退链
+- 手动扫描与定时扫描（飞书推送）共用 `scanSiteMedals()`，修复定时扫描遗漏卡片/SPA 站点与分页不全的问题
+- 新增 30 个单元测试（总计 152 个 background + 18 options + 6 集成），chrome mock 扩展 tabs.onUpdated/scripting；修复异步测试未被 await 的假通过问题（新增 `testAsync`）
+
+### v1.9（历史版本）
 
 - 适配 zmpt.cc 新版 CSS Modules 布局（之前 zmpt 一直无法检测勋章）
 - 新增 `extractMedalsFromZmptNew()` 提取器，处理 `index-module__card-wrap` + `index-module__label`/`index-module__content` 键值对结构

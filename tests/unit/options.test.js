@@ -347,9 +347,12 @@ test('diff模式高亮新增勋章', (done) => {
 
   setupDOM();
   loadOptions(chromeMock);
+  // 捕获当前 DOM 引用：后续测试会重新 setupDOM() 并覆盖 global.document，
+  // 若不固定引用，异步回调会操作到错误的 DOM 导致断言失败。
+  const doc = document;
 
   setTimeout(() => {
-    const diffBtn = document.getElementById('diffToggleBtn');
+    const diffBtn = doc.getElementById('diffToggleBtn');
     diffBtn.click();
 
     setTimeout(() => {
@@ -367,7 +370,7 @@ test('diff模式高亮新增勋章', (done) => {
         }]
       });
 
-      const resultList = document.getElementById('resultList');
+      const resultList = doc.getElementById('resultList');
       try {
         assertContains(resultList.innerHTML, '新勋章', '应显示新勋章');
         assertContains(resultList.innerHTML, 'NEW', '应有NEW标记');
@@ -378,6 +381,112 @@ test('diff模式高亮新增勋章', (done) => {
       }
     }, 50);
   }, 50);
+});
+
+// ============================================================
+// 7. 勋章分页跳转 & 魔力不足筛选
+// ============================================================
+console.log('\n  ▶ 分页跳转 & 魔力不足筛选');
+
+test('勋章链接跳转到具体分页', () => {
+  const chromeMock = createChromeMock();
+  chromeMock._storage.set('sites', ['SiteX|https://x.com/medal.php']);
+  setupDOM();
+  loadOptions(chromeMock);
+
+  const handler = chromeMock._listeners.get('runtime.onMessage');
+  handler({
+    type: 'scanResult',
+    data: [{
+      siteName: 'TestPT',
+      count: 1,
+      url: 'https://test.com/medal.php',
+      medals: [
+        { name: '第二页勋章', price: '100', duration: '30天', page: 2, pageUrl: 'https://test.com/medal.php?page=1' }
+      ]
+    }]
+  });
+
+  const resultList = document.getElementById('resultList');
+  assertContains(resultList.innerHTML, 'href="https://test.com/medal.php?page=1"', '应链接到具体分页');
+  assertContains(resultList.innerHTML, '第2页', '应显示所在页码');
+});
+
+test('无页码时回退到站点链接', () => {
+  const chromeMock = createChromeMock();
+  chromeMock._storage.set('sites', ['SiteX|https://x.com/medal.php']);
+  setupDOM();
+  loadOptions(chromeMock);
+
+  const handler = chromeMock._listeners.get('runtime.onMessage');
+  handler({
+    type: 'scanResult',
+    data: [{
+      siteName: 'TestPT',
+      count: 1,
+      url: 'https://test.com/medal.php',
+      medals: [
+        { name: '首页勋章', price: '100', duration: '30天' }
+      ]
+    }]
+  });
+
+  const resultList = document.getElementById('resultList');
+  assertContains(resultList.innerHTML, 'href="https://test.com/medal.php"', '无页码应回退到站点首页');
+});
+
+test('魔力不足筛选只显示买不起的勋章', () => {
+  const chromeMock = createChromeMock();
+  chromeMock._storage.set('sites', ['SiteX|https://x.com/medal.php']);
+  setupDOM();
+  loadOptions(chromeMock);
+
+  const handler = chromeMock._listeners.get('runtime.onMessage');
+  handler({
+    type: 'scanResult',
+    data: [{
+      siteName: 'TestPT',
+      count: 2,
+      url: 'https://test.com/medal.php',
+      balance: 100,
+      medals: [
+        { name: '便宜勋章', price: '50', duration: '30天' },
+        { name: '贵勋章', price: '200', duration: '永久' }
+      ]
+    }]
+  });
+
+  document.getElementById('filterMagicBtn').click();
+
+  const resultList = document.getElementById('resultList');
+  assertContains(resultList.innerHTML, '贵勋章', '应显示买不起的贵勋章');
+  assert(!resultList.innerHTML.includes('便宜勋章'), '应隐藏买得起的便宜勋章');
+});
+
+test('魔力值未知时魔力不足筛选不显示该站勋章', () => {
+  const chromeMock = createChromeMock();
+  chromeMock._storage.set('sites', ['SiteX|https://x.com/medal.php']);
+  setupDOM();
+  loadOptions(chromeMock);
+
+  const handler = chromeMock._listeners.get('runtime.onMessage');
+  handler({
+    type: 'scanResult',
+    data: [{
+      siteName: 'TestPT',
+      count: 1,
+      url: 'https://test.com/medal.php',
+      balance: null,
+      medals: [
+        { name: '未知余额勋章', price: '99999', duration: '永久' }
+      ]
+    }]
+  });
+
+  document.getElementById('filterMagicBtn').click();
+
+  const resultList = document.getElementById('resultList');
+  assert(!resultList.innerHTML.includes('未知余额勋章'), '魔力值未知时应保守隐藏该站勋章');
 });
 
 // ============================================================

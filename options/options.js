@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
     filterPermanentBtn: document.getElementById('filterPermanentBtn'),
     filterLimitedBtn: document.getElementById('filterLimitedBtn'),
     filterPositiveBtn: document.getElementById('filterPositiveBtn'),
+    filterMagicBtn: document.getElementById('filterMagicBtn'),
     debugExportBtn: document.getElementById('debugExportBtn'),
     detectBtn: document.getElementById('detectBtn'),
     detectSummary: document.getElementById('detectSummary'),
@@ -37,6 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let filterPermanent = false;
   let filterLimited = false;
   let filterPositive = false;
+  let filterMagic = false;
   let currentResults = null;
   let previousResults = null;
 
@@ -75,6 +77,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function getMedalFingerprint(siteName, medal) {
       return `${siteName}::${medal.name}`;
+    }
+
+    // 将勋章价格字符串解析为数字（与 background.js 中逻辑保持一致）
+    function parsePriceNumber(price) {
+      if (price == null) return null;
+      const cleaned = String(price).replace(/[^\d.]/g, "");
+      if (cleaned === "") return null;
+      const num = parseFloat(cleaned);
+      return isNaN(num) ? null : num;
+    }
+
+    // 勋章跳转链接：优先勋章所在的具体分页；否则退回 ?medal=ID 锚点；
+    // 站点 URL 已带查询参数时用 & 连接，避免产生非法 URL
+    function getMedalUrl(site, medal) {
+      if (medal.pageUrl) return medal.pageUrl;
+      if (medal.medalId) {
+        const separator = site.url.includes("?") ? "&" : "?";
+        return site.url + separator + "medal=" + encodeURIComponent(medal.medalId);
+      }
+      return site.url;
     }
 
     function computeDiff(current, previous) {
@@ -122,6 +144,13 @@ document.addEventListener('DOMContentLoaded', () => {
         totalNewBadges = Object.values(diffMap).reduce((sum, s) => sum + s.size, 0);
       }
 
+      let unknownBalanceSites = 0;
+      if (filterMagic) {
+        validResults.forEach((s) => {
+          if (typeof s.balance !== "number") unknownBalanceSites++;
+        });
+      }
+
       elements.resultStats.innerHTML = `
         <div style="display: flex; justify-content: space-between; padding: 8px; flex-wrap: wrap; gap: 8px;">
           <span>🎯 有效站点：<strong>${validResults.length}</strong></span>
@@ -131,6 +160,8 @@ document.addEventListener('DOMContentLoaded', () => {
           ${filterPermanent ? '<span style="color:#17a2b8; font-size:12px;">♾️ 仅永久勋章</span>' : ''}
           ${filterLimited ? '<span style="color:#17a2b8; font-size:12px;">⏳ 仅限时售卖</span>' : ''}
           ${filterPositive ? '<span style="color:#17a2b8; font-size:12px;">📈 仅正收益</span>' : ''}
+          ${filterMagic ? '<span style="color:#e53935; font-size:12px;">💸 仅魔力不足（买不起）</span>' : ''}
+          ${filterMagic && unknownBalanceSites > 0 ? `<span style="color:#e53935; font-size:12px;">⚠️ ${unknownBalanceSites} 个站点未获取到魔力值</span>` : ''}
         </div>
       `;
 
@@ -158,14 +189,27 @@ document.addEventListener('DOMContentLoaded', () => {
         if (filterPositive) {
           siteMedals = siteMedals.filter(m => m.bonus && parseFloat(m.bonus) > 0);
         }
+        if (filterMagic) {
+          // 仅显示「发售中但魔力不足（买不起）」的勋章；
+          // 站点魔力值未知时无法判定，保守隐藏该站勋章并已在统计栏提示。
+          siteMedals = siteMedals.filter((m) => {
+            const priceNum = parsePriceNumber(m.price);
+            return typeof site.balance === "number" && priceNum != null && priceNum > site.balance;
+          });
+        }
         if (siteMedals.length === 0) return;
 
         const header = document.createElement('div');
         header.className = 'result-site-header';
+        const balanceHtml =
+          typeof site.balance === "number"
+            ? `<span class="result-site-balance">💰 余额 ${site.balance.toLocaleString()}</span>`
+            : "";
         header.innerHTML = `
           <div>
             <span class="result-site-name">${site.siteName}</span>
             <a class="result-site-link" href="${site.url}" target="_blank" title="点击跳转到勋章页面">🔗 ${site.url}</a>
+            ${balanceHtml}
           </div>
           <span class="result-site-count">${siteMedals.length} 勋章</span>
         `;
@@ -182,7 +226,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const medalItem = document.createElement('div');
             medalItem.className = 'medal-item' + (isNew ? ' new-medal' : '');
 
-            const medalUrl = medal.medalId ? `${site.url}?medal=${medal.medalId}` : site.url;
+            // 优先跳转到勋章所在的具体分页；否则退回 ?medal=ID 或站点首页
+            const medalUrl = getMedalUrl(site, medal);
+            const pageBadge =
+              medal.page && medal.page > 1
+                ? `<span class="medal-page-badge">📄 第${medal.page}页</span>`
+                : "";
 
             const metaParts = [];
             if (medal.price) metaParts.push(`<span class="meta-price">💰 ${medal.price}</span>`);
@@ -195,9 +244,10 @@ document.addEventListener('DOMContentLoaded', () => {
               timeHtml = `<div class="medal-time">🕐 可购买时间: ${medal.timeRange}</div>`;
             }
 
+            const titleHint = medal.page && medal.page > 1 ? `点击跳转到第${medal.page}页` : "点击跳转到领取页面";
             medalItem.innerHTML = `
               <div class="medal-info">
-                <a class="medal-name-link" href="${medalUrl}" target="_blank" title="点击跳转到领取页面">${medal.name}${isNew ? '<span class="diff-badge">NEW</span>' : ''}</a>
+                <a class="medal-name-link" href="${medalUrl}" target="_blank" title="${titleHint}">${medal.name}${isNew ? '<span class="diff-badge">NEW</span>' : ''}</a>${pageBadge}
                 <div class="medal-meta">${metaParts.join('')}</div>
                 ${timeHtml}
               </div>
@@ -361,9 +411,9 @@ chrome.storage.local.get(['sites', 'scanResults', 'scanHistory', 'scheduleConfig
         return;
       }
 
-      const hasFilter = diffMode || filterPermanent || filterLimited || filterPositive;
+      const hasFilter = diffMode || filterPermanent || filterLimited || filterPositive || filterMagic;
       if (!hasFilter) {
-        addLog('⚠️ 请先启用至少一个过滤条件（差异模式/永久/限时/正收益）', true);
+        addLog('⚠️ 请先启用至少一个过滤条件（差异模式/永久/限时/正收益/魔力不足）', true);
         return;
       }
 
@@ -400,12 +450,17 @@ chrome.storage.local.get(['sites', 'scanResults', 'scanHistory', 'scheduleConfig
         if (filterPositive) {
           siteMedals = siteMedals.filter(m => m.bonus && parseFloat(m.bonus) > 0);
         }
+        if (filterMagic) {
+          siteMedals = siteMedals.filter((m) => {
+            const priceNum = parsePriceNumber(m.price);
+            return typeof site.balance === "number" && priceNum != null && priceNum > site.balance;
+          });
+        }
 
         if (siteMedals.length === 0) return;
 
         siteMedals.forEach(medal => {
-          const url = medal.medalId ? `${site.url}?medal=${medal.medalId}` : site.url;
-          urlsToOpen.push(url);
+          urlsToOpen.push(getMedalUrl(site, medal));
         });
       });
 
@@ -465,6 +520,14 @@ chrome.storage.local.get(['sites', 'scanResults', 'scanHistory', 'scheduleConfig
       elements.filterPositiveBtn.classList.toggle('active', filterPositive);
       elements.filterPositiveBtn.innerHTML = filterPositive ? '📈 正收益 ✓' : '📈 正收益';
       addLog(filterPositive ? '🔽 已启用「只看正收益」过滤' : '🔽 已关闭「只看正收益」过滤');
+      if (currentResults) updateResultDisplay(currentResults);
+    });
+
+    elements.filterMagicBtn.addEventListener('click', () => {
+      filterMagic = !filterMagic;
+      elements.filterMagicBtn.classList.toggle('active', filterMagic);
+      elements.filterMagicBtn.innerHTML = filterMagic ? '💸 魔力不足 ✓' : '💸 魔力不足';
+      addLog(filterMagic ? '🔽 已启用「只看魔力不足」过滤' : '🔽 已关闭「只看魔力不足」过滤');
       if (currentResults) updateResultDisplay(currentResults);
     });
 
@@ -673,8 +736,14 @@ function updateScheduleStatus() {
 
       if (message.type === 'scanResult') {
         isScanning = false;
-        chrome.storage.local.set({ scanResults: message.data });
-        updateResultDisplay(message.data);
+        const newResults = message.data;
+        // 差异基准优先使用后台随消息返回的「上一次扫描结果」，
+        // 避免连续多次扫描时把上一次已出现过的勋章再次误标为 NEW。
+        if (message.previousResults) {
+          previousResults = message.previousResults;
+        }
+        chrome.storage.local.set({ scanResults: newResults });
+        updateResultDisplay(newResults);
         addLog('🎉 扫描完成');
       }
     });

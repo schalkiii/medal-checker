@@ -103,11 +103,30 @@ alarms: {
     },
 
     tabs: {
-      create({ url, active }) {
-        const tab = { id: ++tabIdCounter, url, active };
+      create(options, callback) {
+        const tab = { id: ++tabIdCounter, url: options.url, active: options.active };
         mock._createdTabs.push(tab);
+        // 真实 chrome.tabs.create 同时支持回调与 Promise 两种用法
+        if (callback) setTimeout(() => callback(tab), 0);
         return Promise.resolve(tab);
-      }
+      },
+      onUpdated: new ChromeEvent(),
+      remove(tabId, callback) {
+        mock.tabs._removedTabs.push(tabId);
+        if (callback) setTimeout(callback, 0);
+      },
+      _removedTabs: []
+    },
+
+    scripting: {
+      // 测试通过 chrome.scripting._execScriptResult 预设 executeScript 的返回内容，
+      // 模拟 SPA 页面挂载点中渲染出的 HTML
+      executeScript(_injection, callback) {
+        const result = mock.scripting._execScriptResult || [{ result: '' }];
+        if (callback) setTimeout(() => callback(result), 0);
+        return Promise.resolve(result);
+      },
+      _execScriptResult: null
     },
 
     action: {
@@ -118,9 +137,11 @@ alarms: {
       _storage.clear();
       listeners.clear();
       mock._createdTabs = [];
+      mock.tabs._removedTabs = [];
       mock._sentMessages = [];
       mock._optionsPageOpened = false;
       mock._lastResponse = null;
+      mock.scripting._execScriptResult = null;
       mock.alarms._created = [];
       mock.alarms._cleared = false;
     }
