@@ -1787,7 +1787,8 @@ testAsync('scanSiteMedals: 1 索引站点 ?page=1 与首页重复时去重', asy
 
 testAsync('scanSiteMedals: SPA 壳页面触发标签页渲染后提取', async () => {
   const savedFetch = global.fetch;
-  const siteUrl = 'https://zmpt.cc/medal.php';
+  // 使用中性域名：zmpt.cc/sunnypt.top 已走 API 直抓分支，不再进入 SPA 渲染
+  const siteUrl = 'https://spa-example.test/medal.php';
   global.fetch = () =>
     Promise.resolve({
       ok: true,
@@ -1835,6 +1836,33 @@ testAsync('scanSiteMedals: 请求失败时返回空结果', async () => {
   );
   assertEqual(medals.length, 0);
   assertEqual(pageCount, 0);
+  global.fetch = savedFetch;
+});
+
+testAsync('scanSiteMedals: zmpt/sunnypt URL 路由到 API 直抓分支', async () => {
+  const savedFetch = global.fetch;
+  // zmpt → queryAllMedals
+  global.fetch = (url) =>
+    String(url).includes('queryAllMedals')
+      ? Promise.resolve({ ok: true, json: () => Promise.resolve(zmptApiJson) })
+      : Promise.resolve({ ok: false, status: 404 });
+  const zmpt = await bg.scanSiteMedals('zmpt.cc', 'https://zmpt.cc/medal.php', [{ name: 'c', value: '1' }], () => {});
+  assertEqual(zmpt.medals.length, 1, 'zmpt URL 应路由到 API 分支');
+  assertEqual(zmpt.pageCount, 1);
+
+  // sunnypt → 会话 + medals/list
+  global.fetch = (url) => {
+    const u = String(url);
+    if (u.endsWith('/api/auth/session')) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ data: { accessToken: 't' } }) });
+    }
+    if (u.includes('/api/v1/medals/list')) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ code: 0, data: [] }) });
+    }
+    return Promise.resolve({ ok: true, json: () => Promise.resolve({ code: 0, data: {} }) });
+  };
+  const sunny = await bg.scanSiteMedals('sunnypt.top', 'https://sunnypt.top/bounty?tab=renown', [{ name: 'c', value: '1' }], () => {});
+  assertEqual(sunny.pageCount, 1, 'sunnypt URL 应路由到 API 分支');
   global.fetch = savedFetch;
 });
 
@@ -1977,6 +2005,137 @@ testAsync('scanSunnyptBounty: 未登录（无令牌）抛出异常', async () =>
     assert(e.message.includes('访问令牌'), '错误信息应提示令牌问题: ' + e.message);
   }
   assert(threw, '无令牌应抛出异常');
+  global.fetch = savedFetch;
+});
+
+// ============================================================
+// zmpt.cc — Vite SPA API 直抓（不开标签页）
+// ============================================================
+console.log('\n  ▶ parseZmptApiMedals - zmpt API 勋章映射');
+
+// 真实 queryAllMedals 响应样本（2026-10-18 抓取，字段与值均为实际数据）
+const zmptApiJson = {
+  serverTime: 1792285881000,
+  success: true,
+  errorCode: 0,
+  errorMsg: "",
+  result: {
+    seedBonus: "1456232.8",
+    medalGroups: [
+      {
+        id: 1,
+        groupName: "周年庆系列",
+        medalList: [
+          // 已拥有且已结束 → 排除
+          { id: 6, name: "织梦1周年纪念勋章", getType: 1, price: 1000000, saleBeginTime: "2025-10-13 00:00:00", saleEndTime: "2025-10-14 00:00:00", inventory: 0, bonusAdditionFactor: 0.2, giftFeeFactor: 1, hasMedal: true, userMedalsVO: { id: 40881, medalId: 6, status: 0, priority: 0 } },
+          // 在售但买不起（2,000,000 > 1,456,232.8）→ 排除
+          { id: 50, name: "工作组-生日勋章", getType: 1, price: 2000000, saleBeginTime: "2026-01-01 00:00:00", saleEndTime: "2026-12-01 00:00:00", duration: 30, bonusAdditionFactor: 5, hasMedal: false },
+          // 在售、未拥有、买得起 → 保留
+          { id: 99, name: "测试可买勋章", getType: 1, price: 100000, saleBeginTime: "2026-01-01 00:00:00", saleEndTime: "2027-01-01 00:00:00", inventory: 5, bonusAdditionFactor: 0.1, hasMedal: false },
+          // 未开始售卖 → 排除
+          { id: 100, name: "未来勋章", getType: 1, price: 100, saleBeginTime: "2027-06-01 00:00:00", saleEndTime: "2027-12-01 00:00:00", hasMedal: false },
+          // 无售卖时间窗（官组勋章）→ 排除
+          { id: 22, name: "织梦官组-Web组", getType: 2, price: 999999999, bonusAdditionFactor: 0.3, hasMedal: false },
+        ],
+      },
+    ],
+  },
+};
+
+const zmptNow = 1792285881; // 2026-10-18（API serverTime 秒）
+
+test('zmpt: 过滤已拥有/买不起/未开始/无售卖窗，保留可买', () => {
+  const medals = bg.parseZmptApiMedals(zmptApiJson, zmptNow);
+  const names = medals.map((m) => m.name);
+  assertEqual(medals.length, 1, '仅保留在售且买得起的未拥有勋章');
+  assert(names.includes('测试可买勋章'), '可买勋章应保留');
+  assert(!names.includes('织梦1周年纪念勋章'), '已拥有应排除');
+  assert(!names.includes('工作组-生日勋章'), '买不起应排除');
+  assert(!names.includes('未来勋章'), '未开始应排除');
+  assert(!names.includes('织梦官组-Web组'), '无售卖窗应排除');
+});
+
+test('zmpt: 字段映射（价格/有效期/加成/库存/时间/ID）', () => {
+  const medals = bg.parseZmptApiMedals(zmptApiJson, zmptNow);
+  const m = medals[0];
+  assertEqual(m.price, '100,000');
+  assertEqual(m.duration, '永久有效');
+  assertEqual(m.bonus, '10%');
+  assertEqual(m.stock, '5');
+  assertEqual(m.timeRange, '2026-01-01 00:00:00 - 2027-01-01 00:00:00');
+  assertEqual(m.medalId, '99');
+});
+
+test('zmpt: inventory 缺失显示无限，duration 有值显示天数', () => {
+  const json = {
+    result: {
+      seedBonus: "99999999",
+      medalGroups: [
+        { medalList: [
+          { id: 1, name: "无库存字段", price: 100, saleBeginTime: "2026-01-01 00:00:00", saleEndTime: "2027-01-01 00:00:00", duration: 30, bonusAdditionFactor: 0.05, hasMedal: false },
+        ] },
+      ],
+    },
+  };
+  const medals = bg.parseZmptApiMedals(json, zmptNow);
+  assertEqual(medals[0].stock, '无限');
+  assertEqual(medals[0].duration, '30 天');
+  assertEqual(medals[0].bonus, '5%');
+});
+
+test('zmpt: 非法输入返回空数组', () => {
+  assertEqual(bg.parseZmptApiMedals(null, zmptNow).length, 0);
+  assertEqual(bg.parseZmptApiMedals({ success: false }, zmptNow).length, 0);
+  assertEqual(bg.parseZmptApiMedals({ result: { medalGroups: "x" } }, zmptNow).length, 0);
+});
+
+test('parseZmptTime 按 UTC+8 墙钟解析', () => {
+  // 2026-10-18 00:00:00 (UTC+8) = 2026-10-17 16:00:00 UTC
+  assertEqual(bg.parseZmptTime('2026-10-18 00:00:00'), Math.floor(Date.UTC(2026, 9, 17, 16, 0, 0) / 1000));
+  assertEqual(bg.parseZmptTime(''), 0);
+  assertEqual(bg.parseZmptTime(null), 0);
+  assertEqual(bg.parseZmptTime('invalid'), 0);
+});
+
+testAsync('scanZmptApi: Cookie 直调接口全流程', async () => {
+  const savedFetch = global.fetch;
+  let capturedCookie = null;
+  let capturedUrl = null;
+  global.fetch = (url, options = {}) => {
+    capturedUrl = url;
+    capturedCookie = options.headers && options.headers.Cookie;
+    return Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve(zmptApiJson),
+    });
+  };
+
+  const { medals, balance, pageHtmls, pageCount } = await bg.scanZmptApi(
+    'https://zmpt.cc/medal.php',
+    [{ name: 'c_secure_uid', value: 'abc' }],
+  );
+
+  assertEqual(capturedUrl, 'https://zmpt.cc/javaapi/user/queryAllMedals');
+  assertEqual(capturedCookie, 'c_secure_uid=abc', '应携带站点 Cookie');
+  assertEqual(medals.length, 1);
+  assertEqual(balance, 1456232.8, '应返回电力值余额');
+  assertEqual(pageCount, 1);
+  assert(pageHtmls[0].html.includes('测试可买勋章'), '调试包应保存接口原始 JSON');
+  global.fetch = savedFetch;
+});
+
+testAsync('scanZmptApi: 接口失败时抛出异常', async () => {
+  const savedFetch = global.fetch;
+  global.fetch = () =>
+    Promise.resolve({ ok: true, json: () => Promise.resolve({ success: false, errorMsg: '未登录' }) });
+  let threw = false;
+  try {
+    await bg.scanZmptApi('https://zmpt.cc/medal.php', [{ name: 'c', value: '1' }]);
+  } catch (e) {
+    threw = true;
+    assert(e.message.includes('未登录'), '错误信息应透出接口原因: ' + e.message);
+  }
+  assert(threw, '接口返回失败应抛出异常');
   global.fetch = savedFetch;
 });
 

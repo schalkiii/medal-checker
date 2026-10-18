@@ -1184,6 +1184,92 @@ const isSameMedalSet = (pageA, pageB) => {
   return pageB.every((m) => names.has(m.name));
 };
 
+// ===== zmpt.cc（Vite SPA + Java API）=====
+// 页面 HTML 只有空挂载点，勋章数据来自 /javaapi/user/queryAllMedals（纯 Cookie 认证，
+// 无需额外令牌）。「可购买」判定复刻站点前端按钮逻辑：
+//   已拥有 → 佩戴/取消佩戴；不在售卖时间窗 → 已过可购买时间；
+//   seedBonus < 价格 → 需要更多电力值；否则 → 购买
+// 库存展示为 `inventory || "无限"`，不参与可购买判定。
+const ZMPT_MEDALS_API = "https://zmpt.cc/javaapi/user/queryAllMedals";
+
+// "YYYY-MM-DD HH:mm:ss" 墙钟字符串 → epoch 秒。
+// 站点为中文站，时间串按 UTC+8 墙钟理解（与站点展示一致，避免依赖运行机器时区）。
+const parseZmptTime = (str) => {
+  if (!str || typeof str !== "string") return 0;
+  const m = str.match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/);
+  if (!m) return 0;
+  const [, year, month, day, hour, minute, second] = m.map(Number);
+  return Math.floor(Date.UTC(year, month - 1, day, hour, minute, second) / 1000) - 8 * 3600;
+};
+
+// queryAllMedals 响应 → 标准勋章对象数组。
+// 过滤链顺序与站点前端一致：未拥有 → 售卖窗内 → 余额足够。
+const parseZmptApiMedals = (json, nowSec) => {
+  const result = json && json.result;
+  if (!result || !Array.isArray(result.medalGroups)) return [];
+  const balance = Number(result.seedBonus);
+  const now = typeof nowSec === "number" ? nowSec : Math.floor(Date.now() / 1000);
+  const medals = [];
+
+  for (const group of result.medalGroups) {
+    const list = (group && group.medalList) || [];
+    for (const m of list) {
+      if (!m || typeof m !== "object") continue;
+      // 已拥有：前端以 userMedalsVO 判定，hasMedal 为同义冗余字段
+      if (m.userMedalsVO || m.hasMedal) continue;
+      const begin = parseZmptTime(m.saleBeginTime);
+      const end = parseZmptTime(m.saleEndTime);
+      // 无售卖时间窗（如官组勋章）或未开始/已结束
+      if (!begin || !end || now < begin || now > end) continue;
+      const price = Number(m.price) || 0;
+      // 买不起：前端显示禁用的「需要更多电力值」，与其它站点的买不起口径一致
+      if (Number.isFinite(balance) && price > balance) continue;
+
+      const bonus = Number(m.bonusAdditionFactor);
+      medals.push({
+        name: String(m.name || "未知勋章"),
+        price: price.toLocaleString("en-US"),
+        duration: m.duration > 0 ? `${m.duration} 天` : "永久有效",
+        bonus: bonus > 0 ? `${trimNumber(bonus * 100)}%` : "0%",
+        // 站点展示为 inventory || "无限"（0/缺失都显示无限）
+        stock: m.inventory ? String(m.inventory) : "无限",
+        timeRange: `${m.saleBeginTime} - ${m.saleEndTime}`,
+        medalId: String(m.id ?? ""),
+      });
+    }
+  }
+  return medals;
+};
+
+// zmpt 勋章扫描：Cookie 直接调 queryAllMedals，无需开标签页渲染。
+// 出错时抛异常，由调用方的 try/catch 统一记录日志。
+async function scanZmptApi(siteUrl, cookies) {
+  const res = await fetchWithTimeout(
+    ZMPT_MEDALS_API,
+    {
+      headers: {
+        Cookie: cookies.map((c) => `${c.name}=${c.value}`).join("; "),
+        "User-Agent": navigator.userAgent,
+      },
+    },
+    10000,
+  );
+  if (!res.ok) {
+    throw new Error(`勋章接口请求失败 (HTTP ${res.status})`);
+  }
+  const json = await res.json();
+  if (!json || json.success !== true || !json.result) {
+    const reason = json && json.errorMsg ? json.errorMsg : "响应格式异常";
+    throw new Error(`勋章接口返回失败 (${reason})`);
+  }
+  const medals = parseZmptApiMedals(json);
+  const seed = Number(json.result.seedBonus);
+  const balance = Number.isFinite(seed) && seed > 0 ? seed : null;
+  // 调试包保存接口原始 JSON（比渲染后 HTML 更利于排查字段变化）
+  const pageHtmls = [{ url: siteUrl, html: JSON.stringify(json) }];
+  return { medals, balance, pageHtmls, pageCount: 1 };
+}
+
 // ===== sunnypt.top（Next.js SPA + 独立 API）=====
 // 页面 HTML 只是客户端渲染的空壳（约 30KB，无勋章数据），数据来自
 // api.sunnypt.top 的 JSON 接口，认证方式为 NextAuth 会话中的 JWT：
@@ -1298,9 +1384,14 @@ async function scanSunnyptBounty(siteUrl, cookies) {
 // startScan（手动扫描）与 performScheduledScan（定时扫描）共用本函数，
 // 保证两条路径的站点适配能力一致（卡片布局 / SPA / 分页全量抓取）。
 async function scanSiteMedals(siteName, siteUrl, cookies, sendLog) {
-  // sunnypt.top 是 Next.js SPA：静态 HTML 无勋章数据，改走 API 直抓（不开标签页）
+  // API 直抓站点（静态 HTML 无勋章数据，但存在可直连的 JSON 接口）
+  // sunnypt.top：Next.js SPA，会话 JWT → api.sunnypt.top
   if (siteUrl.includes("sunnypt.top/bounty")) {
     return await scanSunnyptBounty(siteUrl, cookies);
+  }
+  // zmpt.cc：Vite SPA，Cookie 直调 /javaapi/user/queryAllMedals
+  if (siteUrl.includes("zmpt.cc/medal.php")) {
+    return await scanZmptApi(siteUrl, cookies);
   }
 
   const pageHtmls = [{ url: siteUrl, html: "" }];
@@ -1783,6 +1874,9 @@ if (typeof module !== "undefined" && module.exports) {
     scanSunnyptBounty,
     parseSunnyptMedals,
     formatSunnyptTime,
+    scanZmptApi,
+    parseZmptApiMedals,
+    parseZmptTime,
     sendToFeishu,
     setupAlarm,
     performScheduledScan,

@@ -30,8 +30,8 @@
 - 支持 hhanclub Tailwind 网格布局（`medal-table` + 9 列网格）
 - 支持 si-qi BEM 风格卡片布局（`medal-card` + `medal-card__title` + `meta-label`/`meta-value` 键值对）
 - 支持 zmpt.cc 新版 CSS Modules 布局（`index-module__card-wrap` + `index-module__label`/`index-module__content` 键值对，Vue/Vite SPA 渲染后 DOM）
-- 支持 SPA 站点（通用壳检测 + 后台标签页渲染提取，覆盖 zmpt.cc 的 Vite 应用与 yemapt.org 的 umi 应用）
-- 支持 API 站点（sunnypt.top 为 Next.js SPA + 独立 JSON API，通过会话 JWT 直接调 `api.sunnypt.top` 抓取，无需开标签页）
+- 支持 SPA 站点（通用壳检测 + 后台标签页渲染提取，覆盖 yemapt.org 等 umi 应用）
+- 支持 API 站点（zmpt.cc 直接调 `/javaapi/user/queryAllMedals`、sunnypt.top 用会话 JWT 调 `api.sunnypt.top`，均无需开标签页）
 - 勋章链接直达其所在具体分页；分页 URL 拼接自动处理站点 URL 已带查询参数的场景
 - 支持繁体中文站点（`購買`）
 - 智能站点检测：点击按钮自动识别已登录的 PT 站点，实时进度条 + 调试日志显示
@@ -130,7 +130,7 @@ npm test
 
 测试包括：
 
-- 单元测试（161 项）：background.js 核心函数（勋章提取、卡片布局、列布局检测、SPA 渲染、分页工具、单站扫描等）
+- 单元测试（169 项）：background.js 核心函数（勋章提取、卡片布局、列布局检测、SPA 渲染、分页工具、单站扫描等）
 - DOM 测试（18 项）：options 页面元素和交互
 - 集成测试（6 项）：消息传递协议和 storage 数据流
 - 回归测试（97 项）：基于真实调试包的 97 站点快照对比，覆盖 5 种布局类型
@@ -176,10 +176,11 @@ tests/fixtures/        回归测试快照（基于真实调试包的 97 站点�
 - `extractMedalsFromSiqi()` - si-qi.xyz BEM 风格卡片布局解析，处理 `medal-card` + `medal-card__title` + `meta-label`/`meta-value` 键值对结构
 - `extractMedalsFromBuyCenter()` - 特殊 buycenter.php 勋章系统解析
 - `extractMedalsFromPterclub()` - pterclub.net（猫站）自定义表格布局解析
-- `isSpaShell()` - SPA 壳页面检测：含外部脚本且剥离 script/style 后几乎无可见文本（zmpt 的 Vite 壳、yemapt 的 umi 壳；普通页面与 Meta 跳转页不会误判）
-- `extractMedalsFromZmpt()` - SPA 站点渲染提取：后台标签页打开页面，轮询等待挂载点渲染出内容后读取，所有退出路径（含超时）均关闭标签页
-- `extractMedalsFromZmptNew()` - zmpt.cc 新版 CSS Modules 布局解析（Vue/Vite SPA 渲染后 DOM，`index-module__card-wrap` + `index-module__label`/`index-module__content` 键值对）
-- `scanSiteMedals()` - 单站扫描流程（首页 + 全部分页 + SPA 回退），手动扫描与定时扫描共用
+- `isSpaShell()` - SPA 壳页面检测：含外部脚本且剥离 script/style 后几乎无可见文本（Vite/umi 壳；普通页面与 Meta 跳转页不会误判）
+- `extractMedalsFromZmpt()` - 通用 SPA 站点渲染提取：后台标签页打开页面，轮询等待挂载点渲染出内容后读取，所有退出路径（含超时）均关闭标签页
+- `extractMedalsFromZmptNew()` - zmpt CSS Modules 布局解析（SPA 渲染后 DOM 的兜底提取器，仍在通用回退链中）
+- `scanSiteMedals()` - 单站扫描流程（API 直抓分支 → 首页 + 全部分页 → SPA 回退），手动扫描与定时扫描共用
+- `scanZmptApi()` / `parseZmptApiMedals()` - zmpt.cc API 直抓：Cookie 调 `/javaapi/user/queryAllMedals`，按站点前端按钮逻辑过滤（未拥有 + 售卖窗内 + 余额足够），不开标签页
 - `scanSunnyptBounty()` - sunnypt.top API 直抓：NextAuth 会话取 JWT → `api.sunnypt.top` 并行拉取勋章列表/已拥有/贝利余额（Bearer 认证，不开标签页）
 - `parseSunnyptMedals()` - sunnypt `medals/list` 数据映射与「可购买」过滤（售卖窗内 + 未拥有 + 有库存）
 - `collectPageNumbers()` / `buildPageUrl()` - 分页页码收集（含省略号折叠页）与分页 URL 拼接（自动处理 `?`/`&`）
@@ -188,7 +189,15 @@ tests/fixtures/        回归测试快照（基于真实调试包的 97 站点�
 
 ## 更新日志
 
-### v1.11（当前版本）
+### v1.12（当前版本）
+
+- zmpt.cc 改为 **API 直抓**：直接用 Cookie 调 `/javaapi/user/queryAllMedals`，不再开后台标签页渲染（v1.10/v1.11 每次扫描 zmpt 都会打开一个后台标签）
+- 「可购买」判定按站点前端源码（`BWLmrAUr.js`）实证复刻：未拥有（`userMedalsVO`/`hasMedal`）→ 售卖时间窗内 → 电力值余额 ≥ 价格（余额不足时站点显示禁用的「需要更多电力值」，口径与其它站点买不起一致）
+- 新增 `scanZmptApi()` / `parseZmptApiMedals()` / `parseZmptTime()`（时间串按 UTC+8 墙钟解析，不依赖运行机器时区），调试包改为保存接口原始 JSON
+- 新增 8 个 zmpt API 单元测试（总计 169 个 background + 18 options + 6 集成 = 193 项）
+- 调研记录：yemapt.org 也有数据 API（`/api/badge/fetchBadgeList`，返回全部 42 个徽章），但「立即兑换」可用性依赖 10+ 项用户数据条件（签到天数/上传下载量/等级/注册天数/邀请数/积分等），未隔离出站点判定逻辑，暂保留标签页渲染方案
+
+### v1.11（历史版本）
 
 - 新增站点 sunnypt.top（赏金公会-荣誉勋章，74 个内置站点）
 - sunnypt.top 为 Next.js SPA：页面 HTML 是无数据空壳，且勋章数据来自独立 API（`api.sunnypt.top`）。经浏览器实证（Kimi WebBridge 读取登录态页面 + Network 分析）后采用 **API 直抓**：`GET /api/auth/session` 取 JWT → `Authorization: Bearer` 调 `/api/v1/medals/list`、`/api/v1/medals/my`、`/api/v1/user/seed-bonus`，**无需开标签页渲染**

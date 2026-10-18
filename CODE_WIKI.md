@@ -121,6 +121,9 @@ Service Worker，负责核心的勋章扫描逻辑。不直接操作 DOM，通�
 | `scanSiteMedals(siteName, siteUrl, cookies, sendLog)` | 单站扫描流程（首页 + 全部分页 + SPA 回退 + sunnypt API 分支），手动/定时扫描共用 |
 | `scanSunnyptBounty(siteUrl, cookies, sendLog)` | sunnypt.top API 直抓：会话取 JWT → medals/list + medals/my + seed-bonus |
 | `parseSunnyptMedals(listData, myData, nowSec)` | sunnypt 勋章映射与过滤（售卖窗内 + 未拥有 + 有库存） |
+| `scanZmptApi(siteUrl, cookies)` | zmpt.cc API 直抓：Cookie 调 `/javaapi/user/queryAllMedals` |
+| `parseZmptApiMedals(json, nowSec)` | zmpt 勋章映射与过滤（未拥有 + 售卖窗内 + 余额足够，复刻前端按钮逻辑） |
+| `parseZmptTime(str)` | zmpt 墙钟时间串 → epoch 秒（按 UTC+8 解析） |
 | `collectPageNumbers(html, isPterclub)` / `buildPageUrl(siteUrl, n, isPterclub)` | 分页页码收集（含省略号折叠页）/ 分页 URL 拼接（`?`/`&` 自适应） |
 | `chrome.action.onClicked` 监听器 | 点击扩展图标时打开选项页 |
 | `chrome.runtime.onMessage` 监听器 | 接收 `startScan` / `detectSites` / `updateScheduleConfig` 消息 |
@@ -178,6 +181,19 @@ Service Worker，负责核心的勋章扫描逻辑。不直接操作 DOM，通�
    - api.sunnypt.top/api/v1/user/seed-bonus  贝利余额（seed_bonus）
 3. parseSunnyptMedals 过滤：售卖时间窗内 + 未拥有 + 有库存（-1=无限，0=售罄）
 4. 余额不足不排除——前端「魔力不足」筛选按 balance 过滤
+```
+
+#### zmpt.cc API 直抓流程（`scanZmptApi`）
+
+```
+1. GET https://zmpt.cc/javaapi/user/queryAllMedals（Cookie 认证，无额外令牌）
+   → { serverTime, success, result: { seedBonus, medalGroups[].medalList[] } }
+2. parseZmptApiMedals 按站点前端按钮逻辑过滤：
+   已拥有(userMedalsVO/hasMedal) → 佩戴
+   不在售卖窗(g)               → 已过可购买时间
+   seedBonus < price           → 需要更多电力值（禁用，不计入）
+   否则                        → 购买（计入）
+3. 库存展示为 inventory || "无限"，不参与可买性判定；时间串按 UTC+8 解析
 ```
 
 #### 分页抓取算法

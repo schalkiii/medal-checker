@@ -2,6 +2,25 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)，所有显著变更均记录于此。
 
+## [1.12] - 2026-10-18
+
+### 变更
+
+- **zmpt.cc 改为 API 直抓**：Cookie 直调 `/javaapi/user/queryAllMedals`，不再每次扫描都开后台标签页渲染
+- `parseZmptApiMedals()` 复刻站点前端按钮判定逻辑（源自 `BWLmrAUr.js` 源码）：未拥有（`userMedalsVO`/`hasMedal`）→ 售卖时间窗内 → `seedBonus` ≥ 价格；`inventory` 展示为 `inventory || "无限"`，不参与可买性判定
+- `parseZmptTime()` 按 UTC+8 解析墙钟时间串（`Date.UTC(...) - 8*3600`），不依赖运行机器时区
+- 调试包对 API 站点改为保存接口原始 JSON（比渲染后 HTML 更利于排查字段变化）
+- 测试中 SPA 渲染用例改用中性域名，避免被新增的 API 分支拦截
+
+### 调研（未实施）
+
+- **yemapt.org** 同样存在数据 API `/api/badge/fetchBadgeList`（返回全部 42 个徽章的完整条件与拥有状态，优于 DOM 只渲染当前分组的 6 个），但「立即兑换」按钮的可用性依赖 10+ 项用户数据条件（连续签到/上传下载量/等级/注册天数/邀请达标数/有效种子数/做种数/积分/起兑与截止时间），未能从压缩产物中隔离出站点判定逻辑，暂保留标签页渲染方案；现有提取器只认「购买」按钮，yemapt 实际仍为 0 结果，待产品口径明确后再实现
+
+### 测试
+
+- 新增 8 个 zmpt API 单元测试（使用 2026-10-18 真实接口响应作 fixture）
+- 总计：background 169 + options 18 + 集成 6 = 193 项全部通过
+
 ## [1.11] - 2026-10-18
 
 ### 新增
