@@ -46,6 +46,14 @@ export default [
       'no-multi-spaces': 'warn',
       'no-trailing-spaces': 'warn',
       'semi': ['warn', 'always'],
+      // background.js 用双引号；options 页面沿用单引号，按文件分别约束（见下方 override）
+      'quotes': ['warn', 'double', { avoidEscape: true }]
+    }
+  },
+  {
+    // options 页脚本沿用单引号风格（含单引号的字符串仍允许双引号避免转义）
+    files: ['options/**/*.js'],
+    rules: {
       'quotes': ['warn', 'single', { avoidEscape: true }]
     }
   },

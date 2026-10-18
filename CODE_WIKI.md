@@ -18,7 +18,7 @@
 | 属性 | 值 |
 |------|-----|
 | 名称 | PT勋章扫描器 |
-| 版本 | 1.0 |
+| 版本 | 1.13（与 README/CHANGELOG 发布号一致） |
 | 类型 | Chrome Extension (Manifest V3) |
 | 权限 | `cookies`, `storage`, `activeTab`, `alarms`, `scripting`, `tabs`, `<all_urls>` |
 | 入口 | `options/options.html` (选项页即主界面) |

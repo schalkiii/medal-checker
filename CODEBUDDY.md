@@ -42,5 +42,7 @@ MV3 Service Worker + 原生 JS（无构建、无框架、无依赖打包）；op
 
 ## 当前状态与下一步
 
-- v1.13：三站 API 直抓落地，200 项测试全绿，ESLint 0 error。
-- 待办：用户重载扩展后做线上验证；`.trae/rules/skill.md` 是过期规则文档（含已被证伪的硬编码容器匹配写法），待清理。
+- v1.13（manifest 版本已对齐）：三站 API 直抓落地（zmpt.cc / sunnypt.top / yemapt.org），200 项测试全绿。
+- `npm run check`：26 通过 / 0 警告 / 0 错误。引号规则按文件分治——`background.js` 双引号、`options/**` 单引号。
+- 待办：用户重载扩展后对三个 API 站点做线上验证。
+- 回归测试需自备根目录 `PT_Debug_*.json`（已 gitignore），缺失时自动跳过。

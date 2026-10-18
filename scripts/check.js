@@ -176,8 +176,13 @@ htmlFiles.forEach(f => {
 section('5. ESLint 代码质量检查');
 
 const { execSync } = require('child_process');
+// 优先直接用本地 eslint 入口：部分环境 node_modules/.bin 链接缺失时 npx 会找不到命令
+const localEslintBin = path.resolve(ROOT, 'node_modules/eslint/bin/eslint.js');
+const eslintCommand = fs.existsSync(localEslintBin)
+  ? `node "${localEslintBin}" background.js options/options.js 2>&1`
+  : 'npx eslint background.js options/options.js 2>&1';
 try {
-  const result = execSync('npx eslint background.js options/options.js 2>&1', {
+  const result = execSync(eslintCommand, {
     cwd: ROOT,
     encoding: 'utf-8',
     maxBuffer: 10 * 1024 * 1024
@@ -217,7 +222,8 @@ const optHTML = fs.readFileSync(path.resolve(ROOT, 'options/options.html'), 'utf
 
 const bgMsgActions = (bgContent.match(/request\.action\s*===\s*['"](\w+)['"]/g) || [])
   .map(m => m.match(/['"](\w+)['"]/)[1]);
-const optMsgTypes = (optJSC.match(/message\.type\s*===\s*['"](\w+)['"]/g) || [])
+// 监听分支常写成 `if (message.type !== 'x') return;`，需要同时匹配 === 与 !==
+const optMsgTypes = (optJSC.match(/message\.type\s*(?:===|!==)\s*['"](\w+)['"]/g) || [])
   .map(m => m.match(/['"](\w+)['"]/)[1]);
 
 log('info', `background 处理的 action: [${bgMsgActions.join(', ')}]`);
@@ -225,7 +231,8 @@ log('info', `options 监听的 type: [${optMsgTypes.join(', ')}]`);
 
 const optSendActions = (optJSC.match(/action:\s*['"](\w+)['"]/g) || [])
   .map(m => m.match(/['"](\w+)['"]/)[1]);
-const bgSendTypes = (bgContent.match(/type:\s*['"](\w+)['"]/g) || [])
+// 排除飞书载荷里的 msg_type 等非消息协议字段
+const bgSendTypes = (bgContent.match(/(?<!msg_)type:\s*['"](\w+)['"]/g) || [])
   .map(m => m.match(/['"](\w+)['"]/)[1]);
 
 log('info', `options 发送的 action: [${optSendActions.join(', ')}]`);
@@ -250,7 +257,12 @@ const storageKeys = [
 log('info', `chrome.storage.local 操作: ${storageKeys.length} 处`);
 
 const elemIds = [...optHTML.matchAll(/id=["']([^"']+)["']/g)].map(m => m[1]);
-const jsGetElemIds = [...optJSC.matchAll(/getElementById\(['"]([^'"]+)['"]\)/g)].map(m => m[1]);
+// 页面内的内联 <script> 也可能操作元素（如主题切换），一并纳入引用统计
+const htmlInlineScripts = [...optHTML.matchAll(/<script>([\s\S]*?)<\/script>/g)]
+  .map(m => m[1])
+  .join('\n');
+const jsGetElemIds = [...(optJSC + '\n' + htmlInlineScripts).matchAll(/getElementById\(['"]([^'"]+)['"]\)/g)]
+  .map(m => m[1]);
 
 const missingInHTML = jsGetElemIds.filter(id => !elemIds.includes(id));
 const unusedInJS = elemIds.filter(id => !jsGetElemIds.includes(id) &&

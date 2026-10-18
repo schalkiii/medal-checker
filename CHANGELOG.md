@@ -25,6 +25,17 @@
 - 总计：background 176 + options 18 + 集成 6 = 200 项全部通过
 - 线上验证：42 个徽章中当前 0 个条件全满足（连续签到 5 天 / 有效种子 0 / 做种 0 / 上传 243GB），与站点实际状态一致
 
+### 工程收尾
+
+- **扩展版本随发布号递增**：`manifest.json` 1.0 → 1.13
+- **检查流水线归零**：`npm run check` 由 24 通过/14 警告 → **26 通过 / 0 警告 / 0 错误**
+  - ESLint 步骤改用本地入口 `node_modules/eslint/bin/eslint.js`（`.bin` 链接缺失时 `npx` 会报找不到命令，产生 9 条无关 npm 警告）
+  - 引号规则按文件分治：`background.js` 双引号、`options/**` 单引号（此前统一要求单引号，与实际风格不符，产生 412 条 `quotes` 警告）；`options.js` 残留 11 处双引号字符串同步改为单引号
+  - 跨文件引用检查修正三处误报：`message.type !== 'x'` 的取反写法未被识别（`detectProgress`）、飞书载荷 `msg_type` 被当成消息类型（`post`）、HTML 内联脚本中的 `getElementById('themeToggle')` 未被统计
+- **清理过期资产**：删除 `.trae/rules/skill.md`（Trae 遗留规则文档，无 v1.10+ 内容且教了已被证伪的硬编码容器匹配写法）、其他工具内部目录 `.workbuddy/`（已加入 `.gitignore`）
+- **回归测试门控修复**：`tests/run.js` 与 `snapshot.test.js` 各写死不同日期（`2026-05-19` / `2026-05-23`）导致永不运行，改为自动发现任意 `PT_Debug_*.json`，缺失时明确提示跳过
+- 文档事实修正：CODE_WIKI 移除不存在的 DOMParser 解析描述、补齐 manifest 权限声明、分页上限 15→20；新增 `CODEBUDDY.md` 项目规则文件
+
 ## [1.12] - 2026-10-18
 
 ### 变更

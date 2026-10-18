@@ -82,8 +82,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // 将勋章价格字符串解析为数字（与 background.js 中逻辑保持一致）
     function parsePriceNumber(price) {
       if (price == null) return null;
-      const cleaned = String(price).replace(/[^\d.]/g, "");
-      if (cleaned === "") return null;
+      const cleaned = String(price).replace(/[^\d.]/g, '');
+      if (cleaned === '') return null;
       const num = parseFloat(cleaned);
       return isNaN(num) ? null : num;
     }
@@ -93,8 +93,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function getMedalUrl(site, medal) {
       if (medal.pageUrl) return medal.pageUrl;
       if (medal.medalId) {
-        const separator = site.url.includes("?") ? "&" : "?";
-        return site.url + separator + "medal=" + encodeURIComponent(medal.medalId);
+        const separator = site.url.includes('?') ? '&' : '?';
+        return site.url + separator + 'medal=' + encodeURIComponent(medal.medalId);
       }
       return site.url;
     }
@@ -147,7 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
       let unknownBalanceSites = 0;
       if (filterMagic) {
         validResults.forEach((s) => {
-          if (typeof s.balance !== "number") unknownBalanceSites++;
+          if (typeof s.balance !== 'number') unknownBalanceSites++;
         });
       }
 
@@ -194,7 +194,7 @@ document.addEventListener('DOMContentLoaded', () => {
           // 站点魔力值未知时无法判定，保守隐藏该站勋章并已在统计栏提示。
           siteMedals = siteMedals.filter((m) => {
             const priceNum = parsePriceNumber(m.price);
-            return typeof site.balance === "number" && priceNum != null && priceNum > site.balance;
+            return typeof site.balance === 'number' && priceNum != null && priceNum > site.balance;
           });
         }
         if (siteMedals.length === 0) return;
@@ -202,9 +202,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const header = document.createElement('div');
         header.className = 'result-site-header';
         const balanceHtml =
-          typeof site.balance === "number"
+          typeof site.balance === 'number'
             ? `<span class="result-site-balance">💰 余额 ${site.balance.toLocaleString()}</span>`
-            : "";
+            : '';
         header.innerHTML = `
           <div>
             <span class="result-site-name">${site.siteName}</span>
@@ -231,7 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const pageBadge =
               medal.page && medal.page > 1
                 ? `<span class="medal-page-badge">📄 第${medal.page}页</span>`
-                : "";
+                : '';
 
             const metaParts = [];
             if (medal.price) metaParts.push(`<span class="meta-price">💰 ${medal.price}</span>`);
@@ -244,7 +244,7 @@ document.addEventListener('DOMContentLoaded', () => {
               timeHtml = `<div class="medal-time">🕐 可购买时间: ${medal.timeRange}</div>`;
             }
 
-            const titleHint = medal.page && medal.page > 1 ? `点击跳转到第${medal.page}页` : "点击跳转到领取页面";
+            const titleHint = medal.page && medal.page > 1 ? `点击跳转到第${medal.page}页` : '点击跳转到领取页面';
             medalItem.innerHTML = `
               <div class="medal-info">
                 <a class="medal-name-link" href="${medalUrl}" target="_blank" title="${titleHint}">${medal.name}${isNew ? '<span class="diff-badge">NEW</span>' : ''}</a>${pageBadge}
@@ -453,7 +453,7 @@ chrome.storage.local.get(['sites', 'scanResults', 'scanHistory', 'scheduleConfig
         if (filterMagic) {
           siteMedals = siteMedals.filter((m) => {
             const priceNum = parsePriceNumber(m.price);
-            return typeof site.balance === "number" && priceNum != null && priceNum > site.balance;
+            return typeof site.balance === 'number' && priceNum != null && priceNum > site.balance;
           });
         }
 
