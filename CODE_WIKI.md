@@ -2,7 +2,7 @@
 
 ## 1. 项目概述
 
-**PT勋章扫描器** 是一款 Chrome 浏览器扩展（Manifest V3），用于批量扫描多个 PT（Private Tracker）站点的勋章（Medal）页面，检测是否存在可购买的勋章。插件通过读取浏览器中已登录站点的 Cookie 来模拟用户请求，使用 DOMParser 解析勋章页面 HTML，提取勋章名称、价格、时效等详细信息，并提供一键打开站点链接、差异对比（diff 模式）等功能。
+**PT勋章扫描器** 是一款 Chrome 浏览器扩展（Manifest V3），用于批量扫描多个 PT（Private Tracker）站点的勋章（Medal）页面，检测是否存在可购买的勋章。插件通过读取浏览器中已登录站点的 Cookie 来模拟用户请求，用正则解析勋章页面 HTML，提取勋章名称、价格、时效等详细信息，并提供一键打开站点链接、差异对比（diff 模式）等功能。
 
 ### 核心功能
 
@@ -20,7 +20,7 @@
 | 名称 | PT勋章扫描器 |
 | 版本 | 1.0 |
 | 类型 | Chrome Extension (Manifest V3) |
-| 权限 | `cookies`, `storage`, `activeTab`, `<all_urls>` |
+| 权限 | `cookies`, `storage`, `activeTab`, `alarms`, `scripting`, `tabs`, `<all_urls>` |
 | 入口 | `options/options.html` (选项页即主界面) |
 
 ---
@@ -130,19 +130,17 @@ Service Worker，负责核心的勋章扫描逻辑。不直接操作 DOM，通�
 | `chrome.action.onClicked` 监听器 | 点击扩展图标时打开选项页 |
 | `chrome.runtime.onMessage` 监听器 | 接收 `startScan` / `detectSites` / `updateScheduleConfig` 消息 |
 
-#### `extractMedalsFromHtml` 详解（L21-L77）
+#### `extractMedalsFromHtml` 详解
 
-这是新增的 HTML 解析函数，替代了原来简单的正则计数方式：
+Service Worker 没有 DOMParser，全部用正则解析。该函数是提取入口，先按标准表格解析，未命中时依次回退到专用布局提取器：
 
 ```
-1. 使用 DOMParser 将 HTML 字符串解析为 DOM 树
-2. 查找所有 value 包含 "购买" 的 <input> 元素
-3. 对每个购买按钮，向上查找最近的容器（tr → td → div）
-4. 从容器文本中提取：
-   a. 勋章名称 — 匹配 "勋章名称/名称/勋章/徽章" 标签 或 <img alt> 属性
-   b. 价格 — 匹配 "价格/售价/所需/需要/消耗/花费" 标签 或 数字+货币单位
-   c. 有效期 — 匹配 "有效期/时效/期限" 标签 或 "永久/长期" 等关键词
-5. 返回 { name, price, duration } 对象数组
+1. 表格解析：按 <tr> 切分行，按 <td> 收集单元格，getColumnLayout(tds.length)
+   判断 9 列 / 10 列布局，再按 stride 分组
+2. 操作列必须精确命中 value="购买" 或 value="購買"（排除"已经购买"等状态）
+3. 字段按列位置取：名称/价格/有效期/加成/库存/可购买时间
+4. 表格未命中时回退链：pterclub → cards → hhanclub → medal-item → si-qi → zmpt CSS Modules
+5. 返回 { name, price, duration, bonus, stock, timeRange, medalId } 对象数组
 ```
 
 #### 扫描历史持久化（L175-L186）
@@ -470,7 +468,7 @@ background.js ──依赖──► AbortController (超时控制)
 
 - 必须先在浏览器中登录目标 PT 站点，插件才能获取有效 Cookie
 - 每个请求有 10 秒超时限制
-- 分页扫描最多支持 15 页
+- 分页扫描最多支持 20 页
 - 扩展图标点击可直接打开控制台
 
 ---

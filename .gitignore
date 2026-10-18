@@ -1,2 +1,5 @@
 node_modules/
 PT_Debug_*.json
+
+# 其他 Agent 工具的内部目录（非项目内容）
+.workbuddy/

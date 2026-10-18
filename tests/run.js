@@ -11,7 +11,12 @@ const testFiles = [
 ];
 
 const regressionFile = 'tests/regression/snapshot.test.js';
-const debugPackage = path.resolve(ROOT, 'PT_Debug_2026-05-19.json');
+// 回归测试需要一份真实调试包（PT_Debug_*.json 已被 .gitignore 忽略，由使用者自行放置）。
+// 自动发现任意日期的调试包，避免写死日期导致回归测试永不运行。
+const debugPackageName = require('fs')
+  .readdirSync(ROOT)
+  .find((f) => /^PT_Debug_\d{4}-\d{2}-\d{2}\.json$/.test(f));
+const debugPackage = debugPackageName ? path.resolve(ROOT, debugPackageName) : null;
 
 console.log('╔══════════════════════════════════════╗');
 console.log('║   PT勋章扫描器 — 浏览器模拟测试    ║');

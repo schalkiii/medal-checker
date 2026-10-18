@@ -19,14 +19,19 @@ delete require.cache[require.resolve('../../background.js')];
 const bg = require('../../background.js');
 
 const snapshotPath = path.resolve(__dirname, '../fixtures/snapshot.json');
-const debugPath = path.resolve(__dirname, '../../PT_Debug_2026-05-23.json');
+// 与 tests/run.js 保持一致：自动发现任意日期的调试包，不写死日期
+const rootDir = path.resolve(__dirname, '../..');
+const debugName = fs
+  .readdirSync(rootDir)
+  .find((f) => /^PT_Debug_\d{4}-\d{2}-\d{2}\.json$/.test(f));
+const debugPath = debugName ? path.join(rootDir, debugName) : '';
 
 if (!fs.existsSync(snapshotPath)) {
   console.log('  ⚠️  快照文件不存在，请先运行: node scripts/build-snapshot.js PT_Debug_*.json');
   process.exit(0);
 }
-if (!fs.existsSync(debugPath)) {
-  console.log('  ⚠️  调试包不存在: ' + debugPath);
+if (!debugPath || !fs.existsSync(debugPath)) {
+  console.log('  ⚠️  未找到调试包 PT_Debug_*.json（项目根目录），跳过回归测试');
   process.exit(0);
 }
 

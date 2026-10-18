@@ -249,4 +249,5 @@ Chrome 扩展前后端通信通过 `chrome.runtime.sendMessage`：
 | 异步测试假通过 | 同步 `test()` 包裹 async fn，断言永不执行 | `testAsync` 入队 + 末尾统一 await |
 | 测试进程 45s 不退出 | 未被 await 的渲染调用留下兜底定时器 | 异步用例必须真正 await |
 | mock 与实现不同步 | mock 缺 tabs.onUpdated/scripting 导致流程走不通 | 扩展 mock 并驱动事件 |
+| 异步断言读到空 DOM | 共享 `global.document`，后续 section 的 `setupDOM()` 已替换引用 | 加载后在闭包内捕获 `const doc = document`，异步回调用捕获引用 |
 | 测试间状态污染 | 共享全局 chrome mock | `spawnSync` 进程隔离 |
