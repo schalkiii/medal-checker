@@ -123,7 +123,9 @@ Service Worker，负责核心的勋章扫描逻辑。不直接操作 DOM，通�
 | `parseSunnyptMedals(listData, myData, nowSec)` | sunnypt 勋章映射与过滤（售卖窗内 + 未拥有 + 有库存） |
 | `scanZmptApi(siteUrl, cookies)` | zmpt.cc API 直抓：Cookie 调 `/javaapi/user/queryAllMedals` |
 | `parseZmptApiMedals(json, nowSec)` | zmpt 勋章映射与过滤（未拥有 + 售卖窗内 + 余额足够，复刻前端按钮逻辑） |
-| `parseZmptTime(str)` | zmpt 墙钟时间串 → epoch 秒（按 UTC+8 解析） |
+| `scanYemaptBadges(siteUrl, cookies)` | yemapt.org API 直抓：并行拉取徽章列表 / 用户详情 / 签到信息 |
+| `parseYemaptBadges(badgeJson, profile, checkIn, nowSec)` | yemapt 徽章条件全满足校验（9 类条件 + 时间窗 + 数量上限） |
+| `parseWallClockTime(str)` | 墙钟时间串 → epoch 秒（按 UTC+8 解析，zmpt/yemapt 共用） |
 | `collectPageNumbers(html, isPterclub)` / `buildPageUrl(siteUrl, n, isPterclub)` | 分页页码收集（含省略号折叠页）/ 分页 URL 拼接（`?`/`&` 自适应） |
 | `chrome.action.onClicked` 监听器 | 点击扩展图标时打开选项页 |
 | `chrome.runtime.onMessage` 监听器 | 接收 `startScan` / `detectSites` / `updateScheduleConfig` 消息 |
@@ -194,6 +196,19 @@ Service Worker，负责核心的勋章扫描逻辑。不直接操作 DOM，通�
    seedBonus < price           → 需要更多电力值（禁用，不计入）
    否则                        → 购买（计入）
 3. 库存展示为 inventory || "无限"，不参与可买性判定；时间串按 UTC+8 解析
+```
+
+#### yemapt.org API 直抓流程（`scanYemaptBadges`）
+
+```
+1. 并行请求三个接口（Cookie 认证）：
+   - /api/badge/fetchBadgeList        全部 42 个徽章（含条件与拥有状态）
+   - /api/consumer/fetchSelfDetail    等级/积分/上传下载量/邀请数/有效种子/做种/注册时间
+   - /api/consumer/fetchCheckInPageInfo  连续签到天数
+2. parseYemaptBadges 逐项校验（任一不满足即排除）：
+   已获得 has → 排除；起兑/截止时间窗；数量上限 numLimit vs globalHasNum；
+   等级 / 积分 / 连续签到 / 上传量(字节) / 下载量(字节) / 邀请达标数 / 注册天数 / 有效种子数 / 做种数
+3. 站点「立即兑换」按钮恒可用（前端不校验条件，服务端才校验），故必须自行核对
 ```
 
 #### 分页抓取算法

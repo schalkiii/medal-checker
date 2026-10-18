@@ -2,6 +2,29 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)，所有显著变更均记录于此。
 
+## [1.13] - 2026-10-18
+
+### 新增
+
+- **新增站点 yemapt.org**（我的成长-徽章 `#/user/growth?tab=badge`，内置站点 74 → 75）——此前该站点从未加入 DEFAULT_SITES，实际从未被扫描过
+- `scanYemaptBadges()` / `parseYemaptBadges()`：API 直抓 + **条件全满足**口径（方案 A），不开标签页
+  - 数据源：`/api/badge/fetchBadgeList`（全部 42 个徽章，DOM 只渲染当前分组的 6 个）+ `/api/consumer/fetchSelfDetail`（等级/积分/上传下载/邀请/有效种子/做种）+ `/api/consumer/fetchCheckInPageInfo`（连续签到天数）
+  - 逐项校验 9 类条件 + 兑换时间窗 + 数量上限（`numLimit` 与 `globalHasNum`）
+  - 已获得（`has: true`）不报
+
+### 技术要点
+
+- **站点不做前端条件校验**：源码实证「立即兑换」按钮恒可用（`description:"兑换前，请先确认是否满足兑换条件" / okText:"我确认满足"`），服务端才校验——因此按钮状态不能作为可兑换依据
+- **条件值单位**：`promotionUploadSize` / `promotionDownloadSize` 条件为**字节**（如"上传100GB纪念"= 107374182400），非管理端表单标注的 GB
+- `parseWallClockTime()` 由 zmpt 的墙钟解析提取为通用函数（UTC+8），zmpt / yemapt 共用
+- 调试包保存徽章接口原始 JSON
+
+### 测试
+
+- 新增 7 个 yemapt 单元测试（覆盖 11 类排除场景：积分/等级/签到/上传/已拥有/邀请/种子/截止时间/数量兑完/注册天数）
+- 总计：background 176 + options 18 + 集成 6 = 200 项全部通过
+- 线上验证：42 个徽章中当前 0 个条件全满足（连续签到 5 天 / 有效种子 0 / 做种 0 / 上传 243GB），与站点实际状态一致
+
 ## [1.12] - 2026-10-18
 
 ### 变更

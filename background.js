@@ -1145,6 +1145,7 @@ const DEFAULT_SITES = [
   "wukongwendao.top|https://wukongwendao.top/medal.php",
   "xingtan.one|https://xingtan.one/medal.php",
   "yhpp.cc|https://www.yhpp.cc/medal.php",
+  "yemapt.org|https://www.yemapt.org/#/user/growth?tab=badge",
   "zmpt.cc|https://zmpt.cc/medal.php",
   "zrpt.cc|https://zrpt.cc/medal.php",
 ];
@@ -1194,7 +1195,7 @@ const ZMPT_MEDALS_API = "https://zmpt.cc/javaapi/user/queryAllMedals";
 
 // "YYYY-MM-DD HH:mm:ss" 墙钟字符串 → epoch 秒。
 // 站点为中文站，时间串按 UTC+8 墙钟理解（与站点展示一致，避免依赖运行机器时区）。
-const parseZmptTime = (str) => {
+const parseWallClockTime = (str) => {
   if (!str || typeof str !== "string") return 0;
   const m = str.match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/);
   if (!m) return 0;
@@ -1217,8 +1218,8 @@ const parseZmptApiMedals = (json, nowSec) => {
       if (!m || typeof m !== "object") continue;
       // 已拥有：前端以 userMedalsVO 判定，hasMedal 为同义冗余字段
       if (m.userMedalsVO || m.hasMedal) continue;
-      const begin = parseZmptTime(m.saleBeginTime);
-      const end = parseZmptTime(m.saleEndTime);
+      const begin = parseWallClockTime(m.saleBeginTime);
+      const end = parseWallClockTime(m.saleEndTime);
       // 无售卖时间窗（如官组勋章）或未开始/已结束
       if (!begin || !end || now < begin || now > end) continue;
       const price = Number(m.price) || 0;
@@ -1267,6 +1268,110 @@ async function scanZmptApi(siteUrl, cookies) {
   const balance = Number.isFinite(seed) && seed > 0 ? seed : null;
   // 调试包保存接口原始 JSON（比渲染后 HTML 更利于排查字段变化）
   const pageHtmls = [{ url: siteUrl, html: JSON.stringify(json) }];
+  return { medals, balance, pageHtmls, pageCount: 1 };
+}
+
+// ===== yemapt.org（umi SPA + JSON API，积分兑换制）=====
+// 页面只渲染当前分组的徽章（42 个分散在 8 个分组），且「立即兑换」按钮恒可用
+// （站点提示"兑换前，请先确认是否满足兑换条件"，服务端才校验），
+// 因此必须走 API 并自行核对全部条件——只上报「条件全部满足且当前可兑换」的徽章。
+const YEMAPT_API_BASE = "https://www.yemapt.org/api";
+
+// 条件字段与用户数据的对应关系（字段语义经站点前端与管理端表单核实）。
+// 时间为 null/空表示无限制；数值条件为 0 表示无要求。
+const parseYemaptBadges = (badgeJson, profile, checkIn, nowSec) => {
+  const list =
+    (badgeJson && badgeJson.data && badgeJson.data.badgeUserInfoList) || [];
+  if (!Array.isArray(list) || list.length === 0) return [];
+  const user = profile || {};
+  const now = typeof nowSec === "number" ? nowSec : Math.floor(Date.now() / 1000);
+  const bonus = Number(user.bonus) || 0;
+  const level = Number(user.level) || 0;
+  const uploadSize = Number(user.promotionUploadSize) || 0;
+  const downloadSize = Number(user.promotionDownloadSize) || 0;
+  const invitedNum = Number(user.invitedNum) || 0;
+  const validTorrentNum = Number(user.ownerValidTorrentNum) || 0;
+  const seededTorrentNum = Number(user.ownerSeededTorrentNum) || 0;
+  const checkInDays = Number(checkIn && checkIn.continuousCheckInDays) || 0;
+  // 注册天数：按墙钟解析注册时间后取整
+  const registerAt = parseWallClockTime(user.registerTime);
+  const registerDays = registerAt > 0 ? Math.floor((now - registerAt) / 86400) : 0;
+
+  const medals = [];
+  for (const item of list) {
+    const badge = item && item.badge;
+    if (!badge) continue;
+    if (item.has) continue; // 已获得
+    const c = badge.condition || {};
+
+    // 兑换时间窗（起兑/截止均可缺省）
+    const begin = parseWallClockTime(c.startTime);
+    const end = parseWallClockTime(c.endTime);
+    if (begin > 0 && now < begin) continue;
+    if (end > 0 && now > end) continue;
+
+    // 数量上限：numLimit > 0 时按全站已获得数判断是否已兑完
+    const numLimit = Number(c.numLimit) || 0;
+    const globalHasNum = Number(badge.globalHasNum) || 0;
+    if (numLimit > 0 && globalHasNum >= numLimit) continue;
+
+    // 全部条件逐一核对，任一不满足即排除
+    if (Number(c.requiredPoint) > bonus) continue;
+    if (Number(c.level) > level) continue;
+    if (Number(c.continuousCheckIn) > checkInDays) continue;
+    if (Number(c.promotionUploadSize) > uploadSize) continue;
+    if (Number(c.promotionDownloadSize) > downloadSize) continue;
+    if (Number(c.inviteQualifyNum) > invitedNum) continue;
+    if (Number(c.registerDays) > registerDays) continue;
+    if (Number(c.validTorrentNum) > validTorrentNum) continue;
+    if (Number(c.seededTorrentNum) > seededTorrentNum) continue;
+
+    medals.push({
+      name: String(badge.keyShowName || "未知徽章"),
+      price: (Number(c.requiredPoint) || 0).toLocaleString("en-US"),
+      duration: "永久有效",
+      bonus: "0%",
+      stock: numLimit > 0 ? String(Math.max(0, numLimit - globalHasNum)) : "无限",
+      timeRange:
+        begin > 0 || end > 0
+          ? `${c.startTime || "不限"} ~ ${c.endTime || "不限"}`
+          : "不限",
+      medalId: String(badge.id ?? ""),
+    });
+  }
+  return medals;
+};
+
+// yemapt 徽章扫描：并行拉取徽章列表 / 用户详情 / 签到信息，按条件全满足过滤。
+// 出错时抛异常，由调用方的 try/catch 统一记录日志。
+async function scanYemaptBadges(siteUrl, cookies) {
+  const headers = {
+    Cookie: cookies.map((c) => `${c.name}=${c.value}`).join("; "),
+    "User-Agent": navigator.userAgent,
+  };
+  const [badgeRes, detailRes, checkInRes] = await Promise.all([
+    fetchWithTimeout(`${YEMAPT_API_BASE}/badge/fetchBadgeList`, { headers }, 10000),
+    fetchWithTimeout(`${YEMAPT_API_BASE}/consumer/fetchSelfDetail`, { headers }, 10000),
+    fetchWithTimeout(`${YEMAPT_API_BASE}/consumer/fetchCheckInPageInfo`, { headers }, 10000),
+  ]);
+  if (!badgeRes.ok) {
+    throw new Error(`徽章接口请求失败 (HTTP ${badgeRes.status})`);
+  }
+  const badgeJson = await badgeRes.json();
+  if (!badgeJson || badgeJson.success !== true) {
+    throw new Error("徽章接口返回失败（可能未登录）");
+  }
+  // 用户详情/签到信息缺失时按空数据处理：条件里相应要求非 0 的徽章会被自然排除
+  const detailJson = detailRes.ok ? await detailRes.json() : {};
+  const checkInJson = checkInRes.ok ? await checkInRes.json() : {};
+  const profile = (detailJson && detailJson.data) || {};
+  const checkIn = (checkInJson && checkInJson.data) || {};
+
+  const medals = parseYemaptBadges(badgeJson, profile, checkIn);
+  const bonus = Number(profile.bonus);
+  const balance = Number.isFinite(bonus) && bonus > 0 ? bonus : null;
+  // 调试包保存徽章接口原始响应
+  const pageHtmls = [{ url: siteUrl, html: JSON.stringify(badgeJson) }];
   return { medals, balance, pageHtmls, pageCount: 1 };
 }
 
@@ -1392,6 +1497,10 @@ async function scanSiteMedals(siteName, siteUrl, cookies, sendLog) {
   // zmpt.cc：Vite SPA，Cookie 直调 /javaapi/user/queryAllMedals
   if (siteUrl.includes("zmpt.cc/medal.php")) {
     return await scanZmptApi(siteUrl, cookies);
+  }
+  // yemapt.org：umi SPA，Cookie 直调 /api/badge/fetchBadgeList 等（积分兑换制）
+  if (siteUrl.includes("yemapt.org")) {
+    return await scanYemaptBadges(siteUrl, cookies);
   }
 
   const pageHtmls = [{ url: siteUrl, html: "" }];
@@ -1876,7 +1985,9 @@ if (typeof module !== "undefined" && module.exports) {
     formatSunnyptTime,
     scanZmptApi,
     parseZmptApiMedals,
-    parseZmptTime,
+    scanYemaptBadges,
+    parseYemaptBadges,
+    parseWallClockTime,
     sendToFeishu,
     setupAlarm,
     performScheduledScan,

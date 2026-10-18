@@ -2089,12 +2089,12 @@ test('zmpt: 非法输入返回空数组', () => {
   assertEqual(bg.parseZmptApiMedals({ result: { medalGroups: "x" } }, zmptNow).length, 0);
 });
 
-test('parseZmptTime 按 UTC+8 墙钟解析', () => {
+test('parseWallClockTime 按 UTC+8 墙钟解析', () => {
   // 2026-10-18 00:00:00 (UTC+8) = 2026-10-17 16:00:00 UTC
-  assertEqual(bg.parseZmptTime('2026-10-18 00:00:00'), Math.floor(Date.UTC(2026, 9, 17, 16, 0, 0) / 1000));
-  assertEqual(bg.parseZmptTime(''), 0);
-  assertEqual(bg.parseZmptTime(null), 0);
-  assertEqual(bg.parseZmptTime('invalid'), 0);
+  assertEqual(bg.parseWallClockTime('2026-10-18 00:00:00'), Math.floor(Date.UTC(2026, 9, 17, 16, 0, 0) / 1000));
+  assertEqual(bg.parseWallClockTime(''), 0);
+  assertEqual(bg.parseWallClockTime(null), 0);
+  assertEqual(bg.parseWallClockTime('invalid'), 0);
 });
 
 testAsync('scanZmptApi: Cookie 直调接口全流程', async () => {
@@ -2134,6 +2134,190 @@ testAsync('scanZmptApi: 接口失败时抛出异常', async () => {
   } catch (e) {
     threw = true;
     assert(e.message.includes('未登录'), '错误信息应透出接口原因: ' + e.message);
+  }
+  assert(threw, '接口返回失败应抛出异常');
+  global.fetch = savedFetch;
+});
+
+// ============================================================
+// yemapt.org — 积分兑换制 API 直抓（条件全部满足才上报）
+// ============================================================
+console.log('\n  ▶ parseYemaptBadges - yemapt 徽章条件校验');
+
+// 真实用户数据（2026-10-18 抓取，fetchSelfDetail + fetchCheckInPageInfo）
+const yemaptProfile = {
+  level: 2,
+  bonus: 1269670,
+  promotionUploadSize: 260971356785, // ≈243 GB
+  promotionDownloadSize: 8120076597, // ≈7.6 GB
+  invitedNum: 0,
+  ownerValidTorrentNum: 0,
+  ownerSeededTorrentNum: 0,
+  registerTime: "2024-05-28 00:20:30", // 注册约 873 天
+};
+const yemaptCheckIn = { continuousCheckInDays: 5 };
+const yemaptNow = Math.floor(Date.parse("2026-10-18T02:00:00Z") / 1000);
+
+const makeYemaptBadge = (id, name, condition, extra = {}) => ({
+  badge: {
+    id,
+    groupName: extra.group || "test",
+    groupShowName: extra.groupShow || "测试",
+    keyName: "k" + id,
+    keyShowName: name,
+    condition: Object.assign(
+      {
+        continuousCheckIn: 0,
+        promotionUploadSize: 0,
+        promotionDownloadSize: 0,
+        level: 0,
+        requiredPoint: 0,
+        inviteQualifyNum: 0,
+        numLimit: 0,
+        registerDays: 0,
+        validTorrentNum: 0,
+        seededTorrentNum: 0,
+      },
+      condition,
+    ),
+    reward: { returnPoint: 0 },
+    picture: "badge/x.png",
+    globalHasNum: extra.globalHasNum ?? 100,
+  },
+  has: extra.has ?? false,
+});
+
+const yemaptList = {
+  success: true,
+  data: {
+    badgeUserInfoList: [
+      // 全部条件满足 → 保留
+      makeYemaptBadge(1, "可兑换徽章", { requiredPoint: 1500, level: 2 }),
+      // 积分不足（需 200 万 > 126.9 万）→ 排除
+      makeYemaptBadge(2, "积分不足徽章", { requiredPoint: 2000000, level: 2 }),
+      // 等级不足（需 7 > 2）→ 排除
+      makeYemaptBadge(3, "等级不足徽章", { requiredPoint: 1000, level: 7 }),
+      // 连续签到不足（需 30 > 5）→ 排除
+      makeYemaptBadge(4, "签到不足徽章", { requiredPoint: 1500, continuousCheckIn: 30 }),
+      // 上传量不足（需 500GB 字节 > 243GB）→ 排除
+      makeYemaptBadge(5, "上传不足徽章", { requiredPoint: 1000, promotionUploadSize: 536870912000 }),
+      // 已获得 → 排除
+      makeYemaptBadge(6, "已获得徽章", { requiredPoint: 1000 }, { has: true }),
+      // 邀请不足（需 2 > 0）→ 排除
+      makeYemaptBadge(7, "邀请不足徽章", { requiredPoint: 1000, inviteQualifyNum: 2 }),
+      // 有效种子不足（需 10 > 0）→ 排除
+      makeYemaptBadge(8, "种子不足徽章", { requiredPoint: 1000, validTorrentNum: 10 }),
+      // 已过截止时间 → 排除
+      makeYemaptBadge(9, "过期徽章", { requiredPoint: 1000, endTime: "2026-10-07 23:59:59" }),
+      // 数量已兑完（numLimit 10，全站已得 10）→ 排除
+      makeYemaptBadge(10, "已兑完徽章", { requiredPoint: 1000, numLimit: 10 }, { globalHasNum: 10 }),
+      // 注册天数不足（需 1000 天 > 873）→ 排除
+      makeYemaptBadge(11, "注册不足徽章", { requiredPoint: 1000, registerDays: 1000 }),
+      // 上传量足够（需 100GB 字节 < 243GB）→ 保留
+      makeYemaptBadge(12, "上传达标徽章", { requiredPoint: 1000, promotionUploadSize: 107374182400 }),
+    ],
+  },
+};
+
+test('yemapt: 仅保留全部条件满足的徽章', () => {
+  const medals = bg.parseYemaptBadges(yemaptList, yemaptProfile, yemaptCheckIn, yemaptNow);
+  const names = medals.map((m) => m.name);
+  assertEqual(medals.length, 2, '仅「可兑换徽章」与「上传达标徽章」满足');
+  assert(names.includes('可兑换徽章'));
+  assert(names.includes('上传达标徽章'));
+  assert(!names.includes('积分不足徽章'), '积分不足应排除');
+  assert(!names.includes('等级不足徽章'), '等级不足应排除');
+  assert(!names.includes('签到不足徽章'), '签到不足应排除');
+  assert(!names.includes('上传不足徽章'), '上传量不足应排除');
+  assert(!names.includes('已获得徽章'), '已拥有应排除');
+  assert(!names.includes('邀请不足徽章'), '邀请不足应排除');
+  assert(!names.includes('种子不足徽章'), '有效种子不足应排除');
+  assert(!names.includes('过期徽章'), '已过截止应排除');
+  assert(!names.includes('已兑完徽章'), '数量已兑完应排除');
+  assert(!names.includes('注册不足徽章'), '注册天数不足应排除');
+});
+
+test('yemapt: 字段映射（积分/有效期/库存/时间/ID）', () => {
+  const medals = bg.parseYemaptBadges(yemaptList, yemaptProfile, yemaptCheckIn, yemaptNow);
+  const m = medals.find((x) => x.name === '可兑换徽章');
+  assertEqual(m.price, '1,500');
+  assertEqual(m.duration, '永久有效');
+  assertEqual(m.bonus, '0%');
+  assertEqual(m.stock, '无限');
+  assertEqual(m.timeRange, '不限');
+  assertEqual(m.medalId, '1');
+});
+
+test('yemapt: 有时间窗与数量上限时正确展示', () => {
+  const list = {
+    success: true,
+    data: {
+      badgeUserInfoList: [
+        makeYemaptBadge(20, "限时限量徽章", { requiredPoint: 500, startTime: "2026-10-01 00:00:00", endTime: "2026-12-31 00:00:00", numLimit: 50 }, { globalHasNum: 30 }),
+      ],
+    },
+  };
+  const medals = bg.parseYemaptBadges(list, yemaptProfile, yemaptCheckIn, yemaptNow);
+  assertEqual(medals.length, 1);
+  assertEqual(medals[0].timeRange, '2026-10-01 00:00:00 ~ 2026-12-31 00:00:00');
+  assertEqual(medals[0].stock, '20');
+});
+
+test('yemapt: 用户数据缺失时要求非 0 条件的徽章被排除', () => {
+  const medals = bg.parseYemaptBadges(yemaptList, {}, {}, yemaptNow);
+  const names = medals.map((m) => m.name);
+  assert(!names.includes('积分不足徽章'));
+  assert(!names.includes('可兑换徽章'), '无积分数据时需积分的徽章应排除');
+  assertEqual(medals.length, 0, '无用户数据时不应上报任何徽章');
+});
+
+test('yemapt: 非法输入返回空数组', () => {
+  assertEqual(bg.parseYemaptBadges(null, yemaptProfile, yemaptCheckIn, yemaptNow).length, 0);
+  assertEqual(bg.parseYemaptBadges({ data: {} }, yemaptProfile, yemaptCheckIn, yemaptNow).length, 0);
+});
+
+testAsync('scanYemaptBadges: 并行拉取三接口并按条件过滤', async () => {
+  const savedFetch = global.fetch;
+  const seen = [];
+  global.fetch = (url, options = {}) => {
+    const u = String(url);
+    seen.push({ url: u, cookie: options.headers && options.headers.Cookie });
+    if (u.endsWith('/api/badge/fetchBadgeList')) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(yemaptList) });
+    }
+    if (u.endsWith('/api/consumer/fetchSelfDetail')) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ data: yemaptProfile }) });
+    }
+    if (u.endsWith('/api/consumer/fetchCheckInPageInfo')) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ data: yemaptCheckIn }) });
+    }
+    return Promise.resolve({ ok: false, status: 404 });
+  };
+
+  const { medals, balance, pageHtmls, pageCount } = await bg.scanYemaptBadges(
+    'https://www.yemapt.org/#/user/growth?tab=badge',
+    [{ name: 'session', value: 'abc' }],
+  );
+
+  assertEqual(seen.length, 3, '应并行请求三个接口');
+  assert(seen.every((s) => s.cookie === 'session=abc'), '三个请求都应带 Cookie');
+  assertEqual(medals.length, 2, '应返回条件满足的 2 个徽章');
+  assertEqual(balance, 1269670, '应返回积分余额');
+  assertEqual(pageCount, 1);
+  assert(pageHtmls[0].html.includes('可兑换徽章'), '调试包应保存徽章接口原始响应');
+  global.fetch = savedFetch;
+});
+
+testAsync('scanYemaptBadges: 未登录（接口 success=false）抛出异常', async () => {
+  const savedFetch = global.fetch;
+  global.fetch = () =>
+    Promise.resolve({ ok: true, json: () => Promise.resolve({ success: false, showType: 0 }) });
+  let threw = false;
+  try {
+    await bg.scanYemaptBadges('https://www.yemapt.org/#/user/growth?tab=badge', [{ name: 'c', value: '1' }]);
+  } catch (e) {
+    threw = true;
+    assert(e.message.includes('未登录'), '错误信息应提示登录: ' + e.message);
   }
   assert(threw, '接口返回失败应抛出异常');
   global.fetch = savedFetch;
