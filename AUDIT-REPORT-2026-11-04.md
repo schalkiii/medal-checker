@@ -49,16 +49,22 @@
 | `hdpt.xyz` | `ECONNRESET` | 已移除 |
 | `greatposterwall.com` | `/medal.php`、`/medals.php`、`/mall.php`、`/medal_center.php` 全部返回「页面不存在」（登录态调试包同样如此） | 已移除（站点无此勋章页） |
 
+**域名迁移（已更新，v1.14）**
+
+| 旧域名 | 新域名 | 依据 |
+|--------|--------|------|
+| `zrpt.cc` | `naturept.top` | 用户确认域名迁移 |
+| `pt.gtkpw.xyz` | `pt.gtk.pw` | 用户确认域名迁移 |
+
 **需二次核实（先保留）**
 
 | 站点 | 证据 | 说明 |
 |------|------|------|
-| `zrpt.cc` | TLS 证书链校验失败（`UNABLE_TO_GET_ISSUER_CERT_LOCALLY`） | 可能是本机证书库问题，需浏览器实测 |
 | `www.icc2022.com` / `ptvicomo.net` | 反广告拦截跳转页（`Redirecting...`）+ Node 证书失败 | 逻辑上存活，自动化抓取受阻 |
-| `pt.gtkpw.xyz` / `www.yhpp.cc` | 连接超时 | 调试包中 `pt.gtkpw.xyz` 曾成功返回 11KB，疑为临时/地域问题 |
-| `1ptba.com` / `www.52movie.top` / `www.hitpt.com` / `piggo.me` / `ubits.club` / `audiences.me` / `zmpt.cc` | Cloudflare 403「Just a moment...」 | 站点在线，但服务端 fetch 易被挑战拦截；zmpt 走 API 分支不受页面影响 |
+| `www.yhpp.cc` | 连接超时 | 需浏览器实测 |
+| `1ptba.com` / `www.52movie.top` / `www.hitpt.com` / `piggo.me` / `ubits.club` / `zmpt.cc` | Cloudflare 403「Just a moment...」 | 站点在线，但服务端 fetch 易被挑战拦截；zmpt 走 API 分支不受页面影响 |
 
-**仅存在于调试包、当前代码已无（无需处理）**：`share.ilolicon.com`、`pt.keepfrds.com`、`tracker.ldo.pics`、`www.ptlover.cc`、`ptlao.top`、`pt.cdy.pics`、`longpt.org`、`pt.hdclone.top`、`pt.vclib.online`、`pt.daxiangjiao.org`、`pt.1ctrl.cn`、`lp-bits.com`、`hdvideo.top`、`audiences.me` 等。
+**仅存在于调试包、当前代码已无（无需处理）**：`share.ilolicon.com`、`pt.keepfrds.com`、`tracker.ldo.pics`、`www.ptlover.cc`、`ptlao.top`、`pt.cdy.pics`、`longpt.org`、`pt.hdclone.top`、`pt.vclib.online`、`pt.daxiangjiao.org`、`pt.1ctrl.cn`、`lp-bits.com`、`audiences.me` 等。
 
 ### 2.4 架构与代码写法（未修复，建议）
 

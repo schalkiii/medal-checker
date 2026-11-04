@@ -25,7 +25,8 @@
 - 依据 2026-11-04 存活探测（89 个域名）移除已实质失效的站点，内置站点 74 → 69：
   - `momentpt.top`（停运告别页）、`raingfh.top`（DNS 不解析）、`leaves.red`（拒绝连接）、`hdpt.xyz`（连接重置）、`greatposterwall.com`（勋章页 404）
   - `hdvideo.one`（DNS 不解析）替换为在线的 `hdvideo.top`
-- 证书异常（`zrpt.cc` / `icc2022.com` / `ptvicomo.net`）与超时（`pt.gtkpw.xyz` / `yhpp.cc`）站点证据不足，保留并在审计报告中标记待核实
+- **站点域名迁移**：`zrpt.cc` → `naturept.top`、`pt.gtkpw.xyz` → `pt.gtk.pw`（旧域名已不可用，用户确认新域名）
+- 证书异常（`icc2022.com` / `ptvicomo.net`）与超时（`yhpp.cc`）站点证据不足，保留并在审计报告中标记待核实
 
 ### 文档
 

@@ -1203,6 +1203,7 @@ const DEFAULT_SITES = [
   "kufei.org|https://kufei.org/medal.php",
   "lemonhd.net|https://lemonhd.net/medal.php",
   "musopia.vip|https://www.musopia.vip/medal.php",
+  "naturept.top|https://naturept.top/medal.php",
   "njtupt.top|https://njtupt.top/medal.php",
   "okpt.net|https://www.okpt.net/medal.php",
   "oshen.win|http://www.oshen.win/medal.php",
@@ -1212,7 +1213,7 @@ const DEFAULT_SITES = [
   "playlet.cc|https://playlet.cc/medal.php",
   "pt.0ff.cc|https://pt.0ff.cc/medal.php",
   "pt.aling.de|https://pt.aling.de/medal.php",
-  "pt.gtkpw.xyz|https://pt.gtkpw.xyz/medal.php",
+  "pt.gtk.pw|https://pt.gtk.pw/medal.php",
   "pt.lajidui.top|https://pt.lajidui.top/medal.php",
   "pt.luckpt.de|https://pt.luckpt.de/medal.php",
   "pt.muxuege.org|https://pt.muxuege.org/medal.php",
@@ -1241,7 +1242,6 @@ const DEFAULT_SITES = [
   "yhpp.cc|https://www.yhpp.cc/medal.php",
   "yemapt.org|https://www.yemapt.org/#/user/growth?tab=badge",
   "zmpt.cc|https://zmpt.cc/medal.php",
-  "zrpt.cc|https://zrpt.cc/medal.php",
 ];
 
 // 分页抓取上限：防止个别站点分页条链出过多页面导致扫描时间失控

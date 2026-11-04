@@ -44,5 +44,6 @@ MV3 Service Worker + 原生 JS（无构建、无框架、无依赖打包）；op
 
 - v1.14（manifest 版本已对齐）：nova-medal-card 布局 + medal-item 送礼按钮顺序修复 + 表格名称 h1 修复，209 项测试全绿。
 - `npm run check`：26 通过 / 0 警告 / 0 错误。引号规则按文件分治——`background.js` 双引号、`options/**` 单引号。
-- 待办：用户重载扩展后对三个 API 站点做线上验证；调试包中存在若干已关闭/改域名站点，待用户确认后从 `DEFAULT_SITES` 移除。
+- 待办：用户重载扩展后对三个 API 站点做线上验证；已按 2026-11-04 存活探测清理死站点并迁移域名（`zrpt.cc`→`naturept.top`、`pt.gtkpw.xyz`→`pt.gtk.pw`），剩余待核实：`icc2022.com` / `ptvicomo.net` 证书异常、`yhpp.cc` 超时。
+- 注意：扫描使用的是用户保存的 `sites` 配置，`DEFAULT_SITES` 仅用于「检测已登录站点」；域名迁移后需同步更新选项页里的已保存站点列表。
 - 回归测试需自备根目录 `PT_Debug_*.json`（已 gitignore，当前快照来源为 `PT_Debug_2026-11-04.json`，130 页 / 131 枚），缺失时自动跳过。

@@ -198,6 +198,7 @@ tests/fixtures/        回归测试快照（基于真实调试包的 97 站点�
 - **新增 nova-medal-card 布局支持**：`article.nova-medal-card` + `dl.nova-medal-meta`（`dt`/`dd`）+ `.nova-medal-sale` 销售时间
 - **修复标准表格勋章名称混入描述**（hdclone / kamept / crabpt）：名称单元格 `<h1>名称</h1>描述……` 改为优先取 `<h1>` 文本
 - 用 2026-11-04 调试包重建回归快照（130 页 / 131 枚）；新增 9 个单元测试，总计 209 项全部通过
+- 站点维护：清理 6 个失效站点（`momentpt` / `raingfh` / `leaves.red` / `hdpt.xyz` / `greatposterwall`），`hdvideo.one` → `hdvideo.top`；域名迁移 `zrpt.cc` → `naturept.top`、`pt.gtkpw.xyz` → `pt.gtk.pw`（内置站点 74 → 69）
 
 ### v1.13
 
