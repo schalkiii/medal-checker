@@ -1,7 +1,7 @@
 # 项目审计报告（2026-11-04）
 
 > 审计对象：`c:\CommonTools\Edge\Ext\medal-checker-test`（PT 勋章扫描器，Chrome MV3 扩展）
-> 审计依据：当前代码、2026-11-04 调试包（130 页 / 74 个内置站点）、线上存活探测（89 个域名）
+> 审计依据：当前代码、2026-11-04 调试包（130 页）、线上存活探测（89 个域名）
 > 审计范围：文档一致性、文档缺漏、架构、代码写法、测试覆盖、测试严谨性、工程规范
 
 ---
@@ -11,7 +11,7 @@
 - **规模**：`background.js` 2086 行（扫描引擎 + 全部提取器）；`options/options.js` 选项页逻辑；`scripts/` 下 check/lint-fix/watch/analyze-html/build-snapshot 等工具；`tests/` 下 unit/integration/regression/browser 四类测试。
 - **结构**：单 Service Worker（无构建、无框架、无打包依赖）；扫描入口 `scanSiteMedals()` 统一手动/定时两条路径；站点适配分三条路径（API 直抓 / HTML 正则 / 后台标签页渲染）。
 - **质量水平**：209 项自动化测试全绿；`npm run check` 26 通过 / 0 警告 / 0 错误；回归快照覆盖 130 页、131 枚勋章；文档四件套（README / CODE_WIKI / SKILL / CHANGELOG）+ CODEBUDDY 规则文件齐备。
-- **站点规模**：`DEFAULT_SITES` 实际 **74 条**（此前文档误记 75，本版已修正）。
+- **站点规模**：`DEFAULT_SITES` 清理前 74 条、清理后 **69 条**（文档曾误记 75；v1.14 已按存活探测移除 6 个失效站点并替换 1 个域名）。
 
 ---
 
@@ -38,16 +38,16 @@
 
 ### 2.3 站点存活（需用户决策）
 
-**已实质关闭 / 域名失效（建议移除）**
+**已实质关闭 / 域名失效（已按用户确认清理，v1.14）**
 
-| 站点 | 证据（2026-11-04 探测） | 建议 |
+| 站点 | 证据（2026-11-04 探测） | 处置 |
 |------|------------------------|------|
-| `www.momentpt.top` | 返回告别页「Moment · 山水有相逢 / 故事就写到这里吧」，站点已停运 | 从 `DEFAULT_SITES` 移除 |
-| `hdvideo.one` | `ENOTFOUND`（DNS 不解析）；同域生态的 `hdvideo.top` 正常在线（调试包内有 16KB 登录页） | 改用 `https://hdvideo.top/medal.php` |
-| `raingfh.top` | `ENOTFOUND` | 移除 |
-| `leaves.red` | `ECONNREFUSED` | 移除 |
-| `hdpt.xyz` | `ECONNRESET` | 移除 |
-| `greatposterwall.com` | `/medal.php`、`/medals.php`、`/mall.php`、`/medal_center.php` 全部返回「页面不存在」（登录态调试包同样如此） | 移除（站点无此勋章页） |
+| `www.momentpt.top` | 返回告别页「Moment · 山水有相逢 / 故事就写到这里吧」，站点已停运 | 已移除 |
+| `hdvideo.one` | `ENOTFOUND`（DNS 不解析）；同域生态的 `hdvideo.top` 正常在线（调试包内有 16KB 登录页） | 已替换为 `hdvideo.top` |
+| `raingfh.top` | `ENOTFOUND` | 已移除 |
+| `leaves.red` | `ECONNREFUSED` | 已移除 |
+| `hdpt.xyz` | `ECONNRESET` | 已移除 |
+| `greatposterwall.com` | `/medal.php`、`/medals.php`、`/mall.php`、`/medal_center.php` 全部返回「页面不存在」（登录态调试包同样如此） | 已移除（站点无此勋章页） |
 
 **需二次核实（先保留）**
 
@@ -99,10 +99,9 @@
 - **文件**：`background.js`（`scanSiteMedals` 返回值、扫描循环、`debugData` 构造）、`options/options.js`（导出对象）、`tests/unit/background.test.js`。
 - **验证**：扫描后导出调试包，确认含 `version/status/error/logs`；空页面能直接看出 403/404/超时原因。
 
-### 建议 2（高，需用户确认）：清理死站点（对应 2.3）
-- **做法**：按 2.3「建议移除」表删除 6 条，`hdvideo.one` 替换为 `hdvideo.top`；复核表 4 项用浏览器实测后再决定。
-- **文件**：`background.js`（`DEFAULT_SITES`）、`CHANGELOG.md`、`README.md`/`CODEBUDDY.md` 站点数。
-- **验证**：`npm test`；手动扫描确认被移除站点不再出现、`hdvideo.top` 能正常抓取。
+### 建议 2（高，已完成）：清理死站点（对应 2.3）
+- **已执行（v1.14）**：删除 `momentpt.top`、`raingfh.top`、`leaves.red`、`hdpt.xyz`、`greatposterwall.com`；`hdvideo.one` 替换为 `hdvideo.top`；`DEFAULT_SITES` 74 → 69，文档计数同步。
+- **验证**：`npm test` 全绿（209 项 + 回归 130/130 + 检查 26/0/0）。
 
 ### 建议 3（中，可并行）：抽取容器切片公共函数（对应 C1）
 - **做法**：新增 `extractTagBlocks(html, tagName, classKeyword)`，统一处理 `<div>`/`<article>` 深度计数；让 medal-item / hhanclub / si-qi / nova / zmptNew 复用。
@@ -131,7 +130,7 @@
 | 优先级 | 建议 | 可并行 | 依赖 |
 |--------|------|--------|------|
 | P0 | 建议 1（调试包元数据） | 是（与建议 3/4/5 文件不冲突，可同批不同 agent） | 无 |
-| P0 | 建议 2（死站点清理） | 是 | 需用户确认 |
+| P0 | 建议 2（死站点清理） | 是 | **已完成（v1.14）** |
 | P1 | 建议 3（容器切片复用） | 是（纯 background.js 重构，勿与建议 5 同改同一段） | 建议 5 先/后二选一 |
 | P1 | 建议 4（回归断言） | 是（只动 tests/） | 无 |
 | P2 | 建议 5（禁用态校验） | 否（与建议 3 同文件同区域，需串行） | 建议 3 之后 |

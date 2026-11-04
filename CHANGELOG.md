@@ -20,10 +20,17 @@
 - 新增 9 个单元测试（礼物按钮顺序、nova 布局、名称纯净性），总计 209 项全部通过
 - `npm run check`：26 通过 / 0 警告 / 0 错误
 
+### 站点清理
+
+- 依据 2026-11-04 存活探测（89 个域名）移除已实质失效的站点，内置站点 74 → 69：
+  - `momentpt.top`（停运告别页）、`raingfh.top`（DNS 不解析）、`leaves.red`（拒绝连接）、`hdpt.xyz`（连接重置）、`greatposterwall.com`（勋章页 404）
+  - `hdvideo.one`（DNS 不解析）替换为在线的 `hdvideo.top`
+- 证书异常（`zrpt.cc` / `icc2022.com` / `ptvicomo.net`）与超时（`pt.gtkpw.xyz` / `yhpp.cc`）站点证据不足，保留并在审计报告中标记待核实
+
 ### 文档
 
 - README / CODE_WIKI / SKILL / CODEBUDDY 同步 nova 布局与测试数量；修正 SKILL 中过期的站点数与检查项数
-- **修正内置站点计数**：`DEFAULT_SITES` 实际为 74 个条目，此前 README/SKILL/CODEBUDDY 误记为 75（v1.13 条目中的「74 → 75」亦为误记）
+- **修正内置站点计数**：清理前 `DEFAULT_SITES` 实际为 74 个条目（README/SKILL/CODEBUDDY 曾误记 75），清理后为 69 个
 
 ## [1.13] - 2026-10-18
 
