@@ -2,6 +2,29 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)，所有显著变更均记录于此。
 
+## [1.14] - 2026-11-04
+
+### 修复（依据 2026-11-04 调试包定位）
+
+- **hdkyl.in / pt.novahd.top 漏报可购买勋章**
+  - `extractMedalsFromMedalItems()` 原先取卡片内第一个 `data-id` 按钮；两站按钮顺序为「赠送」在前、「购买」在后，整卡被按赠送跳过。改为优先选取 value 恰为 `购买`/`購買` 且未禁用的按钮，找不到时保留旧兜底口径
+  - 新增 `extractMedalsFromNovaCards()`：适配 pt.novahd.top 的 `article.nova-medal-card` + `dl.nova-medal-meta`（`dt`/`dd`）+ `.nova-medal-sale` 布局
+  - `CARD_FIELD_PATTERNS` 增加通用 `dt`/`dd` 键值对模式
+- **标准表格勋章名称混入描述**（hdclone / kamept / crabpt）
+  - 名称单元格为 `<h1>名称</h1>描述……`，`extractTdText` 折叠换行后首行切分失效，导致名称包含整段描述；改为优先取 `<h1>` 内容
+
+### 工程
+
+- `scripts/analyze-html.js` 新增 nova-medal-card 布局检测分支
+- 用 2026-11-04 调试包重建 `tests/fixtures/snapshot.json`（130 页 / 131 枚 / 17 个有勋章站点）
+- 新增 9 个单元测试（礼物按钮顺序、nova 布局、名称纯净性），总计 209 项全部通过
+- `npm run check`：26 通过 / 0 警告 / 0 错误
+
+### 文档
+
+- README / CODE_WIKI / SKILL / CODEBUDDY 同步 nova 布局与测试数量；修正 SKILL 中过期的站点数与检查项数
+- **修正内置站点计数**：`DEFAULT_SITES` 实际为 74 个条目，此前 README/SKILL/CODEBUDDY 误记为 75（v1.13 条目中的「74 → 75」亦为误记）
+
 ## [1.13] - 2026-10-18
 
 ### 新增

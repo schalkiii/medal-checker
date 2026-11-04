@@ -18,7 +18,7 @@
 | 属性 | 值 |
 |------|-----|
 | 名称 | PT勋章扫描器 |
-| 版本 | 1.13（与 README/CHANGELOG 发布号一致） |
+| 版本 | 1.14（与 README/CHANGELOG 发布号一致） |
 | 类型 | Chrome Extension (Manifest V3) |
 | 权限 | `cookies`, `storage`, `activeTab`, `alarms`, `scripting`, `tabs`, `<all_urls>` |
 | 入口 | `options/options.html` (选项页即主界面) |
@@ -114,8 +114,9 @@ Service Worker，负责核心的勋章扫描逻辑。不直接操作 DOM，通�
 |------|------|
 | `getCookieDomain(url)` | 从 URL 中提取 Cookie 适用的域名（取最后两级） |
 | `fetchWithTimeout(url, options, timeout)` | 带超时控制的 `fetch` 封装，默认 10 秒超时，使用 `AbortController` |
-| `extractMedalsFromHtml(html)` | 多布局提取入口：表格解析 + 卡片/medal-item/hhanclub/si-qi/zmpt 新版回退链 |
-| `extractMedalsFromCards(html)` | 通用卡片解析：正则匹配 `medal-card` 容器 + buy 类/文本双重按钮判定 + 7 种字段模式 |
+| `extractMedalsFromHtml(html)` | 多布局提取入口：表格解析 + 卡片/medal-item/hhanclub/si-qi/nova/zmpt 新版回退链 |
+| `extractMedalsFromCards(html)` | 通用卡片解析：正则匹配 `medal-card` 容器 + buy 类/文本双重按钮判定 + 8 种字段模式 |
+| `extractMedalsFromNovaCards(html)` | nova-medal-card 布局解析（`article.nova-medal-card` + `dt`/`dd` + `nova-medal-sale`） |
 | `isSpaShell(html)` | SPA 壳检测（外部脚本 + 几乎无可见文本） |
 | `extractMedalsFromZmpt(siteUrl)` | SPA 渲染提取：后台标签页 + 轮询等待挂载点内容，超时也关标签 |
 | `scanSiteMedals(siteName, siteUrl, cookies, sendLog)` | 单站扫描流程（首页 + 全部分页 + SPA 回退 + sunnypt API 分支），手动/定时扫描共用 |
@@ -138,8 +139,9 @@ Service Worker 没有 DOMParser，全部用正则解析。该函数是提取入�
 1. 表格解析：按 <tr> 切分行，按 <td> 收集单元格，getColumnLayout(tds.length)
    判断 9 列 / 10 列布局，再按 stride 分组
 2. 操作列必须精确命中 value="购买" 或 value="購買"（排除"已经购买"等状态）
-3. 字段按列位置取：名称/价格/有效期/加成/库存/可购买时间
-4. 表格未命中时回退链：pterclub → cards → hhanclub → medal-item → si-qi → zmpt CSS Modules
+3. 名称优先取名称单元格的 <h1> 文本（hdclone/kamept/crabpt 的 <h1>名称</h1>描述 结构），
+   无 h1 时回退到首行文本；其余字段按列位置取
+4. 表格未命中时回退链：pterclub → cards → hhanclub → medal-item → si-qi → nova → zmpt CSS Modules
 5. 返回 { name, price, duration, bonus, stock, timeRange, medalId } 对象数组
 ```
 

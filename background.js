@@ -74,9 +74,20 @@ const extractMedalsFromHtml = (html) => {
       const medalIdMatch = actionTd.match(/name="medal"\s+value="(\d+)"/);
       const medalId = medalIdMatch ? medalIdMatch[1] : "";
 
-      const nameText = extractTdText(group[layout.nameIdx] || "");
+      const nameCell = group[layout.nameIdx] || "";
+      // 名称单元格常见为 <h1>名称</h1>描述……；extractTdText 会折叠换行，
+      // 直接按首行取会把描述并入名称（hdclone/kamept/crabpt 曾因此产生超长名称）
+      const nameH1Tag = nameCell.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+      const nameText = extractTdText(nameCell);
       const nameH1 = nameText.match(/^(.+?)(?:\n|$)/);
-      const name = nameH1 ? nameH1[1].trim() : "未知勋章";
+      const name = nameH1Tag
+        ? nameH1Tag[1]
+            .replace(/<[^>]+>/g, "")
+            .replace(/&nbsp;/gi, " ")
+            .trim()
+        : nameH1
+          ? nameH1[1].trim()
+          : "未知勋章";
 
       const price = extractTdText(group[layout.priceIdx] || "").trim();
 
@@ -108,6 +119,10 @@ const extractMedalsFromHtml = (html) => {
 
     const siqiMedals = extractMedalsFromSiqi(html);
     if (siqiMedals.length > 0) return siqiMedals;
+
+    // nova-medal-card 布局（pt.novahd.top 等）
+    const novaMedals = extractMedalsFromNovaCards(html);
+    if (novaMedals.length > 0) return novaMedals;
 
     // zmpt.cc 新版 CSS Modules 布局（经 SPA 渲染后的 DOM）
     const zmptNewMedals = extractMedalsFromZmptNew(html);
@@ -364,10 +379,17 @@ const extractMedalsFromMedalItems = (html) => {
   }
 
   for (const item of items) {
-    const btnMatch =
-      item.match(
-        /<input[^>]*type="button"[^>]*class="[^"]*(?:buy-btn|gift-btn)[^"]*"[^>]*>/i,
-      ) || item.match(/<input[^>]*type="button"[^>]*data-id="\d+"[^>]*>/i);
+    // 同一卡片可能先渲染「赠送」再渲染「购买」（hdkyl.in、novahd.top），
+    // 因此优先挑 value 恰为 购买/購買 且未禁用的按钮；找不到时保留旧口径兜底
+    const buttonTags = item.match(/<input[^>]*type="button"[^>]*>/gi) || [];
+    const buyTag = buttonTags.find(
+      (tag) => !/\bdisabled\b/i.test(tag) && /value="(?:购买|購買)"/.test(tag),
+    );
+    const btnMatch = buyTag
+      ? [buyTag]
+      : item.match(
+          /<input[^>]*type="button"[^>]*class="[^"]*(?:buy-btn|gift-btn)[^"]*"[^>]*>/i,
+        ) || item.match(/<input[^>]*type="button"[^>]*data-id="\d+"[^>]*>/i);
     if (!btnMatch) continue;
 
     const btnHtml = btnMatch[0];
@@ -575,6 +597,8 @@ const CARD_FIELD_PATTERNS = [
   /<span\s+class="stat-label"[^>]*>([\s\S]*?)<\/span>\s*<span\s+class="stat-value"[^>]*>([\s\S]*?)<\/span>/gi,
   /<div\s+class="stat-item"[^>]*>([^<]*?)\s*[：:]?\s*<span\s+class="stat-value[^"]*"[^>]*>([\s\S]*?)<\/span>/gi,
   /<div\s+class="medal-detail-item"[^>]*>\s*<span[^>]*>([\s\S]*?)<\/span>\s*<strong[^>]*>([\s\S]*?)<\/strong>/gi,
+  // dl/dt/dd 结构（nova-medal-card 等新式卡片）
+  /<dt[^>]*>([\s\S]*?)<\/dt>\s*<dd[^>]*>([\s\S]*?)<\/dd>/gi,
 ];
 
 // 标签 → 字段映射；同一卡片内后者覆盖前者（如 hxpt"定价"之后的"购买价(过期+50%)"
@@ -753,6 +777,81 @@ const extractMedalsFromCards = (html) => {
       name,
       ...extractCardMedalFields(card, buyTag),
       medalId,
+    });
+  }
+  return medals;
+};
+
+// pt.novahd.top 等 nova-medal-card 布局
+// 特征：<article class="nova-medal-card is-available"> + <h2>NAME</h2>
+// + <dl class="nova-medal-meta"><div><dt>LABEL</dt><dd>VALUE</dd></div></dl>
+// + <div class="nova-medal-sale">销售时间：BEGIN 至 END</div>
+// + <input type="button" class="buy" data-id="X" value="购买">
+const extractMedalsFromNovaCards = (html) => {
+  // 结构特征双重检测，避免误匹配其他卡片布局
+  if (!html.includes("nova-medal-card") || !html.includes("nova-medal-meta")) {
+    return [];
+  }
+
+  const medals = [];
+  const cards = [];
+  // 容器是 <article>，深度计数需同时统计 article 与 div 才能正确闭合
+  const cardStartRegex =
+    /<article[^>]*\bclass="[^"]*\bnova-medal-card\b[^"]*"[^>]*>/gi;
+  let cardStartMatch;
+  while ((cardStartMatch = cardStartRegex.exec(html)) !== null) {
+    const cardStart = cardStartMatch.index;
+    let depth = 0;
+    let cardEnd = -1;
+    for (let i = cardStart; i < html.length; i++) {
+      if (html[i] === "<") {
+        const tagEnd = html.indexOf(">", i);
+        if (tagEnd < 0) break;
+        const tag = html.substring(i, tagEnd + 1).toLowerCase();
+        if (tag.startsWith("<article") || tag.startsWith("<div")) depth++;
+        else if (tag.startsWith("</article>") || tag.startsWith("</div>")) {
+          depth--;
+          if (depth === 0) {
+            cardEnd = tagEnd + 1;
+            break;
+          }
+        }
+        i = tagEnd;
+      }
+    }
+
+    if (cardEnd > 0) {
+      cards.push(html.substring(cardStart, cardEnd));
+      cardStartRegex.lastIndex = cardEnd;
+    } else break;
+  }
+
+  for (const card of cards) {
+    const buyTag = findBuyButtonTag(card);
+    if (!buyTag) continue;
+
+    const name = extractCardMedalName(card, buyTag);
+    if (!name) continue;
+
+    const fields = extractCardMedalFields(card, buyTag);
+    // 销售时间独立容器："销售时间：2026-10-01 04:55 至 不限"
+    if (!fields.timeRange) {
+      const saleMatch = card.match(
+        /<div[^>]*class="[^"]*nova-medal-sale[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
+      );
+      if (saleMatch) {
+        fields.timeRange = normalizeFieldValue(saleMatch[1]).replace(
+          /^销售时间[：:]\s*/,
+          "",
+        );
+      }
+    }
+
+    const dataIdMatch = buyTag.match(/data-id="(\d+)"/);
+    medals.push({
+      name,
+      ...fields,
+      medalId: dataIdMatch ? dataIdMatch[1] : "",
     });
   }
   return medals;
@@ -1972,6 +2071,7 @@ if (typeof module !== "undefined" && module.exports) {
     extractMedalsFromMedalItems,
     extractMedalsFromHhanclub,
     extractMedalsFromSiqi,
+    extractMedalsFromNovaCards,
     extractMedalsFromZmptNew,
     extractMagicBalance,
     parsePriceNumber,

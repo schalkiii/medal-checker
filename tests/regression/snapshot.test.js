@@ -5,7 +5,7 @@ const { JSDOM } = require('jsdom');
 
 process.exitCode = 0;
 
-console.log('\n━━━ 回归测试：97 站点勋章解析快照对比 ━━━');
+console.log('\n━━━ 回归测试：站点勋章解析快照对比 ━━━');
 
 global.DOMParser = (new JSDOM('')).window.DOMParser;
 delete require.cache[path.resolve(__dirname, '../mocks/chrome-mock.js')];

@@ -55,8 +55,8 @@
 
 1. **每次改动后立即验证**
    ```bash
-   npm run check  # 24 项静态检查
-   npm test       # 52 项自动化测试
+   npm run check  # 26 项静态检查
+   npm test       # 209 项自动化测试
    ```
 
 2. **测试先行**
@@ -131,7 +131,7 @@ try { new URL(url) } catch { /* fallback parsing */ }
 
 ```javascript
 // 隐藏式内置配置，用户无需手动维护
-const DEFAULT_SITES = [/* 69 个站点 */];
+const DEFAULT_SITES = [/* 74 个站点 */];
 
 // 运行时检测，仅显示有 cookie 的站点
 if (request.action === 'detectSites') { /* cookie 检测 */ }
@@ -207,7 +207,9 @@ Chrome 扩展前后端通信通过 `chrome.runtime.sendMessage`：
 - 容器匹配必须用正则且允许 class 后无空格：`<div class="medal-card">`、`class="medal-card locked"`、`class="medal-card" data-id=` 都是合法变体；硬编码 `'<div class="medal-card '`（带尾空格）会静默漏掉整个站点（v1.7 曾把 v1.6 的泛化正则改回硬编码，导致 hxpt/luckpt/cspt/longpt 四个站点集体漏扫一个版本周期）
 - 正则同时排除派生容器：`medal-card(?![-\w])` 排除 `medal-card__title`（si-qi 专用）、`medal-card-list`、`medal-cards`
 - 购买按钮双重判定：class 含独立单词 `\bbuy\b`（覆盖 buy-btn/buy-action/...-buy 变体）或文本恰为购买/購買；disabled 与"已经购买/已过可购买时间/需要更多魔力值"等状态按钮必须排除——注意"需要更多魔力值"是买不起而非不可买，按产品口径不计入
-- 字段标签-值容器各站差异极大（detail-label/meta-label/stat-item/medal-detail-item/strong），用模式清单覆盖 + data-\* 属性兜底；同一字段后者覆盖前者（如 hxpt"定价"之后的"购买价(过期+50%)"才是实扣价）
+- 卡片内按钮顺序不固定：`medal-item` 布局中「赠送」可能排在「购买」之前（hdkyl.in、pt.novahd.top），按「第一个 data-id 按钮」判定会把整卡误判为赠送；必须按 value 挑选购买按钮
+- 名称单元格常为 `<h1>名称</h1>描述……`：`extractTdText` 会把换行折叠成空格，导致"首行截断"失效并把描述并入名称（hdclone/kamept/crabpt）；应优先取 `<h1>` 文本
+- 字段标签-值容器各站差异极大（detail-label/meta-label/stat-item/medal-detail-item/strong/dt-dd），用模式清单覆盖 + data-\* 属性兜底；同一字段后者覆盖前者（如 hxpt"定价"之后的"购买价(过期+50%)"才是实扣价）
 
 **SPA 站点渲染原则（v1.10 教训）**：
 - Service Worker 无 DOM，SPA 站点（Vite/umi 壳）必须借后台标签页渲染；壳检测用「含外部脚本 + 剥离 script/style 后几乎无文本」，比硬编码 `id="vite-app"` 更通用（yemapt 用 `id="root"`）

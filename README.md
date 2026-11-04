@@ -8,16 +8,16 @@
 
 | 维度       | 原版                        | 现版                                                                                                                                                         |
 | ---------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 勋章识别   | 简单正则计数 `value="购买"` | 智能列式解析引擎，自动适配 9/10 列表格 + buycenter + 卡片布局 + pterclub 猫站 + medal-item 布局 + hhanclub 网格布局 + si-qi BEM 布局 + zmpt CSS Modules 布局 + 通用 SPA 渲染（zmpt/yemapt） |
+| 勋章识别   | 简单正则计数 `value="购买"` | 智能列式解析引擎，自动适配 9/10 列表格 + buycenter + 卡片布局 + pterclub 猫站 + medal-item 布局 + hhanclub 网格布局 + si-qi BEM 布局 + nova-medal-card 布局 + zmpt CSS Modules 布局 + 通用 SPA 渲染（zmpt/yemapt） |
 | 展示信息   | 仅显示勋章数量              | 名称、价格、有效期、加成、库存、限时购买窗口                                                                                                                 |
 | 跳转精度   | 仅能打开勋章页第一页        | 勋章链接直达其所在具体分页（`?page=N`），0/1 索引分页约定自适应，省略号折叠页全量抓取                                          |
-| 站点配置   | 手动逐条输入                | 一键检测已登录站点，75 个内置站点自动匹配                                                                                                                    |
+| 站点配置   | 手动逐条输入                | 一键检测已登录站点，74 个内置站点自动匹配                                                                                                                    |
 | 检测体验   | 按钮卡住无反馈              | 实时进度条 + 百分比 + 当前站点 + 调试日志                                                                                                                    |
 | 扫描历史   | 无                          | 60 次历史持久化，Diff 模式高亮新增勋章                                                                                                                       |
 | 调试能力   | 无                          | 一键导出原始 HTML 调试包 + 本地分析脚本 + 实时调试信息                                                                                                       |
 | UI 设计    | 基础双栏 900px              | 卡片式布局 1100px，渐变色按钮，勋章彩色标签                                                                                                                  |
-| 开发工具链 | 无                          | ESLint + 语法检查 + 文件监控 + 74 项自动化测试 + 97 站点回归快照                                                                                             |
-| 代码量     | ~600 行                     | ~1300 行（含 600+ 行测试）                                                                                                                                   |
+| 开发工具链 | 无                          | ESLint + 语法检查 + 文件监控 + 209 项自动化测试 + 130 页站点回归快照                                                                                          |
+| 代码量     | ~600 行                     | ~2100 行（含 600+ 行测试）                                                                                                                                   |
 
 ## 功能
 
@@ -29,13 +29,14 @@
 - 支持 medal-item 卡片布局（`medal-item` + `buy-btn` / `gift-btn` 按钮）
 - 支持 hhanclub Tailwind 网格布局（`medal-table` + 9 列网格）
 - 支持 si-qi BEM 风格卡片布局（`medal-card` + `medal-card__title` + `meta-label`/`meta-value` 键值对）
+- 支持 nova-medal-card 卡片布局（pt.novahd.top：`article.nova-medal-card` + `dl.nova-medal-meta` 的 `dt`/`dd` + `nova-medal-sale` 销售时间）
 - 支持 zmpt.cc 新版 CSS Modules 布局（`index-module__card-wrap` + `index-module__label`/`index-module__content` 键值对，Vue/Vite SPA 渲染后 DOM）
 - 支持 SPA 站点（通用壳检测 + 后台标签页渲染提取，覆盖未适配 API 的 Vite/umi 应用）
 - 支持 API 站点（zmpt.cc 调 `/javaapi/user/queryAllMedals`、sunnypt.top 用会话 JWT、yemapt.org 调 `/api/badge/fetchBadgeList` 并校验全部兑换条件，均无需开标签页）
 - 勋章链接直达其所在具体分页；分页 URL 拼接自动处理站点 URL 已带查询参数的场景
 - 支持繁体中文站点（`購買`）
 - 智能站点检测：点击按钮自动识别已登录的 PT 站点，实时进度条 + 调试日志显示
-- 内置 75 个常见 PT 站点配置（隐藏式，仅显示已登录的）
+- 内置 74 个常见 PT 站点配置（隐藏式，仅显示已登录的）
 - Diff 模式：对比历史扫描结果，高亮新增勋章
 - 智能过滤：只看永久勋章 / 只看限时售卖 / 只看正收益勋章，可任意组合并与 Diff 模式叠加
 - 一键打开所有有可购买勋章站点
@@ -169,11 +170,12 @@ tests/fixtures/        回归测试快照（基于真实调试包的 97 站点�
 
 ### 勋章提取引擎
 
-- `extractMedalsFromHtml()` - 标准 NexusPHP 勋章解析，自动检测 9列/10列表格布局，提取名称/价格/有效期/加成/库存/可购买时间；同时支持卡片式/medal-item/hhanclub/si-qi/zmpt 新版多种布局回退
+- `extractMedalsFromHtml()` - 标准 NexusPHP 勋章解析，自动检测 9列/10列表格布局，提取名称/价格/有效期/加成/库存/可购买时间；同时支持卡片式/medal-item/hhanclub/si-qi/nova/zmpt 新版多种布局回退
 - `extractMedalsFromCards()` - 通用卡片勋章解析：正则匹配 class 以 `medal-card` 开头的容器（兼容无属性/带属性/带附加 class 变体，排除 `medal-card__xxx` 子元素与派生容器）；购买按钮按「class 含独立单词 buy」+「文本恰为购买/購買」双重判定；字段覆盖 detail-label/meta-label/stat-item/medal-detail-item 等 7 种标签-值模式与 data-\* 属性兜底
 - `extractMedalsFromMedalItems()` - medal-item 卡片布局解析，处理 `medal-item` + `medal-details` 表格 + `buy-btn`/`gift-btn` 按钮模式
 - `extractMedalsFromHhanclub()` - hhanclub Tailwind 网格布局解析，9 列 CSS Grid 自动提取
 - `extractMedalsFromSiqi()` - si-qi.xyz BEM 风格卡片布局解析，处理 `medal-card` + `medal-card__title` + `meta-label`/`meta-value` 键值对结构
+- `extractMedalsFromNovaCards()` - pt.novahd.top nova 卡片布局解析，处理 `article.nova-medal-card` + `dl.nova-medal-meta`（`dt`/`dd`）+ `.nova-medal-sale` 销售时间
 - `extractMedalsFromBuyCenter()` - 特殊 buycenter.php 勋章系统解析
 - `extractMedalsFromPterclub()` - pterclub.net（猫站）自定义表格布局解析
 - `isSpaShell()` - SPA 壳页面检测：含外部脚本且剥离 script/style 后几乎无可见文本（Vite/umi 壳；普通页面与 Meta 跳转页不会误判）
@@ -190,7 +192,14 @@ tests/fixtures/        回归测试快照（基于真实调试包的 97 站点�
 
 ## 更新日志
 
-### v1.13（当前版本）
+### v1.14（当前版本）
+
+- **修复 hdkyl.in / pt.novahd.top 漏报**（依据 2026-11-04 调试包定位）：medal-item 卡片内「赠送」按钮排在「购买」之前时，旧逻辑取第一个 `data-id` 按钮导致整卡被跳过；改为优先选 `购买`/`購買` 且未禁用的按钮
+- **新增 nova-medal-card 布局支持**：`article.nova-medal-card` + `dl.nova-medal-meta`（`dt`/`dd`）+ `.nova-medal-sale` 销售时间
+- **修复标准表格勋章名称混入描述**（hdclone / kamept / crabpt）：名称单元格 `<h1>名称</h1>描述……` 改为优先取 `<h1>` 文本
+- 用 2026-11-04 调试包重建回归快照（130 页 / 131 枚）；新增 9 个单元测试，总计 209 项全部通过
+
+### v1.13
 
 - **新增站点 yemapt.org**（我的成长-徽章，内置站点 74 → 75），采用 **API 直抓 + 条件全满足** 口径（此前该站未在站点列表中）
 - 实证关键前提：站点「立即兑换」按钮**恒可用**（提示"兑换前，请先确认是否满足兑换条件"，服务端才校验），因此按钮状态无法作为依据，必须由扩展自行核对全部条件

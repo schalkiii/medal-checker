@@ -1,11 +1,11 @@
 # PT 勋章扫描器 — Agent 指南
 
-Chrome MV3 扩展：扫描 75 个内置 PT 站点的勋章页，找出**当前真正可购买**的勋章。
+Chrome MV3 扩展：扫描 74 个内置 PT 站点的勋章页，找出**当前真正可购买**的勋章。
 
 ## 跑起来
 
 ```bash
-npm test                 # 单元 + DOM + 集成（200 项）
+npm test                 # 单元 + DOM + 集成（209 项）
 npm run check            # 静态检查流水线（完整性/manifest/语法/ESLint/跨文件引用）
 npm run lint             # 仅 ESLint（单引号、分号、no-undef=error）
 node scripts/analyze-html.js PT_Debug_*.json   # 分析导出的调试包
@@ -42,7 +42,7 @@ MV3 Service Worker + 原生 JS（无构建、无框架、无依赖打包）；op
 
 ## 当前状态与下一步
 
-- v1.13（manifest 版本已对齐）：三站 API 直抓落地（zmpt.cc / sunnypt.top / yemapt.org），200 项测试全绿。
+- v1.14（manifest 版本已对齐）：nova-medal-card 布局 + medal-item 送礼按钮顺序修复 + 表格名称 h1 修复，209 项测试全绿。
 - `npm run check`：26 通过 / 0 警告 / 0 错误。引号规则按文件分治——`background.js` 双引号、`options/**` 单引号。
-- 待办：用户重载扩展后对三个 API 站点做线上验证。
-- 回归测试需自备根目录 `PT_Debug_*.json`（已 gitignore），缺失时自动跳过。
+- 待办：用户重载扩展后对三个 API 站点做线上验证；调试包中存在若干已关闭/改域名站点，待用户确认后从 `DEFAULT_SITES` 移除。
+- 回归测试需自备根目录 `PT_Debug_*.json`（已 gitignore，当前快照来源为 `PT_Debug_2026-11-04.json`，130 页 / 131 枚），缺失时自动跳过。

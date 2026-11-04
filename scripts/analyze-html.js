@@ -221,6 +221,32 @@ function analyzeFile(filePath) {
         );
       });
     } else if (
+      html.includes("nova-medal-card") &&
+      html.includes("nova-medal-meta")
+    ) {
+      // pt.novahd.top 等 nova-medal-card 布局
+      console.log("\n📋 nova-medal-card 卡片布局:");
+      const cards =
+        html.match(
+          /<article[^>]*class="[^"]*nova-medal-card[^"]*"[^>]*>/gi,
+        ) || [];
+      const buyButtons =
+        html.match(
+          /<input[^>]*type="button"[^>]*class="[^"]*\bbuy\b[^"]*"[^>]*>/gi,
+        ) || [];
+      const enabledButtons = buyButtons.filter((b) => !b.includes("disabled"));
+      console.log(`  勋章卡片数: ${cards.length}`);
+      console.log(
+        `  购买按钮: ${buyButtons.length}（可用: ${enabledButtons.length}）`,
+      );
+      enabledButtons.forEach((btn, i) => {
+        const valMatch = btn.match(/value="([^"]*)"/);
+        const idMatch = btn.match(/data-id="(\d+)"/);
+        console.log(
+          `    [${i}] id=${idMatch ? idMatch[1] : "?"} btn="${valMatch ? valMatch[1] : "?"}"`,
+        );
+      });
+    } else if (
       html.includes("medal-card__title") &&
       html.includes("meta-label")
     ) {

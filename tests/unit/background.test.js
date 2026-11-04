@@ -159,6 +159,14 @@ test('提取名称（从h1）', () => {
   assert(medals[1].name.includes('白银勋章'), `名称应包含"白银勋章"，实际: ${medals[1].name}`);
 });
 
+test('名称不混入 h1 后的描述文本', () => {
+  // hdclone/kamept/crabpt 的名称单元格为 <h1>名称</h1>描述……，
+  // extractTdText 会折叠换行，必须优先取 h1 内容
+  const medals = bg.extractMedalsFromHtml(sampleNexusBasic);
+  assertEqual(medals[0].name, '黄金勋章');
+  assertEqual(medals[1].name, '白银勋章');
+});
+
 test('提取价格', () => {
   const medals = bg.extractMedalsFromHtml(sampleNexusBasic);
   assertEqual(medals[0].price, '1,000');
@@ -902,6 +910,33 @@ test('medal-item gift-btn 类名按钮', () => {
   assert(medals[0].name.includes('gift-btn勋章'));
 });
 
+test('medal-item 赠送按钮在前时仍取购买按钮', () => {
+  // 真实站点 hdkyl.in / pt.novahd.top 的按钮顺序：先「赠送」再「购买」
+  const html = `<div class="medal-type-container"><div class="medal-list"><div class="medal-item">
+      <img src="a.png" alt="顺序勋章" />
+      <div class="medal-info">
+        <h2>顺序勋章</h2>
+        <p>2026-10-24 00:00:00~2026-11-24 00:00:00</p>
+        <table class="medal-details">
+          <tr><td>加成</td><td>0%</td></tr>
+          <tr><td>有效期</td><td>永久有效</td></tr>
+          <tr><td>价格</td><td>3,000,000</td></tr>
+          <tr><td>库存</td><td>无限</td></tr>
+        </table>
+      </div>
+      <div class="action-container">
+        <input type="number" class="uid" />
+        <input type="button" class="gift" data-id="37" value="赠送">
+        <input type="button" class="buy" data-id="37" value="购买">
+      </div>
+    </div></div></div>`;
+  const medals = bg.extractMedalsFromMedalItems(html);
+  assertEqual(medals.length, 1, '应跳过赠送按钮并识别购买按钮');
+  assertEqual(medals[0].name, '顺序勋章');
+  assertEqual(medals[0].price, '3,000,000');
+  assertEqual(medals[0].medalId, '37');
+});
+
 test('medal-item 空HTML返回空数组', () => {
   const medals = bg.extractMedalsFromMedalItems('');
   assertEqual(medals.length, 0);
@@ -910,6 +945,63 @@ test('medal-item 空HTML返回空数组', () => {
 test('medal-item 无medal-item返回空数组', () => {
   const medals = bg.extractMedalsFromMedalItems('<div>普通页面</div>');
   assertEqual(medals.length, 0);
+});
+
+// ============================================================
+// extractMedalsFromNovaCards — nova-medal-card 卡片布局
+// ============================================================
+console.log('\n  ▶ extractMedalsFromNovaCards - nova-medal-card 布局');
+
+function makeNovaCard(m, opts = {}) {
+  const disabled = opts.disabled ? ' disabled' : '';
+  const state = opts.available === false ? '已售罄' : '可购买';
+  return `<article class="nova-medal-card ${opts.available === false ? '' : 'is-available'}"><header class="nova-medal-card-header"><div><h2>${m.name}</h2><span class="nova-medal-id">MEDAL #${m.id}</span></div><div class="nova-medal-card-status"><span class="nova-medal-state">${state}</span></div></header><div class="nova-medal-card-body"><figure class="nova-medal-image"><img src="x.gif" alt="${m.name}" /></figure><div class="nova-medal-content"><div class="nova-medal-sale">销售时间：${m.timeRange}</div><dl class="nova-medal-meta"><div><dt>购买后有效期(天)</dt><dd>${m.duration}</dd></div><div><dt>魔力加成</dt><dd>${m.bonus}</dd></div><div><dt>价格</dt><dd>${m.price}</dd></div><div><dt>库存</dt><dd>${m.stock}</dd></div></dl><div class="nova-medal-actions"><div class="nova-medal-buy-action"><input type="button" class="buy" data-id="${m.id}" value="${opts.btnValue || '购买'}"${disabled}></div><div class="nova-medal-gift-controls"><input type="number" class="uid" /><input type="button" class="gift" data-id="${m.id}" value="赠送"></div></div></div></div></article>`;
+}
+
+const sampleNovaCards = `<div class="nova-medal-page"><div class="nova-medal-grid">${makeNovaCard({ id: 106, name: 'NovaHD 国庆勋章2', duration: '365', bonus: '5%', price: '100,000', stock: '67', timeRange: '2026-10-01 04:55 至 不限' })}${makeNovaCard({ id: 105, name: 'NovaHD 国庆勋章1', duration: '365', bonus: '5%', price: '100,000', stock: '72', timeRange: '2026-10-01 04:54 至 不限' })}</div></div>`;
+
+test('nova 提取可购买勋章与字段', () => {
+  const medals = bg.extractMedalsFromNovaCards(sampleNovaCards);
+  assertEqual(medals.length, 2);
+  assertEqual(medals[0].name, 'NovaHD 国庆勋章2');
+  assertEqual(medals[0].price, '100,000');
+  assertEqual(medals[0].duration, '365');
+  assertEqual(medals[0].bonus, '5%');
+  assertEqual(medals[0].stock, '67');
+  assertEqual(medals[0].timeRange, '2026-10-01 04:55 至 不限');
+  assertEqual(medals[0].medalId, '106');
+});
+
+test('nova disabled购买按钮被过滤', () => {
+  const html = `<div class="nova-medal-grid">${makeNovaCard({ id: 9, name: '禁用勋章', duration: '30', bonus: '0%', price: '1,000', stock: '0', timeRange: '不限 至 不限' }, { disabled: true })}</div>`;
+  const medals = bg.extractMedalsFromNovaCards(html);
+  assertEqual(medals.length, 0);
+});
+
+test('nova 赠送按钮不计入', () => {
+  const html = makeNovaCard({ id: 9, name: '仅赠送勋章', duration: '30', bonus: '0%', price: '1,000', stock: '无限', timeRange: '不限 至 不限' }, { btnValue: '赠送' });
+  const medals = bg.extractMedalsFromNovaCards(html);
+  assertEqual(medals.length, 0);
+});
+
+test('nova 无 nova-medal-meta 返回空', () => {
+  const html = `<article class="nova-medal-card"><h2>无字段</h2><input type="button" class="buy" value="购买"></article>`;
+  const medals = bg.extractMedalsFromNovaCards(html);
+  assertEqual(medals.length, 0);
+});
+
+test('nova 空HTML返回空数组', () => {
+  assertEqual(bg.extractMedalsFromNovaCards('').length, 0);
+});
+
+test('nova 普通页面返回空数组', () => {
+  assertEqual(bg.extractMedalsFromNovaCards('<div>普通页面</div>').length, 0);
+});
+
+test('nova 通过 extractMedalsFromHtml 回退链调用', () => {
+  const medals = bg.extractMedalsFromHtml(sampleNovaCards);
+  assertEqual(medals.length, 2);
+  assertEqual(medals[1].name, 'NovaHD 国庆勋章1');
 });
 
 // ============================================================
