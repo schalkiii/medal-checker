@@ -88,19 +88,20 @@ document.addEventListener('DOMContentLoaded', () => {
       return isNaN(num) ? null : num;
     }
 
-    // 时魔展示值：合计优先，缺失时退回基本奖励时魔、勋章加成基数
+    // 时魔展示值：合计优先，缺失时退回基本奖励时魔、勋章加成基数；千分位与余额同款
     function getHourlyDisplay(hourly) {
       const value = hourly.totalHourly != null ? hourly.totalHourly
         : hourly.baseHourly != null ? hourly.baseHourly : hourly.medalBase;
-      return typeof value === 'number' ? Number(value.toFixed(2)) : null;
+      if (typeof value !== 'number') return null;
+      return value.toLocaleString(undefined, { maximumFractionDigits: 2 });
     }
 
-    // 回本时长可读化（入参为有限小时数，无解的情况由 getPaybackHtml 单独成句）
-    function formatPaybackHours(hours) {
-      if (hours < 1) return '不足 1 小时';
-      if (hours < 48) return `${Math.ceil(hours)} 小时`;
-      if (hours < 8760) return `${Math.round(hours / 24)} 天`;
-      return `${(hours / 8760).toFixed(1)} 年`;
+    // 回本时长统一折算成「天」：小时数对做种决策没有直觉意义（上万小时看不出概念）。
+    // 24 小时内能回本的勋章已被 canPayback 分支接走，这里只会收到超过一天的值。
+    function formatPaybackDays(hours) {
+      const days = hours / 24;
+      if (days < 10) return `${days.toFixed(1)} 天`;
+      return `${Math.round(days).toLocaleString()} 天`;
     }
 
     // 回本结论：站点勋章加成行的基础魔力 × 加成系数 × 24 小时 是否覆盖得住价格。
@@ -110,7 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!pb) return '';
       if (pb.canPayback) return `<span class="meta-payback good">✓ ${pb.windowHours}h 内回本</span>`;
       if (pb.hours == null) return '<span class="meta-payback">⏳ 无法回本</span>';
-      return `<span class="meta-payback">⏳ ${pb.estimated ? '≈' : ''}回本 ${formatPaybackHours(pb.hours)}</span>`;
+      return `<span class="meta-payback">⏳ ${pb.estimated ? '≈' : ''}回本 ${formatPaybackDays(pb.hours)}</span>`;
     }
 
     // 勋章跳转链接：优先勋章所在的具体分页；否则退回 ?medal=ID 锚点；

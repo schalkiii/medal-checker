@@ -518,7 +518,8 @@ test('站点头部显示时魔，勋章行显示回本时长', () => {
     { name: '辅车勋章', price: '66,666', bonus: '6%', payback: { windowHours: 24, base: 99.285, extraPerHour: 5.9571, gain: 142.97, price: 66666, hours: 11190.8, canPayback: false, estimated: false } }
   );
   assertContains(html, '⚡ 时魔 155.24', '站点头部应显示合计时魔');
-  assertContains(html, '回本 1.3 年', '11190.8 小时 ≈ 1.3 年（超过一年改用年作单位）');
+  assertContains(html, '回本 466 天', '11190.8 小时折算为 466 天（不再用小时/年）');
+  assert(!html.includes('回本 11190'), '不应直接抛小时数');
   assert(!html.includes('✓ 24h 内回本'), '不能回本时不给绿色结论');
 });
 
@@ -545,6 +546,15 @@ test('估算口径带 ≈ 标记', () => {
     { name: '老版站勋章', price: '1,000', bonus: '11%', payback: { windowHours: 24, base: 25.438, extraPerHour: 2.798, gain: 67.15, price: 1000, hours: 357.4, canPayback: false, estimated: true } }
   );
   assertContains(html, '⏳ ≈回本 15 天');
+});
+
+test('大额时魔与超长回本都用千分位', () => {
+  const html = renderPaybackResult(
+    { medalBase: 494.753, medalCoef: 10.333, baseHourly: 7035.787, totalHourly: 7035.787, source: 'table' },
+    { name: '天价勋章', price: '800,000', bonus: '0.1%', payback: { windowHours: 24, base: 494.753, extraPerHour: 0.4948, gain: 11.87, price: 800000, hours: 1616976, canPayback: false, estimated: false } }
+  );
+  assertContains(html, '⚡ 时魔 7,035.79', '时魔与余额一样带千分位');
+  assertContains(html, '回本 67,374 天', '超过十天后取整并带千分位');
 });
 
 test('时魔取不到时标注未知且不编造回本结论', () => {

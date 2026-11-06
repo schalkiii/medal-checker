@@ -81,7 +81,7 @@
 6. **SPA 回退**：常规提取为 0 且页面为 SPA 壳（`isSpaShell()`）时，用后台标签页渲染页面后再次提取
 7. **API 直抓分支**：sunnypt.top 等「页面空壳 + 独立 JSON API」站点，走会话 JWT → API 直抓（不开标签页）
 8. **分页处理**：`collectPageNumbers()` 收集分页条全部页码（含省略号折叠页，翻页逐步发现），工作流式抓取，上限 20 页
-9. **时魔回本**：该站存在可购买勋章时，`withHourlyMagic()` 再多请求一次 `mybonus.php`，`extractHourlyMagic()` 取出「勋章加成」行的基础魔力作乘数基数，`computeMedalPayback()` 为每条勋章算 24 小时回本结论；失败降级为 `hourly = null`
+9. **时魔回本**：该站存在可购买勋章时，`withHourlyMagic()` 再多请求一次魔力值明细页（`mybonus.php`，解析不到则试 `mybonus_new.php`），`extractHourlyMagic()` 取出「勋章加成」行的基础魔力作乘数基数，`computeMedalPayback()` 为每条勋章算 24 小时回本结论（前端以「天」显示）；失败降级为 `hourly = null`
 10. **结果回传**：扫描结果通过 `chrome.runtime.sendMessage` 回传给 `options.js`，勋章带页码与分页 URL 打标
 11. **结果展示**：`options.js` 更新 UI，显示站点名称、URL、时魔和勋章列表（含回本时长），勋章链接跳转到其所在分页
 
@@ -147,7 +147,7 @@ Service Worker 没有 DOMParser，全部用正则解析。该函数是提取入�
 3. 名称优先取名称单元格的 <h1> 文本（hdclone/kamept/crabpt 的 <h1>名称</h1>描述 结构），
    无 h1 时回退到首行文本；其余字段按列位置取
 4. 表格未命中时回退链：pterclub → cards → hhanclub → medal-item → si-qi → nova → zmpt CSS Modules
-5. 返回 { name, price, duration, bonus, stock, timeRange, medalId } 对象数组
+5. 返回 { name, price, duration, bonus, stock, timeRange, medalId } 对象数组；扫描链路再补 page/pageUrl 打标与 `payback`
 ```
 
 #### 扫描历史持久化（L175-L186）
@@ -355,12 +355,32 @@ DOMContentLoaded →
 ```javascript
 [
   {
-    "siteName": "站点A",
-    "count": 5,
-    "url": "https://sitea.com/medal.php",
+    "siteName": "carpt.net",
+    "count": 3,
+    "url": "https://carpt.net/medal.php",
+    "balance": 9698618,
+    // hourly：该站魔力值明细页解析结果；取不到时为 null，未扫描过时魔的旧结果没有这个键
+    "hourly": {
+      "medalBase": 99.285,      // 「勋章加成」行的基础魔力 = 加成系数的实际乘数（不含低保）
+      "medalCoef": 0.06,        // 当前已佩戴勋章的合计系数
+      "baseHourly": 149.285,    // 「基本奖励」行的获得魔力
+      "totalHourly": 155.242,   // 合计每小时魔力（前端展示的「时魔」）
+      "source": "table"         // table | text
+    },
     "medals": [
-      { "name": "黄金勋章", "price": "1000", "duration": "30天" },
-      { "name": "白银勋章", "price": "500", "duration": "永久" }
+      {
+        "name": "辅车勋章", "price": "66,666", "duration": "365",
+        "bonus": "6%", "stock": "无限", "timeRange": "不限", "medalId": "71",
+        "page": 1, "pageUrl": "https://carpt.net/medal.php",
+        // payback：hourly 存在且加成/价格可解析时才有，否则缺省
+        "payback": {
+          "windowHours": 24, "base": 99.285, "extraPerHour": 5.9571,
+          "gain": 142.97, "price": 66666,
+          "hours": 11190.8,     // 加成 ≤ 0 时为 null（前端显示「无法回本」）
+          "canPayback": false,  // gain >= price
+          "estimated": false    // true = 无勋章加成行、退回总时魔估算
+        }
+      }
     ]
   }
 ]

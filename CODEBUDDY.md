@@ -5,7 +5,7 @@ Chrome MV3 扩展：扫描 69 个内置 PT 站点的勋章页，找出**当前�
 ## 跑起来
 
 ```bash
-npm test                 # 单元 + DOM + 集成（249 项）
+npm test                 # 单元 + DOM + 集成（250 项）
 npm run check            # 静态检查流水线（完整性/manifest/语法/ESLint/跨文件引用）
 npm run lint             # 仅 ESLint（单引号、分号、no-undef=error）
 node scripts/analyze-html.js PT_Debug_*.json   # 分析导出的调试包
@@ -42,7 +42,7 @@ MV3 Service Worker + 原生 JS（无构建、无框架、无依赖打包）；op
 
 ## 当前状态与下一步
 
-- v1.15（manifest 版本已对齐）：时魔与勋章加成回本估算——`mybonus.php` 拆解表按列名前缀定位，乘数基数取「勋章加成」行的基础魔力（不含低保），249 项测试全绿（+34 解析计算 +6 前端展示）。
+- v1.15（manifest 版本已对齐）：时魔与勋章加成回本估算——`mybonus.php` 拆解表按列名前缀定位，乘数基数取「勋章加成」行的基础魔力（不含低保），250 项测试全绿（+34 解析计算 +7 前端展示）。
 - v1.14：nova-medal-card 布局 + medal-item 送礼按钮顺序修复 + 表格名称 h1 修复，209 项测试全绿。
 - `npm run check`：26 通过 / 0 警告 / 0 错误。引号规则按文件分治——`background.js` 双引号、`options/**` 单引号。
 - 待办：用户重载扩展后对三个 API 站点做线上验证；已按 2026-11-04 存活探测清理死站点并迁移域名（`zrpt.cc`→`naturept.top`、`pt.gtkpw.xyz`→`pt.gtk.pw`），剩余待核实：`icc2022.com` / `ptvicomo.net` 证书异常、`yhpp.cc` 超时。
