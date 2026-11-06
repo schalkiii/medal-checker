@@ -88,6 +88,31 @@ document.addEventListener('DOMContentLoaded', () => {
       return isNaN(num) ? null : num;
     }
 
+    // 时魔展示值：合计优先，缺失时退回基本奖励时魔、勋章加成基数
+    function getHourlyDisplay(hourly) {
+      const value = hourly.totalHourly != null ? hourly.totalHourly
+        : hourly.baseHourly != null ? hourly.baseHourly : hourly.medalBase;
+      return typeof value === 'number' ? Number(value.toFixed(2)) : null;
+    }
+
+    // 回本时长可读化（入参为有限小时数，无解的情况由 getPaybackHtml 单独成句）
+    function formatPaybackHours(hours) {
+      if (hours < 1) return '不足 1 小时';
+      if (hours < 48) return `${Math.ceil(hours)} 小时`;
+      if (hours < 8760) return `${Math.round(hours / 24)} 天`;
+      return `${(hours / 8760).toFixed(1)} 年`;
+    }
+
+    // 回本结论：站点勋章加成行的基础魔力 × 加成系数 × 24 小时 是否覆盖得住价格。
+    // estimated（该站未渲染勋章加成行、退回总时魔估算）时加 ≈ 提示口径偏乐观。
+    function getPaybackHtml(medal) {
+      const pb = medal.payback;
+      if (!pb) return '';
+      if (pb.canPayback) return `<span class="meta-payback good">✓ ${pb.windowHours}h 内回本</span>`;
+      if (pb.hours == null) return '<span class="meta-payback">⏳ 无法回本</span>';
+      return `<span class="meta-payback">⏳ ${pb.estimated ? '≈' : ''}回本 ${formatPaybackHours(pb.hours)}</span>`;
+    }
+
     // 勋章跳转链接：优先勋章所在的具体分页；否则退回 ?medal=ID 锚点；
     // 站点 URL 已带查询参数时用 & 连接，避免产生非法 URL
     function getMedalUrl(site, medal) {
@@ -205,11 +230,18 @@ document.addEventListener('DOMContentLoaded', () => {
           typeof site.balance === 'number'
             ? `<span class="result-site-balance">💰 余额 ${site.balance.toLocaleString()}</span>`
             : '';
+        // hourly 缺失（本次改版之前的历史结果）不显示；为 null 表示该站取不到时魔
+        const hourlyHtml = site.hourly
+          ? `<span class="result-site-hourly">⚡ 时魔 ${getHourlyDisplay(site.hourly)}</span>`
+          : site.hourly === null
+            ? '<span class="result-site-hourly unknown">⚡ 时魔未知</span>'
+            : '';
         header.innerHTML = `
           <div>
             <span class="result-site-name">${site.siteName}</span>
             <a class="result-site-link" href="${site.url}" target="_blank" title="点击跳转到勋章页面">🔗 ${site.url}</a>
             ${balanceHtml}
+            ${hourlyHtml}
           </div>
           <span class="result-site-count">${siteMedals.length} 勋章</span>
         `;
@@ -238,6 +270,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (medal.duration) metaParts.push(`<span class="meta-duration">⏱ ${medal.duration}</span>`);
             if (medal.bonus) metaParts.push(`<span class="meta-bonus">📈 ${medal.bonus}</span>`);
             if (medal.stock) metaParts.push(`<span class="meta-stock">📦 ${medal.stock}</span>`);
+            const paybackHtml = getPaybackHtml(medal);
+            if (paybackHtml) metaParts.push(paybackHtml);
 
             let timeHtml = '';
             if (medal.timeRange && medal.timeRange !== '不限') {

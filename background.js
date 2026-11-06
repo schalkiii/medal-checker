@@ -1166,6 +1166,184 @@ const parsePriceNumber = (price) => {
   return isNaN(num) ? null : num;
 };
 
+// ===== 时魔（每小时做种魔力值）与勋章加成回本 =====
+
+// 勋章页 → 时魔页候选：魔力值明细与 medal.php 同级，所以只取 origin 再拼接
+// （yemapt 的 hash 路由、sunnypt 的查询串直接拼在原 URL 后会得到非法地址）。
+// 部分分叉把统计放在了第二套地址——htpt.cc 的 mybonus.php 只有兑换商店，
+// 每小时魔力统计在 mybonus_new.php，故前者解析不到时再试后者。
+const BONUS_PAGE_PATHS = ["/mybonus.php", "/mybonus_new.php"];
+
+const buildBonusUrls = (siteUrl) => {
+  let origin;
+  try {
+    origin = new URL(siteUrl).origin;
+  } catch {
+    return [];
+  }
+  return BONUS_PAGE_PATHS.map((path) => origin + path);
+};
+
+// 加成字符串 → 加成系数："+6%"→0.06、"-100%"→-1、"300%"→3。
+// 站点加成列一律带百分号（实测存在负加成勋章），取不到百分号即视为不可计算，
+// 返回 null 而不是猜一个 0，避免把"未知"伪装成"无加成"。
+const parseBonusCoef = (bonus) => {
+  const m = String(bonus ?? "").match(/([+-]?\d+(?:\.\d+)?)\s*%/);
+  return m ? parseFloat(m[1]) / 100 : null;
+};
+
+// 表格单元格文本 → 数字；"26,706.356" 可解，"--"、"无限" 等返回 null。
+const parseCellNumber = (text) => {
+  if (text == null) return null;
+  const cleaned = String(text).replace(/[,\s]/g, "");
+  if (!/^[+-]?\d+(?:\.\d+)?$/.test(cleaned)) return null;
+  const num = parseFloat(cleaned);
+  return Number.isFinite(num) ? num : null;
+};
+
+// 一行 HTML → 各单元格文本；复用 extractTdText 以剥掉 img/h1 等嵌套标签
+const splitRowCells = (row) => {
+  const cells = [];
+  const tdRegex = /<td[^>]*>[\s\S]*?<\/td>/gi;
+  let m;
+  while ((m = tdRegex.exec(row)) !== null) cells.push(extractTdText(m[0]));
+  return cells;
+};
+
+// 旧版/变体页面（如 kamept）没有拆解表，只有正文里的一行公式说明：
+// "你当前每小时能获取25.438个魔力值"。这类页面拿不到勋章加成基数，
+// 只能用总时魔估算，由 computeMedalPayback 标记 estimated。
+const extractHourlyMagicFromText = (html) => {
+  const text = html.replace(/<[^>]+>/g, " ").replace(/&nbsp;/gi, " ").replace(/\s+/g, " ");
+  // 锚定"当前每小时…获取X个魔力值"这句结论；只写"每小时"会误抓公式说明里的
+  // 参数值（carpt 正文有"做种每小时将得到如下的魔力值 0.5个魔力值 × 做种数"）
+  const hourly = text.match(/当前每小时[^0-9]{0,12}?([\d,]+(?:\.\d+)?)\s*个\s*\S{1,3}值/);
+  if (!hourly) return null;
+  const num = parseCellNumber(hourly[1]);
+  // 0 是合法事实（此刻没在做种），保留它才能给出"无法回本"而不是"时魔未知"
+  if (num == null || num < 0) return null;
+  return { medalBase: null, medalCoef: null, baseHourly: num, totalHourly: num, source: "text" };
+};
+
+// 解析 mybonus.php「每小时获得的合计魔力值」拆解表。
+//
+// 表头按文本定位列，不写死下标：novahd 在「基本奖励」和「勋章加成」之间插入了
+// 做种奖励、等级奖励加成等额外行，且各站简繁混用（discfan 為「基礎魔力」）、
+// 币种不同（zmpt 为"电力"），固定下标会取错列。
+//
+// 关键口径：勋章加成行的「基础魔力」才是站点真正乘以勋章系数的基数——它是 A 值
+// 公式的结果，不含"低保"（按做种数计的固定收益）。carpt 实测总时魔 149.285 中只有
+// 99.285 参与勋章加成，直接拿总时魔算会把收益高估 50%。
+const extractHourlyMagic = (html) => {
+  if (!html) return null;
+  const rows = html.match(/<tr[\s\S]*?(?=<tr|$)/gi) || [];
+  let columns = null;
+  const found = { medalBase: null, medalCoef: null, baseHourly: null, totalHourly: null };
+
+  for (const row of rows) {
+    const cells = splitRowCells(row);
+    if (cells.length < 3) continue;
+
+    if (!columns) {
+      // 列名按前缀匹配而非整词：币种随站点变化（魔力/电力/麦力…），
+      // 但「基础X / 获得X / 系数」这三列的前缀在各站保持一致
+      const baseIdx = cells.findIndex((c) => /^(基础|基礎)/.test(c));
+      const gainedIdx = cells.findIndex((c) => /^(获得|獲得)/.test(c));
+      const coefIdx = cells.findIndex((c) => /^系[数數]$/.test(c));
+      if (baseIdx >= 0 && gainedIdx >= 0 && coefIdx >= 0) {
+        columns = { baseIdx, gainedIdx, coefIdx };
+      }
+      continue;
+    }
+
+    // 「合计」列只有首行（基本奖励）带（其余行被 rowspan 合并），且恒在该行末位；
+    // 下标不按表头长度推算（个别站点表头省略「合计」这一格）。勋章行可能拆成多行
+    // （luckpt 分「勋章佩戴加成」「勋章仓库加成」，系数列还是算式文本），取先出现的一行。
+    const typeName = cells[0];
+    if (found.medalBase == null && /^[勋勳]章/.test(typeName)) {
+      found.medalBase = parseCellNumber(cells[columns.baseIdx]);
+      found.medalCoef = parseCellNumber(cells[columns.coefIdx]);
+    } else if (/^基本[奖獎]/.test(typeName)) {
+      found.baseHourly = parseCellNumber(cells[columns.gainedIdx]);
+      if (cells.length - 1 > columns.gainedIdx) {
+        found.totalHourly = parseCellNumber(cells[cells.length - 1]);
+      }
+    }
+  }
+
+  if (found.medalBase != null || found.baseHourly != null || found.totalHourly != null) {
+    return { ...found, source: "table" };
+  }
+  return extractHourlyMagicFromText(html);
+};
+
+// 单条勋章的回本估算：按 windowHours 小时持续做种，加成带来的增量魔力能否覆盖价格。
+// 乘数基数优先取勋章加成行的「基础魔力」；该行缺失（站点未渲染/用户无勋章）时退化为
+// 总时魔，此时结果偏乐观，用 estimated 标记，前端据此说明口径。
+const computeMedalPayback = (medal, hourly, windowHours = 24) => {
+  if (!hourly) return null;
+  const coef = parseBonusCoef(medal.bonus);
+  const price = parsePriceNumber(medal.price);
+  if (coef == null || price == null) return null;
+
+  const base =
+    hourly.medalBase != null
+      ? hourly.medalBase
+      : hourly.baseHourly != null
+        ? hourly.baseHourly
+        : hourly.totalHourly;
+  if (base == null) return null;
+
+  const extraPerHour = base * coef;
+  const gain = extraPerHour * windowHours;
+  return {
+    windowHours,
+    base,
+    extraPerHour,
+    gain,
+    price,
+    // 加成 ≤ 0（含站点的负加成勋章）永远回不了本，回本时长不给数值
+    hours: extraPerHour > 0 ? price / extraPerHour : null,
+    canPayback: extraPerHour > 0 && gain >= price,
+    estimated: hourly.medalBase == null,
+  };
+};
+
+// 时魔页只是附属数据源：请求失败、未登录、结构不同一律降级为 null，
+// 绝不能因为它让整站的勋章列表消失。候选地址逐个尝试，命中即停。
+async function fetchHourlyMagic(siteUrl, cookies, sendLog) {
+  const headers = {
+    Cookie: cookies.map((c) => `${c.name}=${c.value}`).join("; "),
+    "User-Agent": navigator.userAgent,
+  };
+  const urls = buildBonusUrls(siteUrl);
+  for (const url of urls) {
+    try {
+      const response = await fetchWithTimeout(url, { headers }, 10000);
+      if (!response.ok) continue;
+      const hourly = extractHourlyMagic(await response.text());
+      if (hourly) return hourly;
+    } catch {
+      continue;
+    }
+  }
+  // 时魔是附属数据：拿不到只作提示，不用错误级日志打扰（勋章结果本身完好）
+  sendLog(`时魔不可用：${urls.join(" 、 ")}`);
+  return null;
+}
+
+// 只有确实存在可购买勋章时才多发这一次时魔请求：绝大多数站点没有在售勋章，
+// 无谓请求会把扫描时间成倍拖长，而回本结论对空列表毫无意义。
+async function withHourlyMagic(scanned, siteUrl, cookies, sendLog) {
+  if (!scanned.medals || scanned.medals.length === 0) return scanned;
+  const hourly = await fetchHourlyMagic(siteUrl, cookies, sendLog);
+  scanned.hourly = hourly;
+  if (hourly) {
+    for (const medal of scanned.medals) medal.payback = computeMedalPayback(medal, hourly);
+  }
+  return scanned;
+}
+
 // 为某个分页提取出的勋章批量打上页码与分页 URL，供前端跳转使用。
 const tagMedalsWithPage = (medals, page, pageUrl) => {
   if (!Array.isArray(medals)) return medals;
@@ -1586,15 +1764,30 @@ async function scanSiteMedals(siteName, siteUrl, cookies, sendLog) {
   // API 直抓站点（静态 HTML 无勋章数据，但存在可直连的 JSON 接口）
   // sunnypt.top：Next.js SPA，会话 JWT → api.sunnypt.top
   if (siteUrl.includes("sunnypt.top/bounty")) {
-    return await scanSunnyptBounty(siteUrl, cookies);
+    return await withHourlyMagic(
+      await scanSunnyptBounty(siteUrl, cookies),
+      siteUrl,
+      cookies,
+      sendLog,
+    );
   }
   // zmpt.cc：Vite SPA，Cookie 直调 /javaapi/user/queryAllMedals
   if (siteUrl.includes("zmpt.cc/medal.php")) {
-    return await scanZmptApi(siteUrl, cookies);
+    return await withHourlyMagic(
+      await scanZmptApi(siteUrl, cookies),
+      siteUrl,
+      cookies,
+      sendLog,
+    );
   }
   // yemapt.org：umi SPA，Cookie 直调 /api/badge/fetchBadgeList 等（积分兑换制）
   if (siteUrl.includes("yemapt.org")) {
-    return await scanYemaptBadges(siteUrl, cookies);
+    return await withHourlyMagic(
+      await scanYemaptBadges(siteUrl, cookies),
+      siteUrl,
+      cookies,
+      sendLog,
+    );
   }
 
   const pageHtmls = [{ url: siteUrl, html: "" }];
@@ -1707,7 +1900,12 @@ async function scanSiteMedals(siteName, siteUrl, cookies, sendLog) {
     pageCount++;
   }
 
-  return { medals, balance, pageHtmls, pageCount: pageCount + 1 };
+  return await withHourlyMagic(
+    { medals, balance, pageHtmls, pageCount: pageCount + 1 },
+    siteUrl,
+    cookies,
+    sendLog,
+  );
 }
 
 chrome.action.onClicked.addListener(() => {
@@ -1827,7 +2025,7 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
             continue;
           }
 
-          const { medals, balance, pageHtmls, pageCount } =
+          const { medals, balance, pageHtmls, pageCount, hourly } =
             await scanSiteMedals(siteName, siteUrl, cookies, sendLog);
           allPageHtmls.push(...pageHtmls);
 
@@ -1839,11 +2037,12 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
             url: siteUrl,
             medals,
             balance: balance != null ? balance : null,
+            hourly: hourly || null,
           });
           sendLog(
             `${siteName}: 共${pageCount}页，发现 ${medals.length} 个可购买勋章${
               balance != null ? `，魔力值 ${balance}` : ""
-            }`,
+            }${hourly && hourly.totalHourly != null ? `，时魔 ${hourly.totalHourly}` : ""}`,
           );
         } catch (error) {
           if (error.name === "AbortError") {
@@ -1992,7 +2191,7 @@ async function performScheduledScan() {
 
       if (cookies.length === 0) continue;
 
-      const { medals, balance, pageCount } = await scanSiteMedals(
+      const { medals, balance, pageCount, hourly } = await scanSiteMedals(
         siteName,
         siteUrl,
         cookies,
@@ -2006,6 +2205,8 @@ async function performScheduledScan() {
         url: siteUrl,
         medals,
         balance: balance != null ? balance : null,
+        // 定时扫描结果同样会被选项页渲染，缺了 hourly 会让时魔/回本显示时有时无
+        hourly: hourly || null,
       });
     } catch {
       // skip failed sites silently
@@ -2070,6 +2271,14 @@ if (typeof module !== "undefined" && module.exports) {
     extractMedalsFromZmptNew,
     extractMagicBalance,
     parsePriceNumber,
+    buildBonusUrls,
+    parseBonusCoef,
+    parseCellNumber,
+    extractHourlyMagic,
+    extractHourlyMagicFromText,
+    computeMedalPayback,
+    fetchHourlyMagic,
+    withHourlyMagic,
     tagMedalsWithPage,
     isSpaShell,
     collectPageNumbers,

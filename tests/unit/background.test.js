@@ -2416,6 +2416,369 @@ testAsync('scanYemaptBadges: 未登录（接口 success=false）抛出异常', a
 });
 
 // ============================================================
+// 时魔提取与勋章加成回本计算
+// ============================================================
+console.log('\n  ▶ buildBonusUrls - 时魔页地址推导');
+
+test('buildBonusUrls: medal.php 同级候选，mybonus.php 在前', () => {
+  assertEqual(bg.buildBonusUrls('https://carpt.net/medal.php').join(','),
+    'https://carpt.net/mybonus.php,https://carpt.net/mybonus_new.php');
+});
+
+test('buildBonusUrls: 带 www 与子域只换末段路径', () => {
+  assertEqual(bg.buildBonusUrls('https://www.hxpt.org/medal.php')[0], 'https://www.hxpt.org/mybonus.php');
+  assertEqual(bg.buildBonusUrls('https://pt.agsvpt.cn/medal.php')[0], 'https://pt.agsvpt.cn/mybonus.php');
+});
+
+test('buildBonusUrls: buycenter 等特殊勋章页同样归到 origin', () => {
+  assertEqual(bg.buildBonusUrls('https://www.htpt.cc/buycenter.php')[1], 'https://www.htpt.cc/mybonus_new.php');
+});
+
+test('buildBonusUrls: hash 路由与查询串不得污染结果', () => {
+  assertEqual(
+    bg.buildBonusUrls('https://www.yemapt.org/#/user/growth?tab=badge')[0],
+    'https://www.yemapt.org/mybonus.php',
+  );
+  assertEqual(
+    bg.buildBonusUrls('https://sunnypt.top/bounty?tab=renown')[0],
+    'https://sunnypt.top/mybonus.php',
+  );
+});
+
+test('buildBonusUrls: 非法 URL 返回空列表', () => {
+  assertEqual(bg.buildBonusUrls('不是地址').length, 0);
+});
+
+console.log('\n  ▶ parseBonusCoef / parseCellNumber - 字段解析');
+
+test('parseBonusCoef: 带正负号的百分数一律换算为系数', () => {
+  assertEqual(bg.parseBonusCoef('6%'), 0.06);
+  assertEqual(bg.parseBonusCoef('+0.5%'), 0.005);
+  assertEqual(bg.parseBonusCoef('-100%'), -1);
+  assertEqual(bg.parseBonusCoef('300%'), 3);
+  assertEqual(bg.parseBonusCoef('0.500%'), 0.005);
+});
+
+test('parseBonusCoef: 无百分号不给数值', () => {
+  assertEqual(bg.parseBonusCoef('不限'), null);
+  assertEqual(bg.parseBonusCoef(''), null);
+  assertEqual(bg.parseBonusCoef(undefined), null);
+});
+
+test('parseCellNumber: 千分位数字可解，占位符返回 null', () => {
+  assertEqual(bg.parseCellNumber('26,706.356'), 26706.356);
+  assertEqual(bg.parseCellNumber('155.242'), 155.242);
+  assertEqual(bg.parseCellNumber('--'), null);
+  assertEqual(bg.parseCellNumber('无限'), null);
+  assertEqual(bg.parseCellNumber('24.555 TB'), null);
+});
+
+// mybonus.php「每小时获得的合计魔力值」拆解表真实结构（carpt.net 实测字节序）
+const carptBonusTable = `<h1>每小时获得的合计魔力值</h1>
+<table cellpadding="5" style="width: 50%"><tr><td class="colhead">奖励类型</td><td class="colhead">数量</td><td class="colhead">体积</td><td class="colhead">A 值</td><td class="colhead">基础魔力</td><td class="colhead">系数</td><td class="colhead">获得魔力</td><td class="colhead">合计</td></tr>
+<tr><td>基本奖励</td><td>631</td><td>24.555 TB</td><td>26,706.356</td><td>149.285</td><td>1</td><td>149.285</td><td rowspan="3">155.242</td></tr>
+<tr><td>勋章加成</td><td>631</td><td>24.555 TB</td><td>26,706.356</td><td>99.285</td><td>0.06</td><td>5.957</td></tr>
+<tr><td>官种加成</td><td>0</td><td>0.00 KB</td><td>0.000</td><td>0.000</td><td>0.5</td><td>0.000</td></tr></table>`;
+
+console.log('\n  ▶ extractHourlyMagic - 时魔拆解表');
+
+test('标准表：勋章加成行的基础魔力即乘数基数（不含低保）', () => {
+  const h = bg.extractHourlyMagic(carptBonusTable);
+  assertEqual(h.medalBase, 99.285, '基数须取勋章加成行，而非总时魔 149.285');
+  assertEqual(h.medalCoef, 0.06);
+  assertEqual(h.baseHourly, 149.285);
+  assertEqual(h.totalHourly, 155.242);
+  assertEqual(h.source, 'table');
+});
+
+test('繁体站点（discfan）：表头与行名按简繁双语匹配', () => {
+  const html = `<table><tr><td class="colhead">獎勵類型</td><td class="colhead">數量</td><td class="colhead">體積</td><td class="colhead">A 值</td><td class="colhead">基礎魔力</td><td class="colhead">系數</td><td class="colhead">獲得魔力</td><td class="colhead">合計</td></tr>
+<tr><td>基本獎勵</td><td>113</td><td>1.981 TB</td><td>2,000.100</td><td>80.500</td><td>1</td><td>80.500</td><td rowspan="2">88.550</td></tr>
+<tr><td>勳章加成</td><td>113</td><td>1.981 TB</td><td>2,000.100</td><td>50.500</td><td>0.16</td><td>8.080</td></tr></table>`;
+  const h = bg.extractHourlyMagic(html);
+  assertEqual(h.medalBase, 50.5);
+  assertEqual(h.medalCoef, 0.16);
+  assertEqual(h.totalHourly, 88.55);
+});
+
+test('电力币种站点（zmpt）：基础电力/获得电力同样识别', () => {
+  const html = `<table><tr><td class="colhead">奖励类型</td><td class="colhead">数量</td><td class="colhead">体积</td><td class="colhead">A 值</td><td class="colhead">基础电力</td><td class="colhead">系数</td><td class="colhead">获得电力</td><td class="colhead">合计</td></tr>
+<tr><td>基本奖励</td><td>717</td><td>23.486 TB</td><td>26,134.983</td><td>157.808</td><td>1</td><td>157.808</td><td rowspan="3">712.495</td></tr>
+<tr><td>勋章加成</td><td>717</td><td>23.486 TB</td><td>26,134.983</td><td>147.808</td><td>3.350</td><td>495.157</td></tr></table>`;
+  const h = bg.extractHourlyMagic(html);
+  assertEqual(h.medalBase, 147.808);
+  assertEqual(h.medalCoef, 3.35);
+});
+
+test('多插额外行的站点（nova）：按表头定位列，不因行数变化取错', () => {
+  const html = `<table><tr><td class="colhead">奖励类型</td><td class="colhead">数量</td><td class="colhead">体积</td><td class="colhead">A 值</td><td class="colhead">基础魔力</td><td class="colhead">系数</td><td class="colhead">获得魔力</td><td class="colhead">合计</td></tr>
+<tr><td>基本奖励</td><td>636</td><td>24.193 TB</td><td>24,113.433</td><td>493.401</td><td>0.5</td><td>246.700</td><td rowspan="6">566.802</td></tr>
+<tr><td>做种奖励(636/1000)</td><td>636/1000</td><td>--</td><td>--</td><td>31.800</td><td>0.5</td><td>15.900</td></tr>
+<tr><td>等级奖励加成</td><td>User</td><td>--</td><td>--</td><td>262.600</td><td>+1%</td><td>2.626</td></tr>
+<tr><td>勋章加成</td><td>636</td><td>24.193 TB</td><td>24,113.433</td><td>213.401</td><td>0.35</td><td>74.690</td></tr>
+<tr><td>官种加成</td><td>0</td><td>0.00 KB</td><td>0.000</td><td>0.000</td><td>0.5</td><td>0.000</td></tr></table>`;
+  const h = bg.extractHourlyMagic(html);
+  assertEqual(h.medalBase, 213.401, '中间插入做种/等级行后仍要落在基础魔力列');
+  assertEqual(h.medalCoef, 0.35);
+  assertEqual(h.baseHourly, 246.7, '系数非 1 时取获得魔力列');
+});
+
+test('无拆解表的老版页面（kamept）：从正文取总时魔且无勋章基数', () => {
+  const html = `<ul><li>做种每小时将得到如下的魔力值 0.5个魔力值 * 你的做种数</li>
+<li>勋章加成：11%。</li></ul><div align="center">你当前每小时能获取25.438个魔力值 (A = 13.1)</div>`;
+  const h = bg.extractHourlyMagic(html);
+  assertEqual(h.baseHourly, 25.438, '不能被公式说明里的 0.5 误命中');
+  assertEqual(h.medalBase, null);
+  assertEqual(h.source, 'text');
+});
+
+test('勋章加成行缺失时仍返回总时魔（供估算回退）', () => {
+  const html = carptBonusTable
+    .replace(/<tr><td>勋章加成[\s\S]*?<\/tr>/, '')
+    .replace('rowspan="3"', 'rowspan="2"');
+  const h = bg.extractHourlyMagic(html);
+  assertEqual(h.medalBase, null);
+  assertEqual(h.totalHourly, 155.242);
+});
+
+test('表头不写「合计」时按末位列取，不串到获得魔力列', () => {
+  const html = `<table><tr><td class="colhead">奖励类型</td><td class="colhead">数量</td><td class="colhead">A 值</td><td class="colhead">基础魔力</td><td class="colhead">系数</td><td class="colhead">获得魔力</td></tr>
+<tr><td>基本奖励</td><td>10</td><td>1,000.000</td><td>50.000</td><td>1</td><td>50.000</td><td rowspan="2">55.000</td></tr>
+<tr><td>勋章加成</td><td>10</td><td>1,000.000</td><td>40.000</td><td>0.125</td><td>5.000</td></tr></table>`;
+  const h = bg.extractHourlyMagic(html);
+  assertEqual(h.medalBase, 40, '系数列按表头定位，与是否有合计列无关');
+  assertEqual(h.medalCoef, 0.125);
+  assertEqual(h.totalHourly, 55);
+});
+
+test('勋章加成拆成佩戴/仓库两行时取先出现的一行（幸运星币种）', () => {
+  const html = `<table><tr><td class="colhead">奖励类型</td><td class="colhead">数量</td><td class="colhead">体积</td><td class="colhead">A 值</td><td class="colhead">基础幸运星</td><td class="colhead">系数</td><td class="colhead">获得幸运星</td><td class="colhead">合计</td></tr>
+<tr><td>基本奖励</td><td>556</td><td>12.551 TB</td><td>13,154.136</td><td>130.670</td><td>1</td><td>130.670</td><td rowspan="3">201.527</td></tr>
+<tr><td>勋章佩戴加成</td><td>556</td><td>12.551 TB</td><td>13,154.136</td><td>102.870</td><td>0.100 × 1.600 = 0.160</td><td>16.459</td></tr>
+<tr><td>勋章仓库加成</td><td>556</td><td>12.551 TB</td><td>13,154.136</td><td>90.000</td><td>1.058 × 0.500 = 0.529</td><td>54.398</td></tr></table>`;
+  const h = bg.extractHourlyMagic(html);
+  assertEqual(h.medalBase, 102.87, '基数取先出现的佩戴行，不被仓库行覆盖');
+  assertEqual(h.medalCoef, null, '系数列是算式文本时不猜数值');
+  assertEqual(h.baseHourly, 130.67);
+  assertEqual(h.totalHourly, 201.527);
+});
+
+test('整表没有合计列时不臆造合计（退回基本奖励时魔）', () => {
+  const html = `<table><tr><td class="colhead">奖励类型</td><td class="colhead">数量</td><td class="colhead">A 值</td><td class="colhead">基础魔力</td><td class="colhead">系数</td><td class="colhead">获得魔力</td></tr>
+<tr><td>基本奖励</td><td>10</td><td>1,000.000</td><td>50.000</td><td>1</td><td>50.000</td></tr>
+<tr><td>勋章加成</td><td>10</td><td>1,000.000</td><td>40.000</td><td>0.125</td><td>5.000</td></tr></table>`;
+  const h = bg.extractHourlyMagic(html);
+  assertEqual(h.totalHourly, null, '末位即获得魔力时不能把它当成合计');
+  assertEqual(h.baseHourly, 50);
+  assertEqual(h.medalBase, 40);
+});
+
+test('魔力值交换商店表不会被当时魔拆解表', () => {
+  // mybonus.php 上半页就是这张兑换表（项目/简介/价格/交换），必须不产生任何时魔数值
+  const html = `<table><tr><td class="colhead">项目</td><td class="colhead">简介</td><td class="colhead">价格</td><td class="colhead">交换</td></tr>
+<tr><td>1</td><td><h1>1.0 GB上传量</h1>魔力值会减少</td><td>500</td><td><input type="submit" value="交换"></td></tr></table>`;
+  assertEqual(bg.extractHourlyMagic(html), null);
+});
+
+test('未登录页与无关页面返回 null', () => {
+  assertEqual(bg.extractHourlyMagic('<html><body>请输入用户名和密码</body></html>'), null);
+  assertEqual(bg.extractHourlyMagic(''), null);
+  assertEqual(bg.extractHourlyMagic(null), null);
+});
+
+test('正文页报告时魔为 0 时保留该值（是事实，不是未知）', () => {
+  const h = bg.extractHourlyMagic('<div align="center">你当前每小时能获取0个魔力值 (A = 0)</div>');
+  assertEqual(h.baseHourly, 0);
+  assertEqual(h.source, 'text');
+  const pb = bg.computeMedalPayback({ bonus: '5%', price: '1,000' }, h);
+  assertEqual(pb.hours, null, '时魔 0 时任何勋章都回不了本');
+  assertEqual(pb.canPayback, false);
+});
+
+console.log('\n  ▶ computeMedalPayback - 24 小时做种回本');
+
+const carptHourly = bg.extractHourlyMagic(carptBonusTable);
+
+test('按勋章加成基数计算：加成 6% × 99.285 → 每小时 5.9571', () => {
+  const pb = bg.computeMedalPayback({ bonus: '6%', price: '66,666' }, carptHourly);
+  assertEqual(pb.base, 99.285);
+  assertEqual(pb.windowHours, 24);
+  assert(Math.abs(pb.extraPerHour - 5.9571) < 1e-9, `extraPerHour=${pb.extraPerHour}`);
+  assert(Math.abs(pb.gain - 142.9704) < 1e-3, `gain=${pb.gain}`);
+  assertEqual(pb.canPayback, false, '24 小时只多拿 143 魔力，买不起 66,666');
+  assert(Math.abs(pb.hours - 11191) < 1, `回本小时数应约 11191，实际 ${pb.hours}`);
+  assertEqual(pb.estimated, false);
+});
+
+test('24 小时内可回本判定：增量魔力覆盖价格即为 true', () => {
+  const hourly = { medalBase: 1000, medalCoef: 0, baseHourly: 1200, totalHourly: 1200, source: 'table' };
+  const pb = bg.computeMedalPayback({ bonus: '50%', price: '10,000' }, hourly);
+  assertEqual(pb.canPayback, true);
+  assertEqual(pb.hours, 20, '10000 / (1000×0.5) = 20 小时');
+});
+
+test('正好等于价格时算回本（边界取 >=）', () => {
+  const hourly = { medalBase: 100, medalCoef: 0, baseHourly: 100, totalHourly: 100, source: 'table' };
+  // 100 × 1% = 1 魔力/小时 → 24 小时正好 24 魔力
+  const pb = bg.computeMedalPayback({ bonus: '1%', price: '24' }, hourly);
+  assertEqual(pb.gain, 24);
+  assertEqual(pb.canPayback, true);
+  assertEqual(pb.hours, 24);
+});
+
+test('零价勋章即时回本', () => {
+  const pb = bg.computeMedalPayback({ bonus: '300%', price: '0' }, carptHourly);
+  assertEqual(pb.canPayback, true);
+  assertEqual(pb.hours, 0);
+});
+
+test('负加成与零加成不给回本时长', () => {
+  for (const bonus of ['-5%', '-100%', '0%']) {
+    const pb = bg.computeMedalPayback({ bonus, price: '1,000' }, carptHourly);
+    assertEqual(pb.canPayback, false, `${bonus} 不应判为可回本`);
+    assertEqual(pb.hours, null, `${bonus} 无回本时长`);
+  }
+});
+
+test('勋章基数缺失时退化为总时魔并标记 estimated', () => {
+  const textHourly = bg.extractHourlyMagic(
+    '<div>你当前每小时能获取25.438个魔力值 (A = 13.1)</div>',
+  );
+  const pb = bg.computeMedalPayback({ bonus: '11%', price: '60' }, textHourly);
+  assertEqual(pb.base, 25.438, '退化用总时魔作基数');
+  assertEqual(pb.estimated, true, '估算口径必须显式标记');
+});
+
+test('可计算窗口可变：48 小时的收益翻倍', () => {
+  const pb = bg.computeMedalPayback({ bonus: '1%', price: '100' }, carptHourly, 48);
+  assertEqual(pb.windowHours, 48);
+  assert(Math.abs(pb.gain - 99.285 * 0.01 * 48) < 1e-9);
+});
+
+test('缺字段时不硬算：无时魔 / 加成不可解析 / 价格不可解析', () => {
+  assertEqual(bg.computeMedalPayback({ bonus: '6%', price: '100' }, null), null);
+  assertEqual(bg.computeMedalPayback({ bonus: '不限', price: '100' }, carptHourly), null);
+  assertEqual(bg.computeMedalPayback({ bonus: '6%', price: '免费' }, carptHourly), null);
+});
+
+console.log('\n  ▶ withHourlyMagic - 扫描链路接入');
+
+testAsync('无可购买勋章时不发起时魔请求', async () => {
+  const savedFetch = global.fetch;
+  let calls = 0;
+  global.fetch = () => {
+    calls++;
+    return Promise.resolve({ ok: true, text: () => Promise.resolve('') });
+  };
+  const scanned = await bg.withHourlyMagic(
+    { medals: [], balance: null, pageHtmls: [], pageCount: 1 },
+    'https://carpt.test/medal.php',
+    [{ name: 'c', value: '1' }],
+    () => {},
+  );
+  assertEqual(calls, 0, '空列表不该多打一次 mybonus.php');
+  assertEqual(scanned.hourly, undefined, '未抓取时不挂 hourly');
+  global.fetch = savedFetch;
+});
+
+testAsync('有勋章时为每条附加回本结论', async () => {
+  const savedFetch = global.fetch;
+  global.fetch = (url) =>
+    Promise.resolve({
+      ok: true,
+      text: () => Promise.resolve(url.includes('mybonus.php') ? carptBonusTable : ''),
+    });
+  const medals = [
+    { name: '辅车勋章', price: '66,666', bonus: '6%' },
+    { name: '赌神勋章', price: '0', bonus: '300%' },
+  ];
+  const scanned = await bg.withHourlyMagic(
+    { medals, balance: null, pageHtmls: [{ url: 'x', html: '' }], pageCount: 1 },
+    'https://carpt.test/medal.php',
+    [{ name: 'c', value: '1' }],
+    () => {},
+  );
+  assertEqual(scanned.hourly.medalBase, 99.285);
+  assertEqual(scanned.medals[0].payback.canPayback, false);
+  assertEqual(scanned.medals[1].payback.canPayback, true);
+  assert(Math.abs(scanned.medals[0].payback.hours - 11191) < 1);
+  global.fetch = savedFetch;
+});
+
+testAsync('时魔页请求异常只降级，不影响勋章结果', async () => {
+  const savedFetch = global.fetch;
+  global.fetch = (url) =>
+    url.includes('mybonus.php')
+      ? Promise.reject(new Error('boom'))
+      : Promise.resolve({ ok: true, text: () => Promise.resolve('') });
+  const scanned = await bg.withHourlyMagic(
+    { medals: [{ name: '勋章A', price: '1,000', bonus: '1%' }], balance: 1, pageHtmls: [], pageCount: 1 },
+    'https://carpt.test/medal.php',
+    [{ name: 'c', value: '1' }],
+    () => {},
+  );
+  assertEqual(scanned.hourly, null, '异常须降级为 null');
+  assertEqual(scanned.medals.length, 1, '勋章列表不受影响');
+  assertEqual(scanned.medals[0].payback, undefined, '拿不到时魔就不编造回本结论');
+  global.fetch = savedFetch;
+});
+
+testAsync('时魔页结构不认识时记录解析失败并置 null', async () => {
+  const savedFetch = global.fetch;
+  global.fetch = () =>
+    Promise.resolve({ ok: true, text: () => Promise.resolve('<html>页面不存在</html>') });
+  const logs = [];
+  const scanned = await bg.withHourlyMagic(
+    { medals: [{ name: '勋章A', price: '1,000', bonus: '1%' }], pageHtmls: [], pageCount: 1 },
+    'https://sunnypt.test/bounty?tab=renown',
+    [{ name: 'c', value: '1' }],
+    (t) => logs.push(t),
+  );
+  assertEqual(scanned.hourly, null);
+  assertEqual(scanned.medals[0].payback, undefined);
+  assertEqual(logs.length, 1, '解析失败应有一条日志');
+  assert(logs[0].includes('mybonus.php'), '日志需包含时魔页地址便于排查: ' + logs[0]);
+  global.fetch = savedFetch;
+});
+
+testAsync('mybonus.php 没有统计时改用第二套地址 mybonus_new.php', async () => {
+  const savedFetch = global.fetch;
+  const asked = [];
+  global.fetch = (url) => {
+    asked.push(url);
+    return Promise.resolve({
+      ok: true,
+      text: () => Promise.resolve(
+        url.endsWith('mybonus_new.php')
+          ? '<div align="center">你当前每小时能获取0个魔力值 (A = 0)</div>'
+          : '<table><tr><td class="colhead">项目</td><td class="colhead">价格</td><td class="colhead">交换</td></tr></table>',
+      ),
+    });
+  };
+  const hourly = await bg.fetchHourlyMagic(
+    'https://www.htpt.cc/buycenter.php', [{ name: 'c', value: '1' }], () => {},
+  );
+  assertEqual(hourly.baseHourly, 0, '应命中第二套地址的统计');
+  assertEqual(asked.length, 2, '第一套取不到才试第二套');
+  assert(asked[1].endsWith('mybonus_new.php'), '候选顺序: ' + asked.join(' , '));
+  global.fetch = savedFetch;
+});
+
+testAsync('两套地址都取不到时只记一条日志并返回 null', async () => {
+  const savedFetch = global.fetch;
+  global.fetch = () => Promise.resolve({ ok: true, text: () => Promise.resolve('<p>不存在</p>') });
+  const logs = [];
+  const hourly = await bg.fetchHourlyMagic(
+    'https://www.hxpt.org/medal.php', [{ name: 'c', value: '1' }], (t) => logs.push(t),
+  );
+  assertEqual(hourly, null);
+  assertEqual(logs.length, 1, '附属数据失败只提示一次: ' + logs.join(' / '));
+  assert(!logs[0].includes('true'), '不应是错误级日志');
+  assert(logs[0].includes('mybonus.php') && logs[0].includes('mybonus_new.php'), '日志需列出尝试过的地址');
+  global.fetch = savedFetch;
+});
+
+// ============================================================
 // 汇总（先执行异步用例，再统一判定）
 // ============================================================
 (async () => {

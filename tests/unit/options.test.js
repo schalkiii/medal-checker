@@ -490,6 +490,77 @@ test('魔力值未知时魔力不足筛选不显示该站勋章', () => {
 });
 
 // ============================================================
+// 时魔与回本展示
+// ============================================================
+function renderPaybackResult(hourly, medal) {
+  const chromeMock = createChromeMock();
+  chromeMock._storage.set('sites', ['SiteX|https://x.com/medal.php']);
+  setupDOM();
+  loadOptions(chromeMock);
+
+  chromeMock._listeners.get('runtime.onMessage')({
+    type: 'scanResult',
+    data: [{
+      siteName: 'TestPT',
+      count: 1,
+      url: 'https://test.com/medal.php',
+      balance: 1000,
+      hourly,
+      medals: [medal]
+    }]
+  });
+  return document.getElementById('resultList').innerHTML;
+}
+
+test('站点头部显示时魔，勋章行显示回本时长', () => {
+  const html = renderPaybackResult(
+    { medalBase: 99.285, medalCoef: 0.06, baseHourly: 149.285, totalHourly: 155.242, source: 'table' },
+    { name: '辅车勋章', price: '66,666', bonus: '6%', payback: { windowHours: 24, base: 99.285, extraPerHour: 5.9571, gain: 142.97, price: 66666, hours: 11190.8, canPayback: false, estimated: false } }
+  );
+  assertContains(html, '⚡ 时魔 155.24', '站点头部应显示合计时魔');
+  assertContains(html, '回本 1.3 年', '11190.8 小时 ≈ 1.3 年（超过一年改用年作单位）');
+  assert(!html.includes('✓ 24h 内回本'), '不能回本时不给绿色结论');
+});
+
+test('24 小时内可回本给出绿色结论', () => {
+  const html = renderPaybackResult(
+    { medalBase: 1000, medalCoef: 0, baseHourly: 1200, totalHourly: 1200, source: 'table' },
+    { name: '划算勋章', price: '10,000', bonus: '50%', payback: { windowHours: 24, base: 1000, extraPerHour: 500, gain: 12000, price: 10000, hours: 20, canPayback: true, estimated: false } }
+  );
+  assertContains(html, '✓ 24h 内回本');
+});
+
+test('负加成勋章只说无法回本，不出现病句', () => {
+  const html = renderPaybackResult(
+    { medalBase: 99.285, medalCoef: 0.06, baseHourly: 149.285, totalHourly: 155.242, source: 'table' },
+    { name: '负加成勋章', price: '1,000', bonus: '-5%', payback: { windowHours: 24, base: 99.285, extraPerHour: -4.964, gain: -119.1, price: 1000, hours: null, canPayback: false, estimated: false } }
+  );
+  assertContains(html, '⏳ 无法回本');
+  assert(!html.includes('回本 无法回本'), '不应拼出「回本 无法回本」');
+});
+
+test('估算口径带 ≈ 标记', () => {
+  const html = renderPaybackResult(
+    { medalBase: null, medalCoef: null, baseHourly: 25.438, totalHourly: 25.438, source: 'text' },
+    { name: '老版站勋章', price: '1,000', bonus: '11%', payback: { windowHours: 24, base: 25.438, extraPerHour: 2.798, gain: 67.15, price: 1000, hours: 357.4, canPayback: false, estimated: true } }
+  );
+  assertContains(html, '⏳ ≈回本 15 天');
+});
+
+test('时魔取不到时标注未知且不编造回本结论', () => {
+  const html = renderPaybackResult(null, { name: '无时魔勋章', price: '1,000', bonus: '5%' });
+  assertContains(html, '⚡ 时魔未知');
+  assert(!html.includes('meta-payback'), '无时魔数据不应给出任何回本结论');
+});
+
+test('改版之前的历史结果不显示时魔栏', () => {
+  // 历史 scanResults 里没有 hourly 键：既不显示时魔，也不谎称"时魔未知"
+  const html = renderPaybackResult(undefined, { name: '历史勋章', price: '1,000', bonus: '1%' });
+  assert(!html.includes('时魔'), '缺 hourly 键的旧结果不应出现时魔相关文案');
+  assert(!html.includes('meta-payback'), '旧结果没有 payback 字段，回本栏应缺席');
+});
+
+// ============================================================
 // 汇总（等待所有异步测试完成）
 // ============================================================
 Promise.all(pendingTests).then(() => {

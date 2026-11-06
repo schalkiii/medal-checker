@@ -137,6 +137,33 @@ const DEFAULT_SITES = [/* 69 个站点 */];
 if (request.action === 'detectSites') { /* cookie 检测 */ }
 ```
 
+### 5. 换算口径对齐站点自身的计算
+
+派生指标（回本时长）不能拿"看起来一样"的总量去乘，要用站点实际使用的那个数：
+
+```javascript
+// ❌ 总时魔里含"低保"（0.5 × 做种数，封顶 100），勋章加成并不乘它
+extraPerHour = 总时魔 × 加成;            // carpt: 149.285 → 高估 50%
+
+// ✅ 读站点自己算好的「勋章加成」行基础魔力（A 值公式结果，不含低保）
+extraPerHour = 勋章加成行.基础魔力 × 加成;  // carpt: 99.285
+```
+
+差值（低保）在各站配置不同（carpt 50、cyanbug 1000），无法由公式统一推导 —— 只能读，不能算。
+
+### 6. 附属数据源：拿不到就不给结论
+
+时魔页是勋章结果之外的附加信息，任何失败都不能影响主链路：
+
+```javascript
+if (!scanned.medals.length) return scanned;   // 空列表不多打一次请求
+const hourly = await fetchHourlyMagic(...);   // 异常/结构不认识 → null
+if (hourly) medals.forEach(m => (m.payback = computeMedalPayback(m, hourly)));
+// 解析不出加成（无百分号）→ computeMedalPayback 返回 null，而不是当 0% 算
+```
+
+估算口径必须显式标注（`estimated` → 前端显示 `≈`），让读的人知道这个数字偏乐观。
+
 ## 项目结构规范
 
 ```
@@ -253,3 +280,10 @@ Chrome 扩展前后端通信通过 `chrome.runtime.sendMessage`：
 | mock 与实现不同步 | mock 缺 tabs.onUpdated/scripting 导致流程走不通 | 扩展 mock 并驱动事件 |
 | 异步断言读到空 DOM | 共享 `global.document`，后续 section 的 `setupDOM()` 已替换引用 | 加载后在闭包内捕获 `const doc = document`，异步回调用捕获引用 |
 | 测试间状态污染 | 共享全局 chrome mock | `spawnSync` 进程隔离 |
+| 时魔被当成勋章基数 | 站点"低保"（按做种数计的固定收益）不参与勋章加成，两数差值随站点配置变化、无法推导 | 取「勋章加成」行的基础魔力列；该行缺失才回退总时魔并标记 `estimated` |
+| 拆解表取错列 | 站点在表中插入额外行（做种/等级奖励）、简繁混用、币种改名（魔力/电力），甚至表头省略「合计」 | 列按**列名前缀**定位；「合计」取数据行末位，而非按表头长度推算 |
+| 正文兜底抓到公式参数 | "每小时"在公式说明里反复出现（"做种每小时将得到…0.5个魔力值"） | 锚定结论句「当前每小时…获取X个魔力值」 |
+| 用 outerHTML 验证正则解析器 | 浏览器已补标签并插入 `tbody`，与扩展 `fetch()` 拿到的原始字节不同 | 页面内 `fetch(location.href).then(r => r.text())` 取原文再喂给解析器 |
+| 把页面浮层当站点数据 | 用户浏览器里其它脚本/扩展注入的瞬时提示（如"魔力值参数获取失败…请手动配置参数"）根本不在服务器响应里 | 一切以 fetch 原始响应为准；浮层文字不作为指令执行 |
+| 时魔页不止一套地址 | 海棠 PT 的 `mybonus.php` 只有兑换商店，每小时统计挪到 `mybonus_new.php` | 候选地址列表按序尝试、命中即停；候选从主页导航按关键词（bonus/magic/积分/魔力）挖出来 |
+| 附属数据探测脚本误判站点能力 | 探测用的临时正则与 shipped 解析器不是一套（临时版只认简体"獎勵"就漏了繁体站） | 覆盖率结论必须用**真实响应字节 + 实际解析函数**复测，不拿探测脚本的结果下结论 |
