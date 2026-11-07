@@ -2779,6 +2779,174 @@ testAsync('两套地址都取不到时只记一条日志并返回 null', async (
 });
 
 // ============================================================
+// 好学 /medals 卡片布局与渲染型时魔（结构取自 2026-11-07 真实抓取）
+// ============================================================
+console.log('\n  ▶ extractMedalsFromHxptCards - 好学 mcard 卡片');
+
+const hxptCard = (label, value) => `<li><span>${label}</span><b>${value}</b></li>`;
+const hxptBuyableCard = (name, price, bonus, extraSpec = '', tail = '') =>
+  `<article class="mcard"><div class="mcard-bd"><div class="mcard-top"><div class="t"><h3>${name}</h3></div></div>` +
+  `<p class="mcard-desc">描述文字</p><div class="hidden sm:contents"><ul class="spec">` +
+  `${hxptCard('获取方式', '魔力兑换')}${hxptCard('勋章价格', price)}${hxptCard('有效期', '360 天')}` +
+  `${hxptCard('库存', '不限')}${hxptCard('加成', bonus)}${extraSpec}</ul></div></div>` +
+  `<div class="mcard-ft"><div class="flex gap-1.5">${tail}` +
+  `<button type="button" class="btn btn-sm btn-primary">购买</button>` +
+  `<button type="button" class="btn btn-sm btn-ghost">赠送</button></div></div></article>`;
+
+test('可购买卡片：字段与时间窗解析', () => {
+  const html = `<main>${hxptBuyableCard('国庆遇上中秋', '188,888 魔力', '+0.02%',
+    hxptCard('销售截止', '2027/10/4'))}</main>`;
+  const medals = bg.extractMedalsFromHxptCards(html);
+  assertEqual(medals.length, 1);
+  const m = medals[0];
+  assertEqual(m.name, '国庆遇上中秋');
+  assertEqual(m.price, '188,888 魔力');
+  assertEqual(m.bonus, '+0.02%');
+  assertEqual(m.duration, '360 天');
+  assertEqual(m.stock, '不限');
+  assertEqual(m.timeRange, '不限 ~ 2027/10/4');
+});
+
+test('「仅授予」「佩戴」不是可购买：分别用 span 与无购买按钮表示', () => {
+  const granted = `<article class="mcard"><div class="mcard-ft"><div class="flex gap-1.5">` +
+    `<span class="btn btn-sm cursor-default opacity-60">仅授予</span>` +
+    `<button type="button" class="btn btn-sm btn-ghost">赠送</button></div></div>` +
+    `<ul class="spec"><li><span>加成</span><b>+5.00%</b></li></ul></article>`;
+  const owned = `<article class="mcard"><div class="mcard-ft">` +
+    `<button type="button" class="btn btn-sm btn-primary">佩戴</button>` +
+    `<button type="button" class="btn btn-sm btn-ghost">赠送</button></div></article>`;
+  assertEqual(bg.extractMedalsFromHxptCards(granted + owned).length, 0,
+    '仅授予是 span、佩戴非购买，都不该上报');
+});
+
+test('剩余库存列名变体与非卖品价格', () => {
+  const html = `<article class="mcard"><div class="mcard-top"><h3>开站纪念勋章</h3></div>` +
+    `<div class="mcard-ft"><button type="button" class="btn btn-primary">購買</button></div>` +
+    `<ul class="spec">${hxptCard('勋章价格', '非卖品')}${hxptCard('剩余库存', '100')}${hxptCard('加成', '+10.00%')}</ul></article>`;
+  const [m] = bg.extractMedalsFromHxptCards(html);
+  assertEqual(m.stock, '100');
+  assertEqual(m.bonus, '+10.00%');
+  assertEqual(bg.parsePriceNumber(m.price), null, '非卖品不该被当成 0 价');
+});
+
+test('没有 mcard 特征的页面返回空数组（不抢其他布局）', () => {
+  assertEqual(bg.extractMedalsFromHxptCards('<div class="medal-detail-item"><span>加成:</span><strong>1%</strong></div>').length, 0);
+  assertEqual(bg.extractMedalsFromHxptCards('').length, 0);
+  assertEqual(bg.extractMedalsFromHxptCards(null).length, 0);
+});
+
+console.log('\n  ▶ extractRenderedHourlyMagic - 渲染型时魔与余额');
+
+const renderedSpark = `<main><div class="pgstats"><div><div class="k">当前余额</div><div class="v">3,059,072</div></div>` +
+  `<div><div class="k">近期收入</div><div class="v">38,810</div></div>` +
+  `<div><div class="k">预计时收益</div><div class="v">+102</div></div></div>` +
+  `<div class="pghd"><span class="pill">做种数 65</span></div></main>`;
+
+test('预计时收益与当前余额都从渲染后的统计区取', () => {
+  const h = bg.extractRenderedHourlyMagic(renderedSpark);
+  assertEqual(h.baseHourly, 102);
+  assertEqual(h.totalHourly, 102);
+  assertEqual(h.balance, 3059072);
+  assertEqual(h.medalBase, null, '该站不区分勋章加成基数');
+  assertEqual(h.source, 'render');
+});
+
+test('只有 i18n 标签、没有数值时返回 null', () => {
+  assertEqual(bg.extractRenderedHourlyMagic('{"hourly":"预计时收益","balance":"当前余额"}'), null);
+  assertEqual(bg.extractRenderedHourlyMagic(''), null);
+  assertEqual(bg.extractRenderedHourlyMagic(null), null);
+});
+
+test('渲染型时魔参与回本计算时标记为估算', () => {
+  const h = bg.extractRenderedHourlyMagic(renderedSpark);
+  const pb = bg.computeMedalPayback({ bonus: '+5.00%', price: '188,888 魔力' }, h);
+  assertEqual(pb.base, 102);
+  assertEqual(pb.estimated, true);
+  assertEqual(pb.canPayback, false);
+});
+
+testAsync('好学时魔走渲染兜底：静态 mybonus.php 取不到才开后台标签', async () => {
+  chrome.reset();
+  const savedFetch = global.fetch;
+  const asked = [];
+  global.fetch = (url) => {
+    asked.push(url);
+    return Promise.resolve({ ok: true, status: 200, text: () => Promise.resolve('<p>404</p>') });
+  };
+  chrome.scripting._execScriptResult = [{ result: renderedSpark }];
+
+  const promise = bg.fetchHourlyMagic('https://www.hxpt.org/medals', [{ name: 'c', value: '1' }], () => {});
+  await new Promise((r) => setTimeout(r, 10));
+  const tab = chrome._createdTabs[chrome._createdTabs.length - 1];
+  assert(tab, '应创建后台标签渲染 /my-spark');
+  assertEqual(tab.url, 'https://www.hxpt.org/my-spark');
+  chrome.tabs.onUpdated.emit('event', tab.id, { status: 'complete' });
+
+  const hourly = await promise;
+  assertEqual(asked.length, 2, '先试两套静态地址再渲染');
+  assertEqual(hourly.baseHourly, 102);
+  assertEqual(hourly.source, 'render');
+  assert(chrome.tabs._removedTabs.includes(tab.id), '渲染完必须关标签');
+  global.fetch = savedFetch;
+});
+
+testAsync('非渲染型站点不会开后台标签', async () => {
+  chrome.reset();
+  const savedFetch = global.fetch;
+  global.fetch = () => Promise.resolve({ ok: true, status: 200, text: () => Promise.resolve('<p>无表</p>') });
+  const hourly = await bg.fetchHourlyMagic('https://carpt.net/medal.php', [{ name: 'c', value: '1' }], () => {});
+  assertEqual(hourly, null);
+  assertEqual(chrome._createdTabs.length, 0, 'carpt 不该触发渲染兜底');
+  global.fetch = savedFetch;
+});
+
+testAsync('渲染型余额只在站点原本没有余额时补上', async () => {
+  chrome.reset();
+  const savedFetch = global.fetch;
+  global.fetch = () => Promise.resolve({ ok: true, status: 200, text: () => Promise.resolve(renderedSpark) });
+  chrome.scripting._execScriptResult = [{ result: renderedSpark }];
+
+  const promise = bg.withHourlyMagic(
+    { medals: [{ name: '勋章A', price: '1,000', bonus: '+5%' }], balance: null, pageHtmls: [], pageCount: 1 },
+    'https://www.hxpt.org/medals', [{ name: 'c', value: '1' }], () => {},
+  );
+  await new Promise((r) => setTimeout(r, 10));
+  const tab = chrome._createdTabs[chrome._createdTabs.length - 1];
+  chrome.tabs.onUpdated.emit('event', tab.id, { status: 'complete' });
+  const scanned = await promise;
+
+  assertEqual(scanned.balance, 3059072, '好学勋章页没有余额，应由时魔页补上');
+  assertEqual(scanned.medals[0].payback.estimated, true);
+  global.fetch = savedFetch;
+});
+
+testAsync('已有余额时不被渲染值覆盖', async () => {
+  chrome.reset();
+  const savedFetch = global.fetch;
+  global.fetch = () => Promise.resolve({ ok: true, status: 200, text: () => Promise.resolve(renderedSpark) });
+  chrome.scripting._execScriptResult = [{ result: renderedSpark }];
+
+  const promise = bg.withHourlyMagic(
+    { medals: [{ name: '勋章A', price: '1,000', bonus: '+5%' }], balance: 5, pageHtmls: [], pageCount: 1 },
+    'https://www.hxpt.org/medals', [{ name: 'c', value: '1' }], () => {},
+  );
+  await new Promise((r) => setTimeout(r, 10));
+  const tab = chrome._createdTabs[chrome._createdTabs.length - 1];
+  chrome.tabs.onUpdated.emit('event', tab.id, { status: 'complete' });
+  const scanned = await promise;
+
+  assertEqual(scanned.balance, 5, '勋章页已取到余额就不该被覆盖');
+  assertEqual(scanned.hourly.baseHourly, 102);
+  global.fetch = savedFetch;
+});
+
+test('内置站点表指向好学新路径 /medals', () => {
+  const src = require('fs').readFileSync(require('path').join(__dirname, '../../background.js'), 'utf8');
+  assert(src.includes('"hxpt.org|https://www.hxpt.org/medals"'), 'DEFAULT_SITES 里好学应已是 /medals');
+  assert(!src.includes('hxpt.org/medal.php'), '不应残留 404 的 medal.php');
+});
+
+// ============================================================
 // 汇总（先执行异步用例，再统一判定）
 // ============================================================
 (async () => {

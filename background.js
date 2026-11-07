@@ -127,6 +127,10 @@ const extractMedalsFromHtml = (html) => {
     // zmpt.cc 新版 CSS Modules 布局（经 SPA 渲染后的 DOM）
     const zmptNewMedals = extractMedalsFromZmptNew(html);
     if (zmptNewMedals.length > 0) return zmptNewMedals;
+
+    // 好学 /medals 的 mcard 卡片布局（Next.js 服务端直出，旧 medal.php 已 404）
+    const hxptMedals = extractMedalsFromHxptCards(html);
+    if (hxptMedals.length > 0) return hxptMedals;
   }
 
   return medals;
@@ -291,7 +295,8 @@ const extractMedalsFromZmpt = async (siteUrl, _cookies) => {
                 const mount =
                   document.getElementById("vite-app") ||
                   document.getElementById("root") ||
-                  document.getElementById("app");
+                  document.getElementById("app") ||
+                  document.querySelector("main");
                 const mountHtml = mount ? mount.innerHTML : "";
                 return mountHtml.trim().length > 200 ? mountHtml : "";
               },
@@ -1166,6 +1171,47 @@ const parsePriceNumber = (price) => {
   return isNaN(num) ? null : num;
 };
 
+// ===== 好学（hxpt.org）/medals 的 mcard 卡片布局 =====
+// 结构：article.mcard > h3 名称 + p.mcard-desc 描述 + ul.spec 的
+// <li><span>标签</span><b>值</b></li>，按钮区在 div.mcard-ft。
+// 可购买与否由按钮区形态区分：「购买」是 button.btn-primary，
+// 「仅授予」「已领取」是 span（cursor-default opacity-60），「佩戴」是已获得，
+// 「赠送」「详情」任何状态都在，因此只认文本恰为 购买/購買 的 button
+const extractMedalsFromHxptCards = (html) => {
+  if (!html || !html.includes('class="mcard"') || !html.includes("mcard-ft")) return [];
+
+  const medals = [];
+  for (const card of html.split(/<article\s+class="mcard"/).slice(1)) {
+    const foot = card.match(/<div class="mcard-ft[\s\S]*/);
+    if (!foot) continue;
+    const buyable = [...foot[0].matchAll(/<button[^>]*>([\s\S]*?)<\/button>/g)].some(
+      (b) => ["购买", "購買"].includes(b[1].replace(/<[^>]*>|<!--[\s\S]*?-->/g, "").trim()),
+    );
+    if (!buyable) continue;
+
+    const spec = {};
+    const specRe = /<li><span>([^<]{1,12})<\/span><b[^>]*>([^<]*)<\/b><\/li>/g;
+    let field;
+    while ((field = specRe.exec(card)) !== null) {
+      spec[field[1].trim()] = field[2].trim();
+    }
+
+    const name = (card.match(/<h3[^>]*>([^<]+)<\/h3>/) || [])[1];
+    const saleEnd = spec["销售截止"] || spec["銷售截止"];
+    medals.push({
+      name: (name || "未知勋章").trim(),
+      price: spec["勋章价格"] || spec["價格"] || spec["价格"] || "",
+      duration: spec["有效期"] || "",
+      bonus: spec["加成"] || "",
+      stock: spec["剩余库存"] || spec["库存"] || "",
+      // 该站只给截止日期，没有区间；缺失即不限
+      timeRange: saleEnd ? `不限 ~ ${saleEnd}` : "不限",
+      medalId: "",
+    });
+  }
+  return medals;
+};
+
 // ===== 时魔（每小时做种魔力值）与勋章加成回本 =====
 
 // 勋章页 → 时魔页候选：魔力值明细与 medal.php 同级，所以只取 origin 再拼接
@@ -1309,6 +1355,34 @@ const computeMedalPayback = (medal, hourly, windowHours = 24) => {
   };
 };
 
+// 少数站点（好学，Next.js）把魔力统计放在自己的页面里，且数值由前端填充：
+// 静态 HTML 只有 i18n 标签文案，必须用后台标签渲染后再读
+const RENDER_HOURLY_PAGES = [{ host: "hxpt.org", path: "/my-spark" }];
+
+// 渲染后的统计区形态：<div class="k">预计时收益</div><div class="v">+102</div>
+// 顺带取到余额（<div class="k">当前余额</div><div class="v">3,059,072</div>）——
+// 该站勋章页没有余额，前端「魔力不足」筛选此前一直拿不到数
+const extractRenderedHourlyMagic = (html) => {
+  if (!html) return null;
+  const pick = (label) => {
+    const m = html.match(
+      new RegExp(`${label}<\\/div>\\s*<div[^>]*>\\s*([+-]?[\\d,.]+)`),
+    );
+    return m ? parseCellNumber(m[1]) : null;
+  };
+  const hourly = pick("预计时收益");
+  if (hourly == null || hourly < 0) return null;
+  return {
+    // 该站不区分「勋章加成基数」，只能用总时魔估算，computeMedalPayback 会标 estimated
+    medalBase: null,
+    medalCoef: null,
+    baseHourly: hourly,
+    totalHourly: hourly,
+    balance: pick("当前余额"),
+    source: "render",
+  };
+};
+
 // 时魔页只是附属数据源：请求失败、未登录、结构不同一律降级为 null，
 // 绝不能因为它让整站的勋章列表消失。候选地址逐个尝试，命中即停。
 async function fetchHourlyMagic(siteUrl, cookies, sendLog) {
@@ -1327,6 +1401,22 @@ async function fetchHourlyMagic(siteUrl, cookies, sendLog) {
       continue;
     }
   }
+
+  const renderPage = RENDER_HOURLY_PAGES.find((p) => siteUrl.includes(p.host));
+  if (renderPage) {
+    try {
+      const rendered = await extractMedalsFromZmpt(
+        new URL(siteUrl).origin + renderPage.path,
+        cookies,
+      );
+      const hourly = extractRenderedHourlyMagic(rendered);
+      if (hourly) return hourly;
+      urls.push(renderPage.path);
+    } catch {
+      /* 渲染失败按取不到处理 */
+    }
+  }
+
   // 时魔是附属数据：拿不到只作提示，不用错误级日志打扰（勋章结果本身完好）
   sendLog(`时魔不可用：${urls.join(" 、 ")}`);
   return null;
@@ -1338,6 +1428,11 @@ async function withHourlyMagic(scanned, siteUrl, cookies, sendLog) {
   if (!scanned.medals || scanned.medals.length === 0) return scanned;
   const hourly = await fetchHourlyMagic(siteUrl, cookies, sendLog);
   scanned.hourly = hourly;
+  // 渲染型时魔页顺带取到余额时补上：这类站点的勋章页本身没有余额，
+  // 否则前端「魔力不足」筛选对该站永远无效
+  if (hourly && scanned.balance == null && hourly.balance != null) {
+    scanned.balance = hourly.balance;
+  }
   if (hourly) {
     for (const medal of scanned.medals) medal.payback = computeMedalPayback(medal, hourly);
   }
@@ -1375,7 +1470,7 @@ const DEFAULT_SITES = [
   "hhanclub.net|https://hhanclub.net/medal.php",
   "hitpt.com|https://www.hitpt.com/medal.php",
   "htpt.cc (buycenter)|https://www.htpt.cc/buycenter.php",
-  "hxpt.org|https://www.hxpt.org/medal.php",
+  "hxpt.org|https://www.hxpt.org/medals",
   "icc2022.com|https://www.icc2022.com/medal.php",
   "kamept.com|https://kamept.com/medal.php",
   "kufei.org|https://kufei.org/medal.php",
@@ -2269,6 +2364,9 @@ if (typeof module !== "undefined" && module.exports) {
     extractMedalsFromSiqi,
     extractMedalsFromNovaCards,
     extractMedalsFromZmptNew,
+    extractMedalsFromHxptCards,
+    extractRenderedHourlyMagic,
+    RENDER_HOURLY_PAGES,
     extractMagicBalance,
     parsePriceNumber,
     buildBonusUrls,

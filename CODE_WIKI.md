@@ -81,7 +81,7 @@
 6. **SPA 回退**：常规提取为 0 且页面为 SPA 壳（`isSpaShell()`）时，用后台标签页渲染页面后再次提取
 7. **API 直抓分支**：sunnypt.top 等「页面空壳 + 独立 JSON API」站点，走会话 JWT → API 直抓（不开标签页）
 8. **分页处理**：`collectPageNumbers()` 收集分页条全部页码（含省略号折叠页，翻页逐步发现），工作流式抓取，上限 20 页
-9. **时魔回本**：该站存在可购买勋章时，`withHourlyMagic()` 再多请求一次魔力值明细页（`mybonus.php`，解析不到则试 `mybonus_new.php`），`extractHourlyMagic()` 取出「勋章加成」行的基础魔力作乘数基数，`computeMedalPayback()` 为每条勋章算 24 小时回本结论（前端以「天」显示）；失败降级为 `hourly = null`
+9. **时魔回本**：该站存在可购买勋章时，`withHourlyMagic()` 再多请求一次魔力值明细页（`mybonus.php`，解析不到则试 `mybonus_new.php`），`extractHourlyMagic()` 取出「勋章加成」行的基础魔力作乘数基数，`computeMedalPayback()` 为每条勋章算 24 小时回本结论（前端以「天」显示）；静态地址都取不到且站点在 `RENDER_HOURLY_PAGES` 里时改用后台标签渲染读取（好学）；失败降级为 `hourly = null`
 10. **结果回传**：扫描结果通过 `chrome.runtime.sendMessage` 回传给 `options.js`，勋章带页码与分页 URL 打标
 11. **结果展示**：`options.js` 更新 UI，显示站点名称、URL、时魔和勋章列表（含回本时长），勋章链接跳转到其所在分页
 
@@ -124,6 +124,8 @@ Service Worker，负责核心的勋章扫描逻辑。不直接操作 DOM，通�
 | `buildBonusUrls(siteUrl)` | 勋章页 URL → 时魔页候选（`mybonus.php`、`mybonus_new.php`；只取 origin） |
 | `extractHourlyMagic(html)` | 解析时魔拆解表：按列名前缀定位基础/获得/系数列，取「勋章加成」行的基础魔力；无表时回退正文 |
 | `computeMedalPayback(medal, hourly, windowHours)` | 回本计算：每小时增量魔力、窗口内增量、回本时长与能否回本；基数缺失时退回总时魔并标 `estimated` |
+| `extractMedalsFromHxptCards(html)` | 好学 `/medals` 卡片解析（`article.mcard` + `ul.spec` 标签值 + `button` 购买判定） |
+| `extractRenderedHourlyMagic(html)` | 渲染型魔力统计解析（好学「预计时收益」/「当前余额」） |
 | `withHourlyMagic(scanned, siteUrl, cookies, sendLog)` | 有可购买勋章时才请求时魔页并为每条勋章附加 `payback`，失败降级为 `hourly = null` |
 | `scanSunnyptBounty(siteUrl, cookies, sendLog)` | sunnypt.top API 直抓：会话取 JWT → medals/list + medals/my + seed-bonus |
 | `parseSunnyptMedals(listData, myData, nowSec)` | sunnypt 勋章映射与过滤（售卖窗内 + 未拥有 + 有库存） |

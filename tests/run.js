@@ -25,19 +25,27 @@ console.log('');
 
 let allPassed = true;
 
+// 每个测试子进程的硬上限。原先写死 30 秒：机器繁忙时同一套用例实测要 50 秒，
+// 子进程被 kill 后只留一个红字、既不报用例结果也不说原因，容易被误读成测试失败。
+// 现按最慢用例放宽到 3 分钟，且被强制终止时明确区分「超时」与「断言失败」。
+const SECTION_TIMEOUT_MS = Number(process.env.PT_TEST_TIMEOUT) || 180000;
+
 for (const file of testFiles) {
   const result = spawnSync('node', [file], {
     cwd: ROOT,
     encoding: 'utf-8',
     stdio: ['pipe', 'pipe', 'pipe'],
-    timeout: 30000,
+    timeout: SECTION_TIMEOUT_MS,
     env: { ...process.env }
   });
 
   process.stdout.write(result.stdout);
   if (result.stderr) process.stderr.write(result.stderr);
 
-  if (result.status !== 0 || result.error) {
+  if (result.error || result.signal) {
+    console.log(`  ❌ ${file} 未正常结束（${result.error ? result.error.message : 'signal ' + result.signal}，上限 ${SECTION_TIMEOUT_MS / 1000}s）`);
+    allPassed = false;
+  } else if (result.status !== 0) {
     allPassed = false;
   }
 }

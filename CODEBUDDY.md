@@ -5,7 +5,7 @@ Chrome MV3 扩展：扫描 69 个内置 PT 站点的勋章页，找出**当前�
 ## 跑起来
 
 ```bash
-npm test                 # 单元 + DOM + 集成（250 项）
+npm test                 # 单元 + DOM + 集成（262 项）
 npm run check            # 静态检查流水线（完整性/manifest/语法/ESLint/跨文件引用）
 npm run lint             # 仅 ESLint（单引号、分号、no-undef=error）
 node scripts/analyze-html.js PT_Debug_*.json   # 分析导出的调试包
@@ -42,9 +42,10 @@ MV3 Service Worker + 原生 JS（无构建、无框架、无依赖打包）；op
 
 ## 当前状态与下一步
 
-- v1.15（manifest 版本已对齐）：时魔与勋章加成回本估算——`mybonus.php` 拆解表按列名前缀定位，乘数基数取「勋章加成」行的基础魔力（不含低保），250 项测试全绿（+34 解析计算 +7 前端展示）。
+- v1.15（manifest 版本已对齐）：时魔与勋章加成回本估算——`mybonus.php` 拆解表按列名前缀定位，乘数基数取「勋章加成」行的基础魔力（不含低保），262 项测试全绿（+46 解析计算 +7 前端展示）。
 - v1.14：nova-medal-card 布局 + medal-item 送礼按钮顺序修复 + 表格名称 h1 修复，209 项测试全绿。
-- `npm run check`：26 通过 / 0 警告 / 0 错误。引号规则按文件分治——`background.js` 双引号、`options/**` 单引号。
+- `npm run check`：26 通过 / 0 警告 / 0 错误。引号规则按文件分治——`background.js` 双引号、`options/**` 单引号。`npm run lint` 只覆盖这两个交付文件，`tests/`、`scripts/` 不在其配置 env 内（Node 全局量会报 no-undef），不要把它们塞进 lint 命令。
+- 测试子进程超时默认 180 秒（`PT_TEST_TIMEOUT` 可覆盖）；机器繁忙时整套 background 用例实测约 50 秒，别把超时当成断言失败。
 - 待办：用户重载扩展后对三个 API 站点做线上验证；已按 2026-11-04 存活探测清理死站点并迁移域名（`zrpt.cc`→`naturept.top`、`pt.gtkpw.xyz`→`pt.gtk.pw`），剩余待核实：`icc2022.com` / `ptvicomo.net` 证书异常、`yhpp.cc` 超时。
 - 注意：扫描使用的是用户保存的 `sites` 配置，`DEFAULT_SITES` 仅用于「检测已登录站点」；域名迁移后需同步更新选项页里的已保存站点列表。
 - 回归测试需自备根目录 `PT_Debug_*.json`（已 gitignore，当前快照来源为 `PT_Debug_2026-11-04.json`，130 页 / 131 枚），缺失时自动跳过。
