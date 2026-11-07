@@ -1519,7 +1519,6 @@ const DEFAULT_SITES = [
   "wintersakura.net|https://wintersakura.net/medal.php",
   "wukongwendao.top|https://wukongwendao.top/medal.php",
   "xingtan.one|https://xingtan.one/medal.php",
-  "yhpp.cc|https://www.yhpp.cc/medal.php",
   "yemapt.org|https://www.yemapt.org/#/user/growth?tab=badge",
   "zmpt.cc|https://zmpt.cc/medal.php",
 ];

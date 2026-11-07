@@ -1,6 +1,6 @@
 # PT 勋章扫描器 — Agent 指南
 
-Chrome MV3 扩展：扫描 68 个内置 PT 站点的勋章页，找出**当前真正可购买**的勋章。
+Chrome MV3 扩展：扫描 67 个内置 PT 站点的勋章页，找出**当前真正可购买**的勋章。
 
 ## 跑起来
 
@@ -48,6 +48,6 @@ MV3 Service Worker + 原生 JS（无构建、无框架、无依赖打包）；op
 - v1.14：nova-medal-card 布局 + medal-item 送礼按钮顺序修复 + 表格名称 h1 修复，209 项测试全绿。
 - `npm run check`：26 通过 / 0 警告 / 0 错误。引号规则按文件分治——`background.js` 双引号、`options/**` 单引号。`npm run lint` 只覆盖这两个交付文件，`tests/`、`scripts/` 不在其配置 env 内（Node 全局量会报 no-undef），不要把它们塞进 lint 命令。
 - 测试子进程超时默认 180 秒（`PT_TEST_TIMEOUT` 可覆盖）；机器繁忙时整套 background 用例实测约 50 秒，别把超时当成断言失败。
-- 待办：用户重载扩展后对三个 API 站点做线上验证。站点表已按 2026-11-07 全量复核（内置 68 站与油猴脚本合并去重成 112 个地址，逐个 DNS + HTTP + 正文特征）：无新增死站，6 个 ENOTFOUND 域名（joyhd / ecust.pp.ua / sanpro.pw / a4apt / pt.541542 / nex.jivon）维持移除，`wukongwendao.top` 仍在世；`greatposterwall` / `hdpt.xyz` 的移除判断正确，但两者 HTTP 都回 200；`icc2022.com` / `ptvicomo.net` 本机 TLS 握手被中断（连首页都取不到响应），按用户确认停运已移除。仍待核实：`yhpp.cc` 301 重定向死循环。
+- 待办：用户重载扩展后对三个 API 站点做线上验证。站点表已按 2026-11-07 全量复核（内置 67 站与油猴脚本合并去重成 112 个地址，逐个 DNS + HTTP + 正文特征）：无新增死站，6 个 ENOTFOUND 域名（joyhd / ecust.pp.ua / sanpro.pw / a4apt / pt.541542 / nex.jivon）维持移除，`wukongwendao.top` 仍在世；`greatposterwall` / `hdpt.xyz` 的移除判断正确，但两者 HTTP 都回 200；`icc2022.com` / `ptvicomo.net` 本机 TLS 握手被中断（连首页都取不到响应），按用户确认停运已移除；`yhpp.cc` 的 `medal.php` 301 重定向指向自身（无限循环），按用户确认停运一并移除。
 - 注意：扫描使用的是用户保存的 `sites` 配置，`DEFAULT_SITES` 仅用于「检测已登录站点」；域名迁移后需同步更新选项页里的已保存站点列表。
 - 回归测试需自备根目录 `PT_Debug_*.json`（已 gitignore，当前快照来源为 `PT_Debug_2026-11-04.json`，130 页 / 18 个有勋章页 / 133 枚）。快照必须用 `extractMedalsForSite()` 生成与比对：URL 门控的 buycenter 布局若只走 `extractMedalsFromHtml()` 会被记成 0 枚（海棠实测 2 枚），缺失时自动跳过。
