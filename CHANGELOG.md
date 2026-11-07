@@ -19,8 +19,8 @@
 - `greatposterwall.com/medal.php` 返回 200 但正文是站内「页面不存在」（软 404），`hdpt.xyz` 返回 200 但已是域名停放待售页——v1.14 的移除判断正确，但只看状态码会误判，判定一律以正文特征为准
 - `wukongwendao.top` 仍在世：域名可解析，页面返回反爬 JS 挑战（`?ch=1&js=<JWT>`），不属于停站
 - 403 / 522 / 连接重置的一律保留：那是 Cloudflare 拦匿名请求或本机代理噪声（同一批里 `carpt.net` 也会 ECONNRESET，而该站确定在位）
-- 仍待核实：`icc2022.com` / `ptvicomo.net` TLS 握手被服务器中断、`yhpp.cc` 301 重定向死循环
-- 内置站点数量不变（69）
+- `icc2022.com` / `ptvicomo.net` 本机 TLS 握手被服务器中断（`schannel: server closed abruptly`，连首页都取不到响应），按用户确认停运处理，从 `DEFAULT_SITES` 移除（**内置站点 69 → 68**）
+- 仍待核实：`yhpp.cc` 301 重定向死循环
 
 ### 文档
 

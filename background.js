@@ -1479,7 +1479,6 @@ const DEFAULT_SITES = [
   "hitpt.com|https://www.hitpt.com/medal.php",
   "htpt.cc (buycenter)|https://www.htpt.cc/buycenter.php",
   "hxpt.org|https://www.hxpt.org/medals",
-  "icc2022.com|https://www.icc2022.com/medal.php",
   "kamept.com|https://kamept.com/medal.php",
   "kufei.org|https://kufei.org/medal.php",
   "lemonhd.net|https://lemonhd.net/medal.php",
