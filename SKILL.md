@@ -56,7 +56,7 @@
 1. **每次改动后立即验证**
    ```bash
    npm run check  # 26 项静态检查
-   npm test       # 262 项自动化测试
+   npm test       # 263 项自动化测试
    ```
 
 2. **测试先行**
@@ -99,10 +99,9 @@
 // ✅ 好：自动检测布局
 const layout = getColumnLayout(tds.length);  // 支持 9/10 列
 
-// ✅ 好：特殊站点单独处理
-if (url.includes('buycenter.php')) {
-  medals = extractMedalsFromBuyCenter(html);
-}
+// ✅ 好：特殊站点单独处理，但「按 URL 分流」收敛到一个入口，运行时与回归基线共用；
+// 分散判断会让 URL 门控的布局在基线里一律被记成 0 枚（海棠 buycenter 实测 2 枚）
+medals = extractMedalsForSite(html, url);
 ```
 
 ### 2. 纯正则优于 DOM 解析

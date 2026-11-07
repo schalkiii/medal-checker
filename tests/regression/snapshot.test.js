@@ -46,7 +46,7 @@ const failures = [];
 for (const page of pages) {
   const url = page.url;
   const domain = new URL(url).hostname;
-  const medals = bg.extractMedalsFromHtml(page.html);
+  const medals = bg.extractMedalsForSite(page.html, url);
   const key = url;
 
   const expected = snapshot.sites.find(s => s.url === url);

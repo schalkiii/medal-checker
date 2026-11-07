@@ -178,6 +178,14 @@ const extractMedalsFromBuyCenter = (html) => {
   return medals;
 };
 
+// 站点级提取入口：buycenter.php 是独立列序，由 URL 决定走哪套解析。
+// 回归快照也必须走这里——否则 URL 门控的布局会被一律记成 0 枚
+// （海棠 buycenter 实测 2 枚，旧快照记为 0，让这条路径失去回归保护）。
+const extractMedalsForSite = (html, siteUrl = "") =>
+  siteUrl.includes("buycenter.php")
+    ? extractMedalsFromBuyCenter(html)
+    : extractMedalsFromHtml(html);
+
 const extractMedalsFromPterclub = (html) => {
   const medals = [];
   const medalRegex =
@@ -1917,10 +1925,7 @@ async function scanSiteMedals(siteName, siteUrl, cookies, sendLog) {
   pageHtmls[0].html = html;
 
   const isPterclub = html.includes('name="medalchosen"');
-  const isBuyCenter = siteUrl.includes("buycenter.php");
-  let medals = isBuyCenter
-    ? extractMedalsFromBuyCenter(html)
-    : extractMedalsFromHtml(html);
+  let medals = extractMedalsForSite(html, siteUrl);
 
   // SPA 壳页面（zmpt.cc 的 Vite 应用、yemapt.org 的 umi 应用）：
   // 静态 HTML 只有一个空挂载点，必须在后台标签页渲染后再提取
@@ -1929,9 +1934,7 @@ async function scanSiteMedals(siteName, siteUrl, cookies, sendLog) {
     const renderedHtml = await extractMedalsFromZmpt(siteUrl, cookies);
     if (renderedHtml) {
       pageHtmls[0].html = renderedHtml;
-      medals = isBuyCenter
-        ? extractMedalsFromBuyCenter(renderedHtml)
-        : extractMedalsFromHtml(renderedHtml);
+      medals = extractMedalsForSite(renderedHtml, siteUrl);
     }
   }
 
@@ -2356,6 +2359,7 @@ if (typeof module !== "undefined" && module.exports) {
     extractTdText,
     getColumnLayout,
     extractMedalsFromBuyCenter,
+    extractMedalsForSite,
     extractMedalsFromCards,
     extractMedalsFromPterclub,
     extractMedalsFromZmpt,

@@ -38,7 +38,7 @@ for (const p of pages) {
   const domain = fromUrl.hostname;
   const pathName = fromUrl.pathname;
 
-  const medals = bg.extractMedalsFromHtml(p.html);
+  const medals = bg.extractMedalsForSite(p.html, url);
 
   const entry = {
     url,

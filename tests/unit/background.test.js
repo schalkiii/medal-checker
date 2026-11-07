@@ -497,6 +497,16 @@ test('buycenter空HTML返回空数组', () => {
   assertEqual(medals.length, 0);
 });
 
+test('extractMedalsForSite: 按 URL 分流 buycenter 布局', () => {
+  const html = `<table>
+    <tr><td></td><td>《测试勋章》 ⠀测试描述</td><td>100</td><td>1</td><td>50,000</td>
+      <td><input type="button" value="交换&nbsp;/&nbsp;赠送" onclick="submit_karma_gift(1)"></td></tr>
+  </table>`;
+  assertEqual(bg.extractMedalsForSite(html, 'https://www.htpt.cc/buycenter.php').length, 1);
+  // 同一段 HTML 走普通表格解析取不到（列序不同），说明分流确实生效
+  assertEqual(bg.extractMedalsForSite(html, 'https://www.htpt.cc/medal.php').length, 0);
+});
+
 // ============================================================
 // pterclub 自定义表格布局
 // ============================================================

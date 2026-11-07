@@ -116,6 +116,7 @@ Service Worker，负责核心的勋章扫描逻辑。不直接操作 DOM，通�
 | `getCookieDomain(url)` | 从 URL 中提取 Cookie 适用的域名（取最后两级） |
 | `fetchWithTimeout(url, options, timeout)` | 带超时控制的 `fetch` 封装，默认 10 秒超时，使用 `AbortController` |
 | `extractMedalsFromHtml(html)` | 多布局提取入口：表格解析 + 卡片/medal-item/hhanclub/si-qi/nova/zmpt 新版回退链 |
+| `extractMedalsForSite(html, siteUrl)` | 站点级入口：`buycenter.php` 走独立列序，其余交给 `extractMedalsFromHtml`；运行时与回归基线共用同一入口 |
 | `extractMedalsFromCards(html)` | 通用卡片解析：正则匹配 `medal-card` 容器 + buy 类/文本双重按钮判定 + 8 种字段模式 |
 | `extractMedalsFromNovaCards(html)` | nova-medal-card 布局解析（`article.nova-medal-card` + `dt`/`dd` + `nova-medal-sale`） |
 | `isSpaShell(html)` | SPA 壳检测（外部脚本 + 几乎无可见文本） |

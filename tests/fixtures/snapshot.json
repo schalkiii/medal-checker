@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-04T15:06:59.510Z",
+  "generatedAt": "2026-11-07T03:12:23.079Z",
   "sourceFile": "PT_Debug_2026-11-04.json",
   "totalPages": 130,
   "sites": [
@@ -1231,8 +1231,25 @@
       "domain": "www.htpt.cc",
       "path": "/buycenter.php",
       "htmlBytes": 27862,
-      "medalCount": 0,
-      "medals": []
+      "medalCount": 2,
+      "medals": [
+        {
+          "name": "小肥羊徽章 ▶ 我是青青草原上最棒的小羊！n(*≧▽≦*)n (可购买时间: 2022-02-22 22:22:22~2030-10-04 00:00:00) 请输入 用户名",
+          "price": "10000",
+          "duration": "",
+          "stock": "784",
+          "timeRange": "2022-02-22 22:22:22~2030-10-04 00:00:00",
+          "medalId": ""
+        },
+        {
+          "name": "介个就是爱情 ▶ 落花有意随流水，流水无情恋落花。 (可购买时间: 2021-07-30 18:52:57~2030-10-04 00:00:00) 请输入 用户名",
+          "price": "10000",
+          "duration": "",
+          "stock": "989",
+          "timeRange": "2021-07-30 18:52:57~2030-10-04 00:00:00",
+          "medalId": ""
+        }
+      ]
     },
     {
       "url": "https://cangbao.ge/medal.php",
@@ -2241,8 +2258,8 @@
     }
   ],
   "summary": {
-    "sitesWithMedals": 17,
-    "totalMedals": 131,
-    "pagesWithoutMedals": 113
+    "sitesWithMedals": 18,
+    "totalMedals": 133,
+    "pagesWithoutMedals": 112
   }
 }
