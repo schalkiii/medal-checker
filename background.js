@@ -1988,7 +1988,7 @@ async function scanSiteMedals(siteName, siteUrl, cookies, sendLog) {
       if (!fetched.has(discovered)) pending.add(discovered);
     }
 
-    const pageMedals = extractMedalsFromHtml(pageHtml);
+    const pageMedals = extractMedalsForSite(pageHtml, pageUrl);
     // 1 索引站点把当前页也链进分页条时，?page=1 会与首页重复：按名称集合
     // 去重，同时翻转索引假设，让后续分页按 1 索引约定显示页码
     if (pageNum === 1 && zeroIndexed && isSameMedalSet(medals, pageMedals)) {
@@ -2165,7 +2165,16 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
       await chrome.storage.local.set({ scanResults: results });
 
       const debugData = { timestamp: Date.now(), dateStr, pages: allPageHtmls };
-      chrome.storage.local.set({ debugData });
+      // 站点多、分页深时调试包会超过 storage.local 默认 10MB 配额（已声明
+      // unlimitedStorage）；仍显式检查 lastError，避免静默丢失排查证据
+      chrome.storage.local.set({ debugData }, () => {
+        if (chrome.runtime.lastError) {
+          sendLog(
+            `调试包保存失败：${chrome.runtime.lastError.message}`,
+            true,
+          );
+        }
+      });
 
       // 差异基准：取「本次扫描之前」最近一次扫描结果，
       // 随 scanResult 消息返回给前端，避免连续多次扫描时把上一次已出现过的勋章再次误标为 NEW。
@@ -2178,7 +2187,11 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
         if (history.length > 60) history.shift();
         chrome.storage.local.set({ scanHistory: history });
 
-        chrome.runtime.sendMessage({ type: "scanResult", data: results, previousResults });
+        try {
+          chrome.runtime.sendMessage({ type: "scanResult", data: results, previousResults });
+        } catch {
+          /* options page may be closed */
+        }
       });
     });
   }
@@ -2255,7 +2268,16 @@ function setupAlarm(scheduleConfig) {
   chrome.alarms.clear(ALARM_NAME, () => {
     if (!scheduleConfig || !scheduleConfig.enabled) return;
 
-    const [hour, minute] = scheduleConfig.time.split(":").map(Number);
+    // 时间来自 storage/选项页，旧版本或手改配置可能是空值/非法值；
+    // 直接参与计算会得到 NaN 延迟并让 alarms.create 抛错
+    const timeMatch = /^(\d{1,2}):(\d{2})$/.exec(
+      String(scheduleConfig.time || ""),
+    );
+    if (!timeMatch) return;
+    const hour = Number(timeMatch[1]);
+    const minute = Number(timeMatch[2]);
+    if (hour > 23 || minute > 59) return;
+
     const now = new Date();
     const scheduled = new Date(now);
     scheduled.setHours(hour, minute, 0, 0);

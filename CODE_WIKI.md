@@ -18,9 +18,9 @@
 | 属性 | 值 |
 |------|-----|
 | 名称 | PT勋章扫描器 |
-| 版本 | 1.14（与 README/CHANGELOG 发布号一致） |
+| 版本 | 1.15（与 manifest/CHANGELOG 发布号一致） |
 | 类型 | Chrome Extension (Manifest V3) |
-| 权限 | `cookies`, `storage`, `activeTab`, `alarms`, `scripting`, `tabs`, `<all_urls>` |
+| 权限 | `cookies`, `storage`, `unlimitedStorage`, `activeTab`, `alarms`, `scripting`, `tabs`, `<all_urls>` |
 | 入口 | `options/options.html` (选项页即主界面) |
 
 ---
@@ -153,7 +153,7 @@ Service Worker 没有 DOMParser，全部用正则解析。该函数是提取入�
 5. 返回 { name, price, duration, bonus, stock, timeRange, medalId } 对象数组；扫描链路再补 page/pageUrl 打标与 `payback`
 ```
 
-#### 扫描历史持久化（L175-L186）
+#### 扫描历史持久化
 
 每次扫描完成后自动保存历史记录：
 
@@ -277,7 +277,7 @@ while (pending.size > 0 && pageCount < MAX_PAGE_FETCHES) {
 
 选项页的前端逻辑，负责 UI 交互、配置管理、消息监听、结果展示和差异对比。
 
-#### 状态管理（L17-L19）
+#### 状态管理
 
 | 变量 | 类型 | 用途 |
 |------|------|------|
@@ -287,14 +287,14 @@ while (pending.size > 0 && pageCount < MAX_PAGE_FETCHES) {
 
 #### 核心函数
 
-| 函数 | 行号 | 职责 |
-|------|------|------|
-| `verifyElements()` | L31-L37 | 验证所有关键 DOM 元素是否存在 |
-| `addLog(message, isError)` | L43-L52 | 向日志区域添加带时间戳的日志条目 |
-| `getMedalFingerprint(siteName, medal)` | L54-L56 | 生成勋章唯一指纹（站点名+勋章名），用于 diff 对比 |
-| `computeDiff(current, previous)` | L58-L79 | 对比两次扫描结果，返回新增勋章集合 |
-| `updateResultDisplay(results)` | L81-L154 | 渲染扫描结果：站点头（含可点击链接）+ 勋章详情列表 |
-| `readFileAsText(file)` | L326-L333 | 使用 FileReader 异步读取文件内容 |
+| 函数 | 职责 |
+|------|------|
+| `verifyElements()` | 验证所有关键 DOM 元素是否存在 |
+| `addLog(message, isError)` | 向日志区域添加带时间戳的日志条目 |
+| `getMedalFingerprint(siteName, medal)` | 生成勋章唯一指纹（站点名+勋章名），用于 diff 对比 |
+| `computeDiff(current, previous)` | 对比两次扫描结果，返回新增勋章集合 |
+| `updateResultDisplay(results)` | 渲染扫描结果：站点头（含可点击链接）+ 勋章详情列表 |
+| `readFileAsText(file)` | 使用 FileReader 异步读取文件内容 |
 
 #### 差异模式（Diff）机制
 
@@ -309,19 +309,21 @@ while (pending.size > 0 && pageCount < MAX_PAGE_FETCHES) {
 
 #### 事件处理
 
-| 事件 | 元素 | 行号 | 行为 |
-|------|------|------|------|
-| `click` | `#clearResultsBtn` | L21-L29 | 清除扫描结果和历史记录（确认后从 storage 删除） |
-| `click` | `#saveBtn` | L164-L178 | 解析文本框内容，保存站点配置到 storage |
-| `click` | `#importBtn` | L180-L183 | 触发文件选择对话框 |
-| `change` | `#fileInput` | L185-L213 | 读取 JSON 文件，解析并导入站点配置 |
-| `click` | `#exportBtn` | L215-L245 | 将当前配置导出为 JSON 文件下载 |
-| `click` | `#scanBtn` | L247-L264 | 触发扫描任务（防重入检查） |
-| `click` | `#openAllBtn` | L266-L288 | 在后台标签页中打开所有有勋章的站点 |
-| `click` | `#diffToggleBtn` | L290-L311 | 切换差异模式，重新渲染结果 |
-| `chrome.runtime.onMessage` | — | L313-L324 | 监听 `scanLog` 和 `scanResult` 消息 |
+| 事件 | 元素 | 行为 |
+|------|------|------|
+| `click` | `#clearResultsBtn` | 清除扫描结果和历史记录（确认后从 storage 删除） |
+| `click` | `#saveBtn` | 解析文本框内容，保存站点配置到 storage |
+| `click` | `#importBtn` | 触发文件选择对话框 |
+| `change` | `#fileInput` | 读取 JSON 文件，解析并导入站点配置 |
+| `click` | `#exportBtn` | 将当前配置导出为 JSON 文件下载 |
+| `click` | `#scanBtn` | 触发扫描任务（防重入检查） |
+| `click` | `#openAllBtn` | 在后台标签页中打开所有有勋章的站点 |
+| `click` | `#diffToggleBtn` | 切换差异模式，重新渲染结果 |
+| `chrome.runtime.onMessage` | — | 监听 `scanLog` 和 `scanResult` 消息 |
 
-#### 初始化流程（L156-L162）
+导入配置时只对裸域名/根路径补 `/medal.php`，已有具体路径（`/medals`、`/buycenter.php`、`mall.php?cid=5`、带 hash 的 SPA 路由）原样保留，保证导出→导入往返一致。
+
+#### 初始化流程
 
 ```
 DOMContentLoaded →

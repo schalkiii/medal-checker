@@ -571,6 +571,28 @@ test('改版之前的历史结果不显示时魔栏', () => {
 });
 
 // ============================================================
+// 导入地址归一化（导出→导入往返）
+// ============================================================
+console.log('\n  ▶ 导入地址归一化');
+
+const { normalizeImportUrl } = require('../../options/options.js');
+
+test('裸域名与根路径补 /medal.php', () => {
+  assertEqual(normalizeImportUrl('https://x.com'), 'https://x.com/medal.php');
+  assertEqual(normalizeImportUrl('https://x.com/'), 'https://x.com/medal.php');
+  assertEqual(normalizeImportUrl('http://x.com'), 'http://x.com/medal.php');
+});
+
+test('非 medal.php 路由原样保留（导出→导入往返一致）', () => {
+  assertEqual(normalizeImportUrl('https://www.hxpt.org/medals'), 'https://www.hxpt.org/medals');
+  assertEqual(normalizeImportUrl('https://rousi.pro/medals'), 'https://rousi.pro/medals');
+  assertEqual(normalizeImportUrl('https://www.htpt.cc/buycenter.php'), 'https://www.htpt.cc/buycenter.php');
+  assertEqual(normalizeImportUrl('https://totheglory.im/mall.php?cid=5'), 'https://totheglory.im/mall.php?cid=5');
+  assertEqual(normalizeImportUrl('https://sunnypt.top/bounty?tab=renown'), 'https://sunnypt.top/bounty?tab=renown');
+  assertEqual(normalizeImportUrl('https://www.yemapt.org/#/consumer/badge'), 'https://www.yemapt.org/#/consumer/badge');
+});
+
+// ============================================================
 // 汇总（等待所有异步测试完成）
 // ============================================================
 Promise.all(pendingTests).then(() => {

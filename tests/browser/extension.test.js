@@ -1,4 +1,12 @@
-const puppeteer = require('puppeteer');
+let puppeteer;
+try {
+  puppeteer = require('puppeteer');
+} catch {
+  // puppeteer 不在 devDependencies 里（体积大、需下载浏览器），
+  // 缺失时明确跳过，避免「文件存在但从未运行」被误认为已有浏览器层覆盖
+  console.log('  ⚠️ 跳过浏览器测试：未安装 puppeteer（npm i -D puppeteer 后可运行）');
+  process.exit(0);
+}
 const path = require('path');
 const fs = require('fs');
 

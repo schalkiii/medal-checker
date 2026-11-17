@@ -1,3 +1,14 @@
+// 导入配置时的地址归一化：只有裸域名/根路径才补 /medal.php。
+// 导出端只剥离 /medal.php，若导入端无条件拼接，/medals、/buycenter.php、
+// mall.php?cid=5、带 hash 的 SPA 路由都会被改成错误地址，导出→导入无法往返。
+function normalizeImportUrl(rawUrl) {
+  const url = String(rawUrl).trim();
+  if (/^https?:\/\/[^/?#]+\/?$/i.test(url)) {
+    return url.replace(/\/+$/, '') + '/medal.php';
+  }
+  return url;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const elements = {
     sitesTextarea: document.getElementById('sites'),
@@ -349,7 +360,7 @@ chrome.storage.local.get(['sites', 'scanResults', 'scanHistory', 'scheduleConfig
           if (!site.name || !site.url) {
             throw new Error('无效的站点格式');
           }
-          const cleanUrl = site.url.replace(/\/+$/, '') + '/medal.php';
+          const cleanUrl = normalizeImportUrl(site.url);
           return `${site.name}|${cleanUrl}`;
         });
 
@@ -797,3 +808,8 @@ function updateScheduleStatus() {
     alert(`致命错误：${error.message}`);
   }
 });
+
+// 供单元测试直接校验导入地址归一化规则；浏览器环境没有 module，不会执行
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { normalizeImportUrl };
+}

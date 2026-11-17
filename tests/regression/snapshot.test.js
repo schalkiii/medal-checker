@@ -69,18 +69,22 @@ for (const page of pages) {
 
   let detailMismatch = false;
   for (let i = 0; i < medals.length; i++) {
-    if (medals[i].name !== expectedMedals[i].name ||
-        medals[i].price !== expectedMedals[i].price ||
-        medals[i].duration !== expectedMedals[i].duration ||
-        medals[i].bonus !== expectedMedals[i].bonus) {
+    // 全字段比对：stock/timeRange/medalId 的解析退化同样属于回归
+    // （缺失字段在快照与实时结果里都归一化为空串再比）
+    const fields = ['name', 'price', 'duration', 'bonus', 'stock', 'timeRange', 'medalId'];
+    const pick = (m) => Object.fromEntries(fields.map(f => [f, m && m[f] != null ? m[f] : '']));
+    const expectedDetail = pick(expectedMedals[i]);
+    const actualDetail = pick(medals[i]);
+    const diffField = fields.find(f => expectedDetail[f] !== actualDetail[f]);
+    if (diffField) {
       detailMismatch = true;
       failCount++;
       failures.push({
         site: siteLabel,
         url,
-        reason: `medal[${i}] detail mismatch`,
-        expected: { name: expectedMedals[i].name, price: expectedMedals[i].price, duration: expectedMedals[i].duration, bonus: expectedMedals[i].bonus },
-        got: { name: medals[i].name, price: medals[i].price, duration: medals[i].duration, bonus: medals[i].bonus }
+        reason: `medal[${i}] detail mismatch (${diffField})`,
+        expected: expectedDetail,
+        got: actualDetail
       });
       break;
     }

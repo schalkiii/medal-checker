@@ -25,6 +25,18 @@
 - 修复 3 项 sunnypt 时间炸弹用例：`parseSunnyptMedals()` 第三参误传 null，实际按当前时间判定售卖窗口，固定窗口 2026-11-16 到期后必挂；改为传入固定 `sunnyptNow`（当前总计 **265 项**）
 - `scripts/analyze-html.js` 增加好学 mcard 分支；`npm run check` 26 项全通过
 
+### 修复（依据 2026-11-17 审计）
+
+- **配置导入导出可往返**：导入时只对裸域名/根路径补 `/medal.php`，已有路径（`/medals`、`/buycenter.php`、`mall.php?cid=5`、带 hash 的 SPA 路由）原样保留；此前无条件拼接会把导出的 6 类站点改成错误地址
+- **分页统一走 URL 门控**：`scanSiteMedals()` 第 2 页起改用 `extractMedalsForSite()`，`buycenter.php` 这类独立列序布局的分页不再记 0 枚
+- **调试包存储**：manifest 增加 `unlimitedStorage`；写入 `chrome.storage.local` 后检查 `runtime.lastError`，超限时在扫描日志中明确告警，不再静默缺页
+- **定时任务时间校验**：`setupAlarm()` 拒绝空值、越界与格式非法的 `time`，避免 NaN 延迟传给 `alarms.create`
+- **消息发送保护**：选项页已关闭时 `scanResult` 发送失败不再抛未捕获异常
+- **回归比对补字段**：快照详情比对由 `name/price/duration/bonus` 扩展到 `stock/timeRange/medalId`
+- **工程**：`npm run lint` 改用本地 eslint 入口（`.bin` 缺失环境可用）；新增 `npm run test:browser`，未安装 puppeteer 时明确跳过而不是崩溃
+- **测试**：新增 8 项（导入归一化 2、分页 buycenter 1、fetchWithTimeout 2、setupAlarm 非法时间 1、performScheduledScan 前置条件 2），总计 **273 项**；`npm run check` 26 项、lint 零 error
+- **文档**：CODE_WIKI 移除全部 `L###` 行号引用（改函数名/事件名定位），版本修正为 1.15、权限补 `unlimitedStorage`；README 补充导入地址规则
+
 ### 修复：回归基线漏计 URL 门控的 buycenter 布局
 
 - 新增 `extractMedalsForSite(html, siteUrl)`：把「buycenter.php 走独立列序、其余走通用表格」的分流收成唯一入口，`scanSiteMedals()` 与回归脚本、快照生成脚本共用

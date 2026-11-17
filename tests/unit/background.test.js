@@ -611,6 +611,39 @@ test('pterclub 名称不存在的勋章被跳过', () => {
 });
 
 // ============================================================
+// fetchWithTimeout
+// ============================================================
+console.log('\n  ▶ fetchWithTimeout');
+
+testAsync('fetchWithTimeout 超时触发 AbortError', async () => {
+  const originalFetch = global.fetch;
+  global.fetch = (_url, options) =>
+    new Promise((_resolve, reject) => {
+      options.signal.addEventListener('abort', () => {
+        const err = new Error('aborted');
+        err.name = 'AbortError';
+        reject(err);
+      });
+    });
+  let name = '';
+  try {
+    await bg.fetchWithTimeout('https://slow.test', {}, 20);
+  } catch (e) {
+    name = e.name;
+  }
+  global.fetch = originalFetch;
+  assertEqual(name, 'AbortError');
+});
+
+testAsync('fetchWithTimeout 正常返回不影响结果', async () => {
+  const originalFetch = global.fetch;
+  global.fetch = () => Promise.resolve({ ok: true, status: 200 });
+  const res = await bg.fetchWithTimeout('https://fast.test', {}, 1000);
+  global.fetch = originalFetch;
+  assertEqual(res.status, 200);
+});
+
+// ============================================================
 // sendToFeishu
 // ============================================================
 console.log('\n  ▶ sendToFeishu');
@@ -1439,6 +1472,57 @@ test('setupAlarm null配置不创建alarm', () => {
   global.chrome.alarms.clear = origClear;
 });
 
+test('setupAlarm 非法时间不创建alarm', () => {
+  global.chrome.alarms._created = [];
+  global.chrome.alarms._cleared = false;
+  const origClear = global.chrome.alarms.clear;
+  global.chrome.alarms.clear = (name, cb) => {
+    global.chrome.alarms._cleared = true;
+    if (cb) cb();
+  };
+  // 旧配置/手改 storage 可能给出越界、空值或缺失的 time
+  bg.setupAlarm({ enabled: true, time: '25:99' });
+  bg.setupAlarm({ enabled: true, time: '' });
+  bg.setupAlarm({ enabled: true });
+  bg.setupAlarm({ enabled: true, time: '8:00' });
+  assertEqual(global.chrome.alarms._created.length, 1, '只有合法的 8:00 应创建');
+  global.chrome.alarms._created = [];
+  global.chrome.alarms.clear = origClear;
+});
+
+// ============================================================
+// performScheduledScan 前置条件
+// ============================================================
+console.log('\n  ▶ performScheduledScan');
+
+testAsync('performScheduledScan: 未配置站点时不写入扫描结果', async () => {
+  const origSet = global.chrome.storage.local.set;
+  let setCalls = 0;
+  global.chrome.storage.local.set = (...args) => {
+    setCalls++;
+    return origSet.apply(global.chrome.storage.local, args);
+  };
+  global.chrome._storage.set('sites', []);
+  global.chrome._storage.set('scheduleConfig', { enabled: true, time: '08:00', webhookUrl: 'https://hook.test' });
+  await bg.performScheduledScan();
+  global.chrome.storage.local.set = origSet;
+  assertEqual(setCalls, 0);
+});
+
+testAsync('performScheduledScan: 未配置 Webhook 时不执行扫描', async () => {
+  const origSet = global.chrome.storage.local.set;
+  let setCalls = 0;
+  global.chrome.storage.local.set = (...args) => {
+    setCalls++;
+    return origSet.apply(global.chrome.storage.local, args);
+  };
+  global.chrome._storage.set('sites', ['X|https://x.test/medal.php']);
+  global.chrome._storage.set('scheduleConfig', { enabled: true, time: '08:00' });
+  await bg.performScheduledScan();
+  global.chrome.storage.local.set = origSet;
+  assertEqual(setCalls, 0);
+});
+
 // ============================================================
 // updateScheduleConfig 消息处理
 // ============================================================
@@ -1886,6 +1970,32 @@ testAsync('scanSiteMedals: 单页站点只抓首页', async () => {
   assertEqual(pageCount, 1);
   assertEqual(medals[0].pageUrl, siteUrl);
   global.fetch = savedFetch;
+});
+
+testAsync('scanSiteMedals: buycenter 分页同样走 URL 门控布局', async () => {
+  const savedFetch = global.fetch;
+  const siteUrl = 'https://htpt.test/buycenter.php';
+  const makeBuyPage = (name, stock, price, links) => `<table>
+<tr><td class="colhead">简介</td><td class="colhead">库存</td><td class="colhead">价格</td></tr>
+<tr><td></td><td class="rowfollow"><b>${name}</b><br />简介文字足够长<br />(可购买时间: 不限)</td><td>${stock}</td><td>1</td><td>${price}</td>
+<td><input type="button" value="交换&nbsp;/&nbsp;赠送" onclick="submit_karma_gift(1)"></td></tr></table>
+<p class="pagination">${links.map((p) => `<a href="?page=${p}">${p}</a>`).join('')}</p>`;
+  const pages = {
+    [siteUrl]: makeBuyPage('第一页勋章', 10, '100', [2]),
+    [`${siteUrl}?page=2`]: makeBuyPage('第二页勋章', 20, '200', []),
+  };
+  global.fetch = (url) =>
+    Promise.resolve({ ok: true, text: () => Promise.resolve(pages[url] || '') });
+
+  const { medals, pageCount } = await bg.scanSiteMedals(
+    '海棠', siteUrl, [{ name: 'c', value: '1' }], () => {},
+  );
+  global.fetch = savedFetch;
+  assertEqual(pageCount, 2);
+  assertEqual(medals.length, 2, '第 2 页也必须按 buycenter 列序解析');
+  assertEqual(medals[0].name, '第一页勋章');
+  assertEqual(medals[1].name, '第二页勋章');
+  assertEqual(medals[1].stock, '20');
 });
 
 testAsync('scanSiteMedals: 1 索引站点 ?page=1 与首页重复时去重', async () => {

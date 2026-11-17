@@ -5,8 +5,9 @@
   "main": "background.js",
   "scripts": {
     "check": "node scripts/check.js",
-    "lint": "eslint background.js options/options.js",
+    "lint": "node ./node_modules/eslint/bin/eslint.js background.js options/options.js",
     "lint:fix": "node scripts/lint-fix.js",
+    "test:browser": "node tests/browser/extension.test.js",
     "watch": "node scripts/watch.js",
     "test": "node tests/run.js && npm run check",
     "test:regression": "node tests/regression/snapshot.test.js",
