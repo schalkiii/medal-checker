@@ -471,6 +471,28 @@ test('buycenter提取名称', () => {
   assertEqual(medals[0].name, '《测试勋章》');
 });
 
+test('buycenter名称优先取简介格 <b>（htpt 新版无 ⠀ 标记）', () => {
+  // 真实结构：名称在 <b>，其后跟音频按钮、描述、可购买时间与「请输入用户名」输入框；
+  // 旧逻辑依赖全角空白 ⠀ 切分，站点去掉该标记后整段折进名称（含 ▶ 与输入框提示）
+  const html = `<table>
+    <tr><td></td>
+      <td class="rowfollow" align='left'><b>小肥羊徽章</b><br />
+        <audio id='medalAudio_8' src='https://img.htpt.cc/img/audio/zbdxy.mp3' preload='none'></audio>
+        <button type='button' id='playBtn_8' class='play-btn'>▶</button>
+        <span id='medalDesc_8'>我是青青草原上最棒的小羊！</span><br />
+        (可购买时间: 2022-02-22 22:22:22~2030-10-04 00:00:00)<br /><br />
+        请输入<b>用户名 <input type='text' name='username' size='10' /></b></td>
+      <td>783</td><td>1</td><td>10000</td>
+      <td><input type="button" value="交换&nbsp;/&nbsp;赠送" onclick="submit_karma_gift(8)"></td></tr>
+  </table>`;
+  const medals = bg.extractMedalsFromBuyCenter(html);
+  assertEqual(medals.length, 1);
+  assertEqual(medals[0].name, '小肥羊徽章');
+  assertEqual(medals[0].price, '10000');
+  assertEqual(medals[0].stock, '783');
+  assertEqual(medals[0].timeRange, '2022-02-22 22:22:22~2030-10-04 00:00:00');
+});
+
 test('buycenter提取价格', () => {
   const html = `<table>
     <tr><td></td><td>《测试勋章》 ⠀测试描述内容</td><td>100</td><td>1</td><td>50,000</td>
@@ -1988,7 +2010,7 @@ const sunnyptList = [
 const sunnyptNow = 1792254997; // 2026-10-18
 
 test('sunnypt: 过滤已结束/未开始/售罄，保留在售', () => {
-  const medals = bg.parseSunnyptMedals(sunnyptList, [], null, sunnyptNow);
+  const medals = bg.parseSunnyptMedals(sunnyptList, [], sunnyptNow);
   const names = medals.map((m) => m.name);
   assertEqual(medals.length, 1);
   assert(names.includes('测试在售勋章'), '在售勋章应保留');
@@ -2009,7 +2031,7 @@ test('sunnypt: 余额不足不排除（前端魔力不足筛选负责）', () =>
 });
 
 test('sunnypt: 字段映射（价格/有效期/加成/库存/时间/ID）', () => {
-  const medals = bg.parseSunnyptMedals(sunnyptList, [], null, sunnyptNow);
+  const medals = bg.parseSunnyptMedals(sunnyptList, [], sunnyptNow);
   const m = medals[0];
   assertEqual(m.name, '测试在售勋章');
   assertEqual(m.price, '280,000');
@@ -2022,7 +2044,7 @@ test('sunnypt: 字段映射（价格/有效期/加成/库存/时间/ID）', () =
 
 test('sunnypt: 库存 -1 映射为无限', () => {
   const list = [{ id: 9, name: '无限库存', price: 100, duration: 0, bonus_addition_factor: 0.01, sale_begin_time: 1792166400, sale_end_time: 1794758400, inventory: -1 }];
-  const medals = bg.parseSunnyptMedals(list, [], null, sunnyptNow);
+  const medals = bg.parseSunnyptMedals(list, [], sunnyptNow);
   assertEqual(medals[0].stock, '无限');
   assertEqual(medals[0].bonus, '1%');
   assertEqual(medals[0].duration, '永久');
@@ -2954,6 +2976,18 @@ test('内置站点表指向好学新路径 /medals', () => {
   const src = require('fs').readFileSync(require('path').join(__dirname, '../../background.js'), 'utf8');
   assert(src.includes('"hxpt.org|https://www.hxpt.org/medals"'), 'DEFAULT_SITES 里好学应已是 /medals');
   assert(!src.includes('hxpt.org/medal.php'), '不应残留 404 的 medal.php');
+});
+
+test('内置站点表不含已关站/已迁移域名', () => {
+  const src = require('fs').readFileSync(require('path').join(__dirname, '../../background.js'), 'utf8');
+  // 52movie 于 2026-10-20 关站；icd/icc、cdy 等此前已移出
+  assert(!src.includes('52movie.top'), '不应保留已关站的 52movie');
+  // mypt 的可用域名是 pt.mypt.cc（cc.mypt.cc 已不可达）
+  assert(src.includes('"pt.mypt.cc|https://pt.mypt.cc/medal.php"'), 'mypt 应指向 pt.mypt.cc');
+  // rousi 是 SPA，勋章路由为 /medals
+  assert(src.includes('"rousi.pro|https://rousi.pro/medals"'), 'rousi 应指向 /medals');
+  // TTG 商城勋章在 cid=5 分类
+  assert(src.includes('https://totheglory.im/mall.php?cid=5'), 'TTG 勋章应带 cid=5');
 });
 
 // ============================================================

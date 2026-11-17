@@ -158,9 +158,19 @@ const extractMedalsFromBuyCenter = (html) => {
 
     if (nameText.length < 10 || nameText === "简介") continue;
 
+    // 名称优先取简介格里的 <b>：新版站点（htpt.cc）把名称、音频按钮、
+    // 描述、可购买时间与「请输入用户名」输入框全折进同一格，
+    // 按文本切分会把整段当成名称；旧版页面没有 <b>，仍按全角空白 ⠀ 标记切分
+    const nameBold = nameHtml.match(/<b[^>]*>([\s\S]*?)<\/b>/i);
     const markerIdx = nameText.indexOf(" ⠀");
-    const name =
-      markerIdx > 0 ? nameText.substring(0, markerIdx).trim() : nameText;
+    const name = nameBold
+      ? nameBold[1]
+          .replace(/<[^>]+>/g, "")
+          .replace(/&nbsp;/gi, " ")
+          .trim()
+      : markerIdx > 0
+        ? nameText.substring(0, markerIdx).trim()
+        : nameText;
 
     const price = extractTdText(tds[4] || "").trim();
 
@@ -1456,12 +1466,11 @@ const tagMedalsWithPage = (medals, page, pageUrl) => {
 const DEFAULT_SITES = [
   "13city.org|https://13city.org/medal.php",
   "1ptba.com|https://1ptba.com/medal.php",
-  "52movie.top|https://www.52movie.top/medal.php",
   "agsvpt.cn|https://pt.agsvpt.cn/medal.php",
   "bilibili.download|https://bilibili.download/medal.php",
   "cangbao.ge|https://cangbao.ge/medal.php",
   "carpt.net|https://carpt.net/medal.php",
-  "cc.mypt.cc|https://cc.mypt.cc/medal.php",
+  "pt.mypt.cc|https://pt.mypt.cc/medal.php",
   "crabpt.vip|https://crabpt.vip/medal.php",
   "cspt.top|https://cspt.top/medal.php",
   "cyanbug.net|https://cyanbug.net/medal.php",
@@ -1507,14 +1516,14 @@ const DEFAULT_SITES = [
   "ptskit.com|https://www.ptskit.com/medal.php",
   "ptzone.xyz|https://ptzone.xyz/medal.php",
   "qingwapt.com|https://qingwapt.com/medal.php",
-  "rousi.pro|https://rousi.pro/medal.php",
+  "rousi.pro|https://rousi.pro/medals",
   "sewerpt.com|https://sewerpt.com/medal.php",
   "si-qi.xyz|https://si-qi.xyz/medal.php",
   "springsunday.net (badges)|https://springsunday.net/badges.php",
   "sunnypt.top|https://sunnypt.top/bounty?tab=renown",
   "tangpt.top|https://www.tangpt.top/medal.php",
   "tokyo-manga.top|https://www.tokyo-manga.top/medal.php",
-  "totheglory.im (mall)|https://totheglory.im/mall.php",
+  "totheglory.im (mall)|https://totheglory.im/mall.php?cid=5",
   "ubits.club|https://ubits.club/medal.php",
   "wintersakura.net|https://wintersakura.net/medal.php",
   "wukongwendao.top|https://wukongwendao.top/medal.php",

@@ -310,6 +310,26 @@ function analyzeFile(filePath) {
       console.log(
         `  可用购买按钮数: ${buyButtons.length}（文本为"购买"或"購買"且非 disabled）`,
       );
+    } else if (html.includes('class="mcard"') && html.includes("mcard-ft")) {
+      // 好学 /medals 的 mcard 卡片布局（Next.js 服务端直出）
+      console.log("\n📋 hxpt mcard 卡片布局:");
+      const sections = html.split(/<article\s+class="mcard"/).slice(1);
+      const states = {};
+      let buyable = 0;
+      for (const section of sections) {
+        const foot = section.match(/<div class="mcard-ft[\s\S]*/);
+        if (!foot) continue;
+        const buttons = foot[0].match(/<button[^>]*>[\s\S]*?<\/button>/g) || [];
+        const texts = buttons.map((b) =>
+          b.replace(/<[^>]+>|<!--[\s\S]*?-->/g, "").trim(),
+        );
+        if (texts.some((t) => t === "购买" || t === "購買")) buyable++;
+        const key = texts.join(" / ") || "(仅 span 状态)";
+        states[key] = (states[key] || 0) + 1;
+      }
+      console.log(`  勋章卡片数: ${sections.length}`);
+      console.log(`  可购买卡片数: ${buyable}`);
+      console.log(`  按钮形态分布: ${JSON.stringify(states)}`);
     } else if (
       html.includes("medal-container") ||
       html.includes("medal-cards") ||

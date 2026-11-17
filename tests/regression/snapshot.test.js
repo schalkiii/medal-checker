@@ -128,12 +128,14 @@ for (const page of pages) {
   const hasCard = html.indexOf('medal-card') >= 0;
   const hasBuycenter = html.indexOf('buycenter') >= 0;
   const hasMedalContainer = html.indexOf('medal-container') >= 0;
+  const hasMcard = html.indexOf('class="mcard"') >= 0;
 
   const parts = [];
   if (hasTable) parts.push('table');
   if (hasCard) parts.push('card');
   if (hasBuycenter) parts.push('buycenter');
   if (hasMedalContainer) parts.push('medal-container');
+  if (hasMcard) parts.push('mcard');
 
   if (parts.length > 0) {
     category = parts.join('+');
@@ -159,7 +161,11 @@ if (layoutStats.unknown && layoutStats.unknown.pages > 0) {
   const unkList = [];
   for (const page of pages) {
     const html = page.html;
-    if (html.indexOf('<table') < 0 && html.indexOf('medal-card') < 0 && html.indexOf('buycenter') < 0) {
+    const hasTable = html.indexOf('<table') >= 0;
+    const hasCard = html.indexOf('medal-card') >= 0;
+    const hasBuycenter = html.indexOf('buycenter') >= 0;
+    const hasMcard = html.indexOf('class="mcard"') >= 0;
+    if (!hasTable && !hasCard && !hasBuycenter && !hasMcard) {
       unkList.push(new URL(page.url).hostname);
     }
   }

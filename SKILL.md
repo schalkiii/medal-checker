@@ -56,7 +56,7 @@
 1. **每次改动后立即验证**
    ```bash
    npm run check  # 26 项静态检查
-   npm test       # 263 项自动化测试
+   npm test       # 265 项自动化测试
    ```
 
 2. **测试先行**
@@ -130,7 +130,7 @@ try { new URL(url) } catch { /* fallback parsing */ }
 
 ```javascript
 // 隐藏式内置配置，用户无需手动维护
-const DEFAULT_SITES = [/* 67 个站点 */];
+const DEFAULT_SITES = [/* 66 个站点 */];
 
 // 运行时检测，仅显示有 cookie 的站点
 if (request.action === 'detectSites') { /* cookie 检测 */ }

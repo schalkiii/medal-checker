@@ -64,7 +64,7 @@ if (!allPassed) process.exit(1);
 let regrPassed = true;
 if (require('fs').existsSync(debugPackage)) {
   console.log('\n╔══════════════════════════════════════╗');
-  console.log('║   回归测试 — 97 站点快照对比        ║');
+  console.log('║   回归测试 — 调试包快照对比         ║');
   console.log('╚══════════════════════════════════════╝');
 
   const regrResult = spawnSync('node', [regressionFile], {
